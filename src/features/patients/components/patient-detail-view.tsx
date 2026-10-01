@@ -1,28 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import type { Consultation as PrismaConsultation, Patient } from "@prisma/client";
+import type { Consultation, Patient } from "@prisma/client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
-
-// ConsultationsList still expects the pre-Task-8 in-memory Consultation
-// shape (string date, non-nullable patientId) — Task 8 migrates it to
-// @prisma/client directly. Adapt the real row shape here in the meantime
-// so this one call site can pass real data without touching that shared
-// component ahead of its own task.
-function toListShape(c: PrismaConsultation) {
-  return {
-    id: c.id,
-    patientId: c.patientId ?? "",
-    date: c.date.toISOString().slice(0, 10),
-    treatment: c.treatment,
-    tooth: c.tooth ?? undefined,
-    notes: c.notes ?? undefined,
-  };
-}
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -39,7 +23,7 @@ export function PatientDetailView({
   consultations,
 }: {
   patient: Patient | null;
-  consultations: PrismaConsultation[];
+  consultations: Consultation[];
 }) {
   if (!patient) {
     return (
@@ -95,7 +79,7 @@ export function PatientDetailView({
       <div>
         <h2 className="mb-3 text-lg font-semibold">Historial de consultas</h2>
         <ConsultationsList
-          consultations={consultations.map(toListShape)}
+          consultations={consultations}
           showPatient={false}
           emptyMessage="Todavía no hay consultas registradas para este paciente."
         />

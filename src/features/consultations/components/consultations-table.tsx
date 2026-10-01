@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/features/clinic/lib/format";
-import type { Consultation, Patient } from "@/features/clinic/lib/types";
+import type { Consultation, Patient } from "@prisma/client";
 
 export function ConsultationsTable({
   consultations,
@@ -58,16 +58,20 @@ export function ConsultationsTable({
             consultations.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="whitespace-nowrap">
-                  {formatDate(c.date)}
+                  {formatDate(c.date.toISOString().slice(0, 10))}
                 </TableCell>
                 {showPatient && (
                   <TableCell className="font-medium">
-                    <Link
-                      href={`/dashboard/pacientes/${c.patientId}`}
-                      className="hover:underline"
-                    >
-                      {patientName(c.patientId)}
-                    </Link>
+                    {c.patientId ? (
+                      <Link
+                        href={`/dashboard/pacientes/${c.patientId}`}
+                        className="hover:underline"
+                      >
+                        {patientName(c.patientId)}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">Paciente eliminado</span>
+                    )}
                   </TableCell>
                 )}
                 <TableCell>

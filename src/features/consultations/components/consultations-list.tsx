@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ConsultationsTable } from "@/features/consultations/components/consultations-table";
 import { OTHER_TREATMENT, TREATMENT_OPTIONS } from "@/features/clinic/lib/treatments";
-import type { Consultation, Patient } from "@/features/clinic/lib/types";
+import type { Consultation, Patient } from "@prisma/client";
 
 const ALL_TREATMENTS = "__all__";
 const KNOWN_TREATMENTS = TREATMENT_OPTIONS.filter((t) => t !== OTHER_TREATMENT);
@@ -46,8 +46,9 @@ export function ConsultationsList({
   const filtered = useMemo(() => {
     return consultations.filter((c) => {
       if (!matchesTreatment(c.treatment, treatment)) return false;
-      if (from && c.date < from) return false;
-      if (to && c.date > to) return false;
+      const dateStr = c.date.toISOString().slice(0, 10);
+      if (from && dateStr < from) return false;
+      if (to && dateStr > to) return false;
       return true;
     });
   }, [consultations, treatment, from, to]);

@@ -26,28 +26,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
 import { TREATMENT_OPTIONS, OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
+import { createConsultationAction } from "@/features/consultations/actions";
 import {
   consultationSchema,
   NEW_PATIENT_VALUE,
   type ConsultationValues,
 } from "@/features/consultations/lib/schema";
+import type { Patient } from "@prisma/client";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
 export function NewConsultationDialog({
+  patients = [],
   fixedPatientId,
   fixedPatientName,
 }: {
+  patients?: Patient[];
   fixedPatientId?: string;
   fixedPatientName?: string;
 }) {
-  const { patients, addPatient, addConsultation } = useClinicData();
   const [open, setOpen] = useState(false);
 
   const {
@@ -82,35 +84,35 @@ export function NewConsultationDialog({
   const treatment = watch("treatment");
   const isNewPatient = !fixedPatientId && patientId === NEW_PATIENT_VALUE;
 
-  const onSubmit = (values: ConsultationValues) => {
-    let finalPatientId = fixedPatientId ?? values.patientId;
+  const onSubmit = async (values: ConsultationValues) => {
+    const finalPatientId = fixedPatientId ?? values.patientId;
 
-    if (isNewPatient) {
-      const patient = addPatient({
-        name: values.newPatientName!.trim(),
-        phone: values.newPatientPhone!.trim(),
-        email: values.newPatientEmail || undefined,
-        dni: values.newPatientDni || undefined,
-        birthDate: values.newPatientBirthDate || undefined,
-        address: values.newPatientAddress || undefined,
-        insurance:
-          values.newPatientInsurance === OTHER_INSURANCE
-            ? values.newPatientInsuranceOther?.trim()
-            : values.newPatientInsurance || undefined,
-        allergies: values.newPatientAllergies || undefined,
-      });
-      finalPatientId = patient.id;
-    }
-
-    addConsultation({
+    await createConsultationAction({
       patientId: finalPatientId,
-      date: values.date,
+      date: new Date(values.date),
       treatment:
         values.treatment === OTHER_TREATMENT
           ? values.treatmentOther!.trim()
           : values.treatment,
       tooth: values.tooth || undefined,
       notes: values.notes || undefined,
+      newPatient: isNewPatient
+        ? {
+            name: values.newPatientName!.trim(),
+            phone: values.newPatientPhone!.trim(),
+            email: values.newPatientEmail || undefined,
+            dni: values.newPatientDni || undefined,
+            birthDate: values.newPatientBirthDate
+              ? new Date(values.newPatientBirthDate)
+              : undefined,
+            address: values.newPatientAddress || undefined,
+            insurance:
+              values.newPatientInsurance === OTHER_INSURANCE
+                ? values.newPatientInsuranceOther?.trim()
+                : values.newPatientInsurance || undefined,
+            allergies: values.newPatientAllergies || undefined,
+          }
+        : undefined,
     });
 
     reset({
