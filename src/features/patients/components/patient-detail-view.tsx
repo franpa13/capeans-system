@@ -1,16 +1,30 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import type { Consultation as PrismaConsultation, Patient } from "@prisma/client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
 import { formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 
-function InfoField({ label, value }: { label: string; value?: string }) {
+// ConsultationsList still expects the pre-Task-8 in-memory Consultation
+// shape (string date, non-nullable patientId) — Task 8 migrates it to
+// @prisma/client directly. Adapt the real row shape here in the meantime
+// so this one call site can pass real data without touching that shared
+// component ahead of its own task.
+function toListShape(c: PrismaConsultation) {
+  return {
+    id: c.id,
+    patientId: c.patientId ?? "",
+    date: c.date.toISOString().slice(0, 10),
+    treatment: c.treatment,
+    tooth: c.tooth ?? undefined,
+    notes: c.notes ?? undefined,
+  };
+}
+
+function InfoField({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div>
@@ -20,10 +34,13 @@ function InfoField({ label, value }: { label: string; value?: string }) {
   );
 }
 
-export function PatientDetailView({ patientId }: { patientId: string }) {
-  const { getPatient, getConsultationsForPatient } = useClinicData();
-  const patient = getPatient(patientId);
-
+export function PatientDetailView({
+  patient,
+  consultations,
+}: {
+  patient: Patient | null;
+  consultations: PrismaConsultation[];
+}) {
   if (!patient) {
     return (
       <div className="flex flex-col gap-4">
@@ -38,8 +55,6 @@ export function PatientDetailView({ patientId }: { patientId: string }) {
       </div>
     );
   }
-
-  const consultations = getConsultationsForPatient(patientId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,7 +82,10 @@ export function PatientDetailView({ patientId }: { patientId: string }) {
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <InfoField label="Email" value={patient.email} />
           <InfoField label="DNI" value={patient.dni} />
-          <InfoField label="Fecha de nacimiento" value={formatDate(patient.birthDate)} />
+          <InfoField
+            label="Fecha de nacimiento"
+            value={formatDate(patient.birthDate?.toISOString().slice(0, 10))}
+          />
           <InfoField label="Dirección" value={patient.address} />
           <InfoField label="Obra social" value={patient.insurance} />
           <InfoField label="Alergias / antecedentes" value={patient.allergies} />
@@ -77,7 +95,7 @@ export function PatientDetailView({ patientId }: { patientId: string }) {
       <div>
         <h2 className="mb-3 text-lg font-semibold">Historial de consultas</h2>
         <ConsultationsList
-          consultations={consultations}
+          consultations={consultations.map(toListShape)}
           showPatient={false}
           emptyMessage="Todavía no hay consultas registradas para este paciente."
         />

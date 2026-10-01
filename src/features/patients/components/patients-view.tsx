@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Users, X } from "lucide-react";
+import type { Patient } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,8 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
-import { formatDate } from "@/features/clinic/lib/format";
 import {
   INSURANCE_OPTIONS,
   NO_INSURANCE,
@@ -32,7 +31,7 @@ import { PatientActions } from "@/features/patients/components/patient-actions";
 
 const ALL_INSURANCES = "__all__";
 
-function matchesInsurance(patientInsurance: string | undefined, filter: string) {
+function matchesInsurance(patientInsurance: string | null, filter: string) {
   if (filter === ALL_INSURANCES) return true;
   if (filter === NO_INSURANCE) {
     return !patientInsurance || patientInsurance === NO_INSURANCE;
@@ -47,8 +46,7 @@ function matchesInsurance(patientInsurance: string | undefined, filter: string) 
   return patientInsurance === filter;
 }
 
-export function PatientsView() {
-  const { patients, getLastVisit } = useClinicData();
+export function PatientsView({ patients }: { patients: Patient[] }) {
   const [query, setQuery] = useState("");
   const [insurance, setInsurance] = useState(ALL_INSURANCES);
 
@@ -114,14 +112,13 @@ export function PatientsView() {
               <TableHead>Nombre</TableHead>
               <TableHead>Teléfono</TableHead>
               <TableHead>Obra social</TableHead>
-              <TableHead>Última visita</TableHead>
               <TableHead className="w-px">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
                     <Users className="size-5" />
                     {patients.length === 0
@@ -144,9 +141,6 @@ export function PatientsView() {
                   <TableCell>{patient.phone}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {patient.insurance ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(getLastVisit(patient.id)) ?? "—"}
                   </TableCell>
                   <TableCell>
                     <PatientActions patient={patient} />

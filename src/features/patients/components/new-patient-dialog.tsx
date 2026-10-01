@@ -15,11 +15,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientFormFields } from "@/features/patients/components/patient-form-fields";
 import { patientSchema, type PatientValues } from "@/features/patients/lib/schema";
-import type { Patient } from "@/features/clinic/lib/types";
+import { createPatientAction } from "@/features/patients/actions";
+import type { Patient } from "@prisma/client";
 
 const emptyValues: PatientValues = {
   name: "",
@@ -38,7 +38,6 @@ export function NewPatientDialog({
 }: {
   onCreated?: (patient: Patient) => void;
 }) {
-  const { addPatient } = useClinicData();
   const [open, setOpen] = useState(false);
 
   const {
@@ -52,13 +51,13 @@ export function NewPatientDialog({
     defaultValues: emptyValues,
   });
 
-  const onSubmit = (values: PatientValues) => {
-    const patient = addPatient({
+  const onSubmit = async (values: PatientValues) => {
+    const patient = await createPatientAction({
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
       dni: values.dni || undefined,
-      birthDate: values.birthDate || undefined,
+      birthDate: values.birthDate ? new Date(values.birthDate) : undefined,
       address: values.address || undefined,
       insurance:
         values.insurance === OTHER_INSURANCE

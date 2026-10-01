@@ -13,11 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
 import { INSURANCE_OPTIONS, NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientFormFields } from "@/features/patients/components/patient-form-fields";
 import { patientSchema, type PatientValues } from "@/features/patients/lib/schema";
-import type { Patient } from "@/features/clinic/lib/types";
+import { updatePatientAction } from "@/features/patients/actions";
+import type { Patient } from "@prisma/client";
+
+function toDateInputValue(date: Date | null): string {
+  if (!date) return "";
+  return date.toISOString().slice(0, 10);
+}
 
 function toFormValues(patient: Patient): PatientValues {
   const knownInsurance =
@@ -30,10 +35,10 @@ function toFormValues(patient: Patient): PatientValues {
     phone: patient.phone,
     email: patient.email ?? "",
     dni: patient.dni ?? "",
-    birthDate: patient.birthDate ?? "",
+    birthDate: toDateInputValue(patient.birthDate),
     address: patient.address ?? "",
     insurance: knownInsurance ? patient.insurance ?? "" : OTHER_INSURANCE,
-    insuranceOther: knownInsurance ? "" : patient.insurance,
+    insuranceOther: knownInsurance ? "" : (patient.insurance ?? ""),
     allergies: patient.allergies ?? "",
   };
 }
@@ -47,8 +52,6 @@ export function EditPatientDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { editPatient } = useClinicData();
-
   const {
     register,
     handleSubmit,
@@ -64,13 +67,13 @@ export function EditPatientDialog({
     if (open) reset(toFormValues(patient));
   }, [open, patient, reset]);
 
-  const onSubmit = (values: PatientValues) => {
-    editPatient(patient.id, {
+  const onSubmit = async (values: PatientValues) => {
+    await updatePatientAction(patient.id, {
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
       dni: values.dni || undefined,
-      birthDate: values.birthDate || undefined,
+      birthDate: values.birthDate ? new Date(values.birthDate) : undefined,
       address: values.address || undefined,
       insurance:
         values.insurance === OTHER_INSURANCE

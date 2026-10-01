@@ -22,12 +22,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
 import { EditPatientDialog } from "@/features/patients/components/edit-patient-dialog";
-import type { Patient } from "@/features/clinic/lib/types";
+import { deletePatientAction } from "@/features/patients/actions";
+import type { Patient } from "@prisma/client";
 
 export function PatientActions({ patient }: { patient: Patient }) {
-  const { deletePatient } = useClinicData();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -95,7 +94,7 @@ export function PatientActions({ patient }: { patient: Patient }) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletePatient(patient.id)}
+              onClick={() => deletePatientAction(patient.id)}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
               Eliminar
