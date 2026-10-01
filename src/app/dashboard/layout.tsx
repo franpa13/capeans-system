@@ -11,6 +11,7 @@ import { AppSidebar } from "@/features/dashboard/components/app-sidebar";
 import { UserMenu } from "@/features/dashboard/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ClinicDataProvider } from "@/features/clinic/context/clinic-provider";
+import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 
 export default async function DashboardLayout({
   children,
@@ -20,6 +21,18 @@ export default async function DashboardLayout({
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
   const user = await currentUser();
+  const clinic = await getCurrentClinic();
+
+  if (!clinic) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 text-center">
+        <p className="text-muted-foreground">
+          Todavía estamos configurando tu consultorio, probá de nuevo en un
+          minuto.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <ClinicDataProvider>
