@@ -1,3 +1,4 @@
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +10,6 @@ import {
 import { AppSidebar } from "@/features/dashboard/components/app-sidebar";
 import { UserMenu } from "@/features/dashboard/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getSession } from "@/features/auth/lib/session";
 import { ClinicDataProvider } from "@/features/clinic/context/clinic-provider";
 
 export default async function DashboardLayout({
@@ -17,8 +17,9 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+  const user = await currentUser();
 
   return (
     <ClinicDataProvider>
@@ -33,7 +34,10 @@ export default async function DashboardLayout({
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle />
-              <UserMenu name={session.name} email={session.email} />
+              <UserMenu
+                name={user?.fullName ?? "Usuario"}
+                email={user?.primaryEmailAddress?.emailAddress ?? ""}
+              />
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-6">{children}</main>

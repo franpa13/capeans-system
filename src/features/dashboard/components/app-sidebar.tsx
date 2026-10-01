@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import {
   CalendarDays,
   ClipboardList,
@@ -24,7 +25,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { ToothIcon } from "@/components/tooth-icon";
-import { logoutAction } from "@/features/auth/lib/actions";
 
 const navItems = [
   { title: "Inicio", url: "/dashboard", icon: LayoutDashboard },
@@ -39,6 +39,7 @@ function isNavItemActive(pathname: string, url: string) {
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { signOut } = useClerk();
 
   return (
     <Sidebar collapsible="icon">
@@ -91,12 +92,13 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <form action={logoutAction} className="w-full">
-              <SidebarMenuButton type="submit" tooltip="Cerrar sesión">
-                <LogOut />
-                <span>Cerrar sesión</span>
-              </SidebarMenuButton>
-            </form>
+            <SidebarMenuButton
+              tooltip="Cerrar sesión"
+              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+            >
+              <LogOut />
+              <span>Cerrar sesión</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
