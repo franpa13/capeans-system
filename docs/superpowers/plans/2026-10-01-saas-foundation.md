@@ -1159,7 +1159,7 @@ git commit -m "feat: wire Pacientes module to real tenant-scoped data"
 - Test: `e2e/consultations.spec.ts`
 
 **Interfaces:**
-- Consumes: `getCurrentClinic()` (Task 6), `createConsultation`/`getConsultations` (Task 3), `createPatientAction` (Task 7, for the "add patient inline" flow inside the consultation dialog).
+- Consumes: `getCurrentClinic()` (Task 6), `createConsultation`/`getConsultations` (Task 3), `createPatient` (Task 2, for the "add patient inline" flow inside the consultation dialog — called directly, not via Task 7's `createPatientAction`, since the clinic id is already in scope here).
 - Produces: `createConsultationAction` Server Action.
 
 - [ ] **Step 1: Write the failing E2E test**
