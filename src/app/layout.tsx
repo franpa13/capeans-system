@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Capeans | Consultorio Dental",
+  title: "Dentia",
   description: "Panel de administración del consultorio",
 };
 

@@ -37,7 +37,7 @@ function isNavItemActive(pathname: string, url: string) {
   return url === "/dashboard" ? pathname === url : pathname.startsWith(url);
 }
 
-export function AppSidebar() {
+export function AppSidebar({ clinicName }: { clinicName?: string }) {
   const pathname = usePathname();
   const { signOut } = useClerk();
 
@@ -49,9 +49,9 @@ export function AppSidebar() {
             <ToothIcon className="size-4" />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-semibold">Capeans</span>
+            <span className="truncate text-sm font-semibold">Dentia</span>
             <span className="truncate text-xs text-muted-foreground">
-              Consultorio Dental
+              {clinicName ?? "Consultorio Dental"}
             </span>
           </div>
         </div>
