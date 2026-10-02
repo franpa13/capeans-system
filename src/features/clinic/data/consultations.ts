@@ -37,5 +37,21 @@ export async function createConsultation(
   clinicId: string,
   input: NewConsultationInput,
 ): Promise<Consultation> {
-  return prisma.consultation.create({ data: { ...input, clinicId } });
+  const patient = await prisma.patient.findFirst({
+    where: { id: input.patientId, clinicId },
+  });
+  if (!patient) {
+    throw new Error("Patient not found for this clinic");
+  }
+
+  return prisma.consultation.create({
+    data: {
+      patientId: input.patientId,
+      date: input.date,
+      treatment: input.treatment,
+      tooth: input.tooth ?? null,
+      notes: input.notes ?? null,
+      clinicId,
+    },
+  });
 }

@@ -85,4 +85,30 @@ describe("consultations data layer", () => {
     expect(result).toHaveLength(1);
     expect(result[0].treatment).toBe("Limpieza");
   });
+
+  it("ignores a clinicId injected into the create input, using the argument instead", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const injected = {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      clinicId: clinicB.id,
+    } as Parameters<typeof createConsultation>[1];
+
+    const consultation = await createConsultation(clinicA.id, injected);
+
+    expect(consultation.clinicId).toBe(clinicA.id);
+  });
+
+  it("refuses to create a consultation for a patient belonging to another clinic", async () => {
+    const otherClinicPatient = await createPatient(clinicB.id, { name: "Paciente B", phone: "222" });
+
+    await expect(
+      createConsultation(clinicA.id, {
+        patientId: otherClinicPatient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Limpieza",
+      }),
+    ).rejects.toThrow("Patient not found for this clinic");
+  });
 });

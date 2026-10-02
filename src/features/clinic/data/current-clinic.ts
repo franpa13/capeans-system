@@ -8,3 +8,10 @@ export async function getCurrentClinic(): Promise<Clinic | null> {
 
   return prisma.clinic.findUnique({ where: { clerkOrgId: orgId } });
 }
+
+export function getDashboardAccessMessage(orgId: string | null | undefined): string {
+  if (!orgId) {
+    return "Tu cuenta todavía no está asociada a ningún consultorio. Contactá al administrador para que te invite.";
+  }
+  return "Todavía estamos configurando tu consultorio, probá de nuevo en un minuto.";
+}

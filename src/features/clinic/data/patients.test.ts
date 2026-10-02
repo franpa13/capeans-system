@@ -72,4 +72,45 @@ describe("patients data layer", () => {
     const stillThere = await getPatient(clinicA.id, patient.id);
     expect(stillThere).not.toBeNull();
   });
+
+  it("ignores a clinicId injected into the create input, using the argument instead", async () => {
+    const injected = {
+      name: "Paciente Inyectado",
+      phone: "111",
+      clinicId: clinicB.id,
+    } as Parameters<typeof createPatient>[1];
+
+    const patient = await createPatient(clinicA.id, injected);
+
+    expect(patient.clinicId).toBe(clinicA.id);
+  });
+
+  it("ignores a clinicId injected into the update input, using the argument instead", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const injected = {
+      name: "Paciente A",
+      phone: "111",
+      clinicId: clinicB.id,
+    } as Parameters<typeof updatePatient>[2];
+
+    const updated = await updatePatient(clinicA.id, patient.id, injected);
+
+    expect(updated.clinicId).toBe(clinicA.id);
+  });
+
+  it("clears an optional field when the update omits it, instead of leaving the old value", async () => {
+    const patient = await createPatient(clinicA.id, {
+      name: "Paciente A",
+      phone: "111",
+      allergies: "Penicilina",
+    });
+
+    const updated = await updatePatient(clinicA.id, patient.id, {
+      name: "Paciente A",
+      phone: "111",
+      allergies: undefined,
+    });
+
+    expect(updated.allergies).toBeNull();
+  });
 });

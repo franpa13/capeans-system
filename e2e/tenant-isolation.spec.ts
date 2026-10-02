@@ -23,6 +23,10 @@ test("a user from clinic A cannot see a patient created by clinic B", async ({
     clinicAPage.getByRole("link", { name: patientName }),
   ).toBeVisible();
 
+  const patientLink = clinicAPage.getByRole("link", { name: patientName });
+  const patientHref = await patientLink.getAttribute("href");
+  if (!patientHref) throw new Error("Patient link has no href");
+
   const clinicBContext = await browser.newContext();
   const clinicBPage = await clinicBContext.newPage();
   await clinicBPage.goto("/sign-in");
@@ -32,6 +36,13 @@ test("a user from clinic A cannot see a patient created by clinic B", async ({
   });
 
   await clinicBPage.goto("/dashboard/pacientes");
+  await expect(
+    clinicBPage.getByRole("heading", { name: "Pacientes" }),
+  ).toBeVisible();
+  await expect(clinicBPage.getByText(patientName)).not.toBeVisible();
+
+  await clinicBPage.goto(patientHref);
+  await expect(clinicBPage.getByText("No se encontró el paciente.")).toBeVisible();
   await expect(clinicBPage.getByText(patientName)).not.toBeVisible();
 
   await clinicAContext.close();

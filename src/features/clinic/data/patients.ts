@@ -23,11 +23,26 @@ export async function getPatient(clinicId: string, id: string): Promise<Patient 
   return prisma.patient.findFirst({ where: { id, clinicId } });
 }
 
+function toPatientWriteData(input: NewPatientInput) {
+  return {
+    name: input.name,
+    phone: input.phone,
+    email: input.email ?? null,
+    dni: input.dni ?? null,
+    birthDate: input.birthDate ?? null,
+    address: input.address ?? null,
+    insurance: input.insurance ?? null,
+    allergies: input.allergies ?? null,
+  };
+}
+
 export async function createPatient(
   clinicId: string,
   input: NewPatientInput,
 ): Promise<Patient> {
-  return prisma.patient.create({ data: { ...input, clinicId } });
+  return prisma.patient.create({
+    data: { ...toPatientWriteData(input), clinicId },
+  });
 }
 
 export async function updatePatient(
@@ -37,7 +52,7 @@ export async function updatePatient(
 ): Promise<Patient> {
   const result = await prisma.patient.updateMany({
     where: { id, clinicId },
-    data: input,
+    data: toPatientWriteData(input),
   });
   if (result.count === 0) {
     throw new Error("Patient not found for this clinic");

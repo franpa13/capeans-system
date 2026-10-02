@@ -1,6 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { SignOutButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
@@ -10,25 +12,30 @@ import {
 import { AppSidebar } from "@/features/dashboard/components/app-sidebar";
 import { UserMenu } from "@/features/dashboard/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
+import {
+  getCurrentClinic,
+  getDashboardAccessMessage,
+} from "@/features/clinic/data/current-clinic";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
   const user = await currentUser();
   const clinic = await getCurrentClinic();
 
   if (!clinic) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-muted-foreground">
-          Todavía estamos configurando tu consultorio, probá de nuevo en un
-          minuto.
+          {getDashboardAccessMessage(orgId)}
         </p>
+        <SignOutButton redirectUrl="/sign-in">
+          <Button variant="outline">Cerrar sesión</Button>
+        </SignOutButton>
       </div>
     );
   }

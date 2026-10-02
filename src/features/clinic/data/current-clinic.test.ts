@@ -39,3 +39,19 @@ describe("getCurrentClinic", () => {
     expect(result?.id).toBe(clinic.id);
   });
 });
+
+describe("getDashboardAccessMessage", () => {
+  it("tells a user with no active organization to contact their admin", async () => {
+    const { getDashboardAccessMessage } = await import(
+      "@/features/clinic/data/current-clinic"
+    );
+    expect(getDashboardAccessMessage(null)).toMatch(/no está asociada a ningún consultorio/);
+  });
+
+  it("tells a user whose organization has no synced Clinic row yet to try again shortly", async () => {
+    const { getDashboardAccessMessage } = await import(
+      "@/features/clinic/data/current-clinic"
+    );
+    expect(getDashboardAccessMessage("org_pending_sync")).toMatch(/probá de nuevo en un minuto/);
+  });
+});
