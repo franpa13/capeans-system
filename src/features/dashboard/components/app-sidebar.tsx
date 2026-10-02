@@ -30,7 +30,7 @@ const navItems = [
   { title: "Inicio", url: "/dashboard", icon: LayoutDashboard },
   { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
   { title: "Consultas/Tratamientos", url: "/dashboard/consultas", icon: ClipboardList },
-  { title: "Turnos", url: null, icon: CalendarDays },
+  { title: "Turnos", url: "/dashboard/turnos", icon: CalendarDays },
 ];
 
 function isNavItemActive(pathname: string, url: string) {
