@@ -22,16 +22,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  INSURANCE_OPTIONS,
-  NO_INSURANCE,
-  OTHER_INSURANCE,
-} from "@/features/clinic/lib/insurance";
+import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientActions } from "@/features/patients/components/patient-actions";
 
 const ALL_INSURANCES = "__all__";
 
-function matchesInsurance(patientInsurance: string | null, filter: string) {
+function matchesInsurance(
+  patientInsurance: string | null,
+  filter: string,
+  insuranceOptions: string[],
+) {
   if (filter === ALL_INSURANCES) return true;
   if (filter === NO_INSURANCE) {
     return !patientInsurance || patientInsurance === NO_INSURANCE;
@@ -40,13 +40,19 @@ function matchesInsurance(patientInsurance: string | null, filter: string) {
     return (
       !!patientInsurance &&
       patientInsurance !== NO_INSURANCE &&
-      !(INSURANCE_OPTIONS as readonly string[]).includes(patientInsurance)
+      !insuranceOptions.includes(patientInsurance)
     );
   }
   return patientInsurance === filter;
 }
 
-export function PatientsView({ patients }: { patients: Patient[] }) {
+export function PatientsView({
+  patients,
+  insuranceOptions,
+}: {
+  patients: Patient[];
+  insuranceOptions: string[];
+}) {
   const [query, setQuery] = useState("");
   const [insurance, setInsurance] = useState(ALL_INSURANCES);
 
@@ -54,10 +60,10 @@ export function PatientsView({ patients }: { patients: Patient[] }) {
     const q = query.trim().toLowerCase();
     return patients.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (!matchesInsurance(p.insurance, insurance)) return false;
+      if (!matchesInsurance(p.insurance, insurance, insuranceOptions)) return false;
       return true;
     });
-  }, [patients, query, insurance]);
+  }, [patients, query, insurance, insuranceOptions]);
 
   const hasFilters = !!query || insurance !== ALL_INSURANCES;
 
@@ -81,7 +87,7 @@ export function PatientsView({ patients }: { patients: Patient[] }) {
           <SelectContent>
             <SelectItem value={ALL_INSURANCES}>Todas las obras sociales</SelectItem>
             <SelectItem value={NO_INSURANCE}>{NO_INSURANCE}</SelectItem>
-            {INSURANCE_OPTIONS.map((opt) => (
+            {insuranceOptions.map((opt) => (
               <SelectItem key={opt} value={opt}>
                 {opt}
               </SelectItem>
@@ -143,7 +149,10 @@ export function PatientsView({ patients }: { patients: Patient[] }) {
                     {patient.insurance ?? "—"}
                   </TableCell>
                   <TableCell>
-                    <PatientActions patient={patient} />
+                    <PatientActions
+                      patient={patient}
+                      insuranceOptions={insuranceOptions}
+                    />
                   </TableCell>
                 </TableRow>
               ))

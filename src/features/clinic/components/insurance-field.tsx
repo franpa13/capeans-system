@@ -9,11 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  INSURANCE_OPTIONS,
-  NO_INSURANCE,
-  OTHER_INSURANCE,
-} from "@/features/clinic/lib/insurance";
+import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 
 export function InsuranceField({
   id = "insurance",
@@ -23,6 +19,7 @@ export function InsuranceField({
   onOtherChange,
   error,
   otherError,
+  options,
 }: {
   id?: string;
   value?: string;
@@ -31,6 +28,7 @@ export function InsuranceField({
   onOtherChange: (value: string) => void;
   error?: string;
   otherError?: string;
+  options: string[];
 }) {
   return (
     <div className="space-y-2">
@@ -41,7 +39,7 @@ export function InsuranceField({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={NO_INSURANCE}>{NO_INSURANCE}</SelectItem>
-          {INSURANCE_OPTIONS.map((opt) => (
+          {options.map((opt) => (
             <SelectItem key={opt} value={opt}>
               {opt}
             </SelectItem>

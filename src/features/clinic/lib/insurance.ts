@@ -1,4 +1,6 @@
-export const INSURANCE_OPTIONS = [
+// Seeded into each clinic's configurable ClinicOption rows on creation —
+// not used directly for rendering after that (see clinic-options.ts).
+export const DEFAULT_INSURANCE_OPTIONS = [
   "OSDE",
   "Swiss Medical",
   "Galeno",

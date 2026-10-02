@@ -11,10 +11,12 @@ export function PatientFormFields({
   register,
   control,
   errors,
+  insuranceOptions,
 }: {
   register: UseFormRegister<PatientValues>;
   control: Control<PatientValues>;
   errors: FieldErrors<PatientValues>;
+  insuranceOptions: string[];
 }) {
   return (
     <div className="grid gap-4 py-4 sm:grid-cols-2">
@@ -93,6 +95,7 @@ export function PatientFormFields({
                 onOtherChange={otherField.onChange}
                 error={errors.insurance?.message}
                 otherError={errors.insuranceOther?.message}
+                options={insuranceOptions}
               />
             )}
           />

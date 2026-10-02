@@ -26,7 +26,13 @@ import { EditPatientDialog } from "@/features/patients/components/edit-patient-d
 import { deletePatientAction } from "@/features/patients/actions";
 import type { Patient } from "@prisma/client";
 
-export function PatientActions({ patient }: { patient: Patient }) {
+export function PatientActions({
+  patient,
+  insuranceOptions,
+}: {
+  patient: Patient;
+  insuranceOptions: string[];
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -80,6 +86,7 @@ export function PatientActions({ patient }: { patient: Patient }) {
         patient={patient}
         open={editOpen}
         onOpenChange={setEditOpen}
+        insuranceOptions={insuranceOptions}
       />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

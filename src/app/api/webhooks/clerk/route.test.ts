@@ -12,6 +12,7 @@ vi.mock("svix", () => ({
 }));
 
 afterEach(async () => {
+  await prisma.clinicOption.deleteMany({});
   await prisma.clinic.deleteMany({});
 });
 
@@ -36,6 +37,30 @@ describe("POST /api/webhooks/clerk", () => {
 
     const clinic = await prisma.clinic.findUnique({ where: { clerkOrgId: "org_abc123" } });
     expect(clinic?.name).toBe("Clínica de prueba");
+  });
+
+  it("seeds default insurance and treatment options for the new clinic", async () => {
+    const { POST } = await import("@/app/api/webhooks/clerk/route");
+    const request = new Request("http://localhost/api/webhooks/clerk", {
+      method: "POST",
+      headers: {
+        "svix-id": "msg_1",
+        "svix-timestamp": "123",
+        "svix-signature": "v1,fake",
+      },
+      body: JSON.stringify({
+        type: "organization.created",
+        data: { id: "org_abc123", name: "Clínica de prueba" },
+      }),
+    });
+
+    await POST(request);
+
+    const clinic = await prisma.clinic.findUnique({ where: { clerkOrgId: "org_abc123" } });
+    const options = await prisma.clinicOption.findMany({ where: { clinicId: clinic!.id } });
+    expect(options.length).toBeGreaterThan(0);
+    expect(options.some((o) => o.category === "insurance")).toBe(true);
+    expect(options.some((o) => o.category === "treatment")).toBe(true);
   });
 
   it("does not create a second Clinic row if the webhook is delivered twice", async () => {

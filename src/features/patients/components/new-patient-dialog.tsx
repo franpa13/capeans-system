@@ -35,8 +35,10 @@ const emptyValues: PatientValues = {
 
 export function NewPatientDialog({
   onCreated,
+  insuranceOptions,
 }: {
   onCreated?: (patient: Patient) => void;
+  insuranceOptions: string[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -93,7 +95,12 @@ export function NewPatientDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <PatientFormFields register={register} control={control} errors={errors} />
+          <PatientFormFields
+            register={register}
+            control={control}
+            errors={errors}
+            insuranceOptions={insuranceOptions}
+          />
 
           <DialogFooter>
             <Button type="submit">Guardar</Button>

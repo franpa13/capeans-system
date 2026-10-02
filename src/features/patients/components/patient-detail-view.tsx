@@ -21,9 +21,11 @@ function InfoField({ label, value }: { label: string; value?: string | null }) {
 export function PatientDetailView({
   patient,
   consultations,
+  treatmentOptions,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
+  treatmentOptions: string[];
 }) {
   if (!patient) {
     return (
@@ -57,6 +59,7 @@ export function PatientDetailView({
             <NewConsultationDialog
               fixedPatientId={patient.id}
               fixedPatientName={patient.name}
+              treatmentOptions={treatmentOptions}
             />
           }
         />
@@ -82,6 +85,7 @@ export function PatientDetailView({
           consultations={consultations}
           showPatient={false}
           emptyMessage="Todavía no hay consultas registradas para este paciente."
+          treatmentOptions={treatmentOptions}
         />
       </div>
     </div>

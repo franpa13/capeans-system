@@ -16,6 +16,7 @@ model Clinic {
   patients      Patient[]
   consultations Consultation[]
   appointments  Appointment[]
+  options       ClinicOption[]
 }
 
 model Patient {
@@ -77,4 +78,17 @@ model Appointment {
   @@index([clinicId])
   @@index([patientId])
   @@index([clinicId, startsAt])
+}
+
+model ClinicOption {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  category String
+  label    String
+  order    Int    @default(0)
+
+  @@unique([clinicId, category, label])
+  @@index([clinicId, category])
 }

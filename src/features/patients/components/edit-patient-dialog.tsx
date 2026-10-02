@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { INSURANCE_OPTIONS, NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
+import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientFormFields } from "@/features/patients/components/patient-form-fields";
 import { patientSchema, type PatientValues } from "@/features/patients/lib/schema";
 import { updatePatientAction } from "@/features/patients/actions";
@@ -24,11 +24,11 @@ function toDateInputValue(date: Date | null): string {
   return date.toISOString().slice(0, 10);
 }
 
-function toFormValues(patient: Patient): PatientValues {
+function toFormValues(patient: Patient, insuranceOptions: string[]): PatientValues {
   const knownInsurance =
     !patient.insurance ||
     patient.insurance === NO_INSURANCE ||
-    (INSURANCE_OPTIONS as readonly string[]).includes(patient.insurance);
+    insuranceOptions.includes(patient.insurance);
 
   return {
     name: patient.name,
@@ -47,10 +47,12 @@ export function EditPatientDialog({
   patient,
   open,
   onOpenChange,
+  insuranceOptions,
 }: {
   patient: Patient;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  insuranceOptions: string[];
 }) {
   const {
     register,
@@ -60,12 +62,12 @@ export function EditPatientDialog({
     formState: { errors },
   } = useForm<PatientValues>({
     resolver: zodResolver(patientSchema),
-    defaultValues: toFormValues(patient),
+    defaultValues: toFormValues(patient, insuranceOptions),
   });
 
   useEffect(() => {
-    if (open) reset(toFormValues(patient));
-  }, [open, patient, reset]);
+    if (open) reset(toFormValues(patient, insuranceOptions));
+  }, [open, patient, insuranceOptions, reset]);
 
   const onSubmit = async (values: PatientValues) => {
     await updatePatientAction(patient.id, {
@@ -95,7 +97,12 @@ export function EditPatientDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <PatientFormFields register={register} control={control} errors={errors} />
+          <PatientFormFields
+            register={register}
+            control={control}
+            errors={errors}
+            insuranceOptions={insuranceOptions}
+          />
 
           <DialogFooter>
             <Button type="submit">Guardar cambios</Button>

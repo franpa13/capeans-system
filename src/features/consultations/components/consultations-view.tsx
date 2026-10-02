@@ -8,14 +8,22 @@ import { ConsultationsList } from "@/features/consultations/components/consultat
 export function ConsultationsView({
   consultations,
   patients,
+  treatmentOptions,
 }: {
   consultations: Consultation[];
   patients: Patient[];
+  treatmentOptions: string[];
 }) {
   const sorted = useMemo(
     () => [...consultations].sort((a, b) => b.date.getTime() - a.date.getTime()),
     [consultations],
   );
 
-  return <ConsultationsList consultations={sorted} patients={patients} />;
+  return (
+    <ConsultationsList
+      consultations={sorted}
+      patients={patients}
+      treatmentOptions={treatmentOptions}
+    />
+  );
 }

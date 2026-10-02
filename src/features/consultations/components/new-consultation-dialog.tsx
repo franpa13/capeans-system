@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
-import { TREATMENT_OPTIONS, OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
+import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
 import {
@@ -35,7 +35,8 @@ import {
   NEW_PATIENT_VALUE,
   type ConsultationValues,
 } from "@/features/consultations/lib/schema";
-import type { Patient } from "@prisma/client";
+
+type PatientOption = { id: string; name: string };
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -45,10 +46,14 @@ export function NewConsultationDialog({
   patients = [],
   fixedPatientId,
   fixedPatientName,
+  treatmentOptions,
+  insuranceOptions = [],
 }: {
-  patients?: Patient[];
+  patients?: PatientOption[];
   fixedPatientId?: string;
   fixedPatientName?: string;
+  treatmentOptions: string[];
+  insuranceOptions?: string[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -291,6 +296,7 @@ export function NewConsultationDialog({
                           onOtherChange={otherField.onChange}
                           error={errors.newPatientInsurance?.message}
                           otherError={errors.newPatientInsuranceOther?.message}
+                          options={insuranceOptions}
                         />
                       )}
                     />
@@ -338,11 +344,12 @@ export function NewConsultationDialog({
                       <SelectValue placeholder="Elegí un tratamiento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {TREATMENT_OPTIONS.map((t) => (
+                      {treatmentOptions.map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}
                         </SelectItem>
                       ))}
+                      <SelectItem value={OTHER_TREATMENT}>{OTHER_TREATMENT}</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

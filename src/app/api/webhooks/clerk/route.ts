@@ -1,5 +1,6 @@
 import { Webhook } from "svix";
 import { prisma } from "@/lib/prisma";
+import { seedDefaultClinicOptions } from "@/features/clinic/data/clinic-options";
 
 export async function POST(request: Request) {
   const payload = await request.text();
@@ -17,11 +18,12 @@ export async function POST(request: Request) {
   };
 
   if (event.type === "organization.created") {
-    await prisma.clinic.upsert({
+    const clinic = await prisma.clinic.upsert({
       where: { clerkOrgId: event.data.id },
       update: {},
       create: { clerkOrgId: event.data.id, name: event.data.name },
     });
+    await seedDefaultClinicOptions(clinic.id);
   }
 
   return new Response(null, { status: 200 });

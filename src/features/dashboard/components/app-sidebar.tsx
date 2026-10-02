@@ -8,6 +8,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Settings,
   Users,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const navItems = [
   { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
   { title: "Consultas/Tratamientos", url: "/dashboard/consultas", icon: ClipboardList },
   { title: "Turnos", url: "/dashboard/turnos", icon: CalendarDays },
+  { title: "Configuración", url: "/dashboard/configuracion", icon: Settings },
 ];
 
 function isNavItemActive(pathname: string, url: string) {

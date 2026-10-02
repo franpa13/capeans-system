@@ -14,16 +14,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConsultationsTable } from "@/features/consultations/components/consultations-table";
-import { OTHER_TREATMENT, TREATMENT_OPTIONS } from "@/features/clinic/lib/treatments";
+import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import type { Consultation, Patient } from "@prisma/client";
 
 const ALL_TREATMENTS = "__all__";
-const KNOWN_TREATMENTS = TREATMENT_OPTIONS.filter((t) => t !== OTHER_TREATMENT);
 
-function matchesTreatment(consultationTreatment: string, filter: string) {
+function matchesTreatment(
+  consultationTreatment: string,
+  filter: string,
+  treatmentOptions: string[],
+) {
   if (filter === ALL_TREATMENTS) return true;
   if (filter === OTHER_TREATMENT) {
-    return !(KNOWN_TREATMENTS as readonly string[]).includes(consultationTreatment);
+    return !treatmentOptions.includes(consultationTreatment);
   }
   return consultationTreatment === filter;
 }
@@ -33,11 +36,13 @@ export function ConsultationsList({
   patients,
   showPatient = true,
   emptyMessage = "Todavía no hay consultas registradas.",
+  treatmentOptions,
 }: {
   consultations: Consultation[];
   patients?: Patient[];
   showPatient?: boolean;
   emptyMessage?: string;
+  treatmentOptions: string[];
 }) {
   const [treatment, setTreatment] = useState(ALL_TREATMENTS);
   const [from, setFrom] = useState("");
@@ -45,13 +50,13 @@ export function ConsultationsList({
 
   const filtered = useMemo(() => {
     return consultations.filter((c) => {
-      if (!matchesTreatment(c.treatment, treatment)) return false;
+      if (!matchesTreatment(c.treatment, treatment, treatmentOptions)) return false;
       const dateStr = c.date.toISOString().slice(0, 10);
       if (from && dateStr < from) return false;
       if (to && dateStr > to) return false;
       return true;
     });
-  }, [consultations, treatment, from, to]);
+  }, [consultations, treatment, from, to, treatmentOptions]);
 
   const hasFilters = treatment !== ALL_TREATMENTS || !!from || !!to;
 
@@ -74,11 +79,12 @@ export function ConsultationsList({
               <SelectItem value={ALL_TREATMENTS}>
                 Todos los tratamientos
               </SelectItem>
-              {TREATMENT_OPTIONS.map((t) => (
+              {treatmentOptions.map((t) => (
                 <SelectItem key={t} value={t}>
                   {t}
                 </SelectItem>
               ))}
+              <SelectItem value={OTHER_TREATMENT}>{OTHER_TREATMENT}</SelectItem>
             </SelectContent>
           </Select>
         </div>
