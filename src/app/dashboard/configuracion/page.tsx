@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
@@ -19,20 +20,28 @@ export default async function ConfiguracionPage() {
         description="Parámetros propios de tu consultorio."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <OptionListManager
-          category="insurance"
-          title="Obras sociales"
-          description="Las opciones disponibles al cargar un paciente."
-          options={insuranceOptions}
-        />
-        <OptionListManager
-          category="treatment"
-          title="Tratamientos"
-          description="Las opciones disponibles al cargar una consulta."
-          options={treatmentOptions}
-        />
-      </div>
+      <Tabs defaultValue="insurance">
+        <TabsList>
+          <TabsTrigger value="insurance">Obras sociales</TabsTrigger>
+          <TabsTrigger value="treatment">Tratamientos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="insurance">
+          <OptionListManager
+            category="insurance"
+            title="Obras sociales"
+            description="Las opciones disponibles al cargar un paciente."
+            options={insuranceOptions}
+          />
+        </TabsContent>
+        <TabsContent value="treatment">
+          <OptionListManager
+            category="treatment"
+            title="Tratamientos"
+            description="Las opciones disponibles al cargar una consulta."
+            options={treatmentOptions}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
