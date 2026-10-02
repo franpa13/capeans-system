@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+docs
+e2e
+*.test.ts
+.env
+.env.local
