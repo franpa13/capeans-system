@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { CalendarDays, ClipboardList, Users } from "lucide-react";
 
@@ -10,11 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useClinicData } from "@/features/clinic/context/clinic-provider";
 
-export function DashboardSummary() {
-  const { patients, consultations } = useClinicData();
-
+export function DashboardSummary({
+  patientCount,
+  consultationCount,
+}: {
+  patientCount: number;
+  consultationCount: number;
+}) {
   return (
     <div className="grid gap-4 sm:grid-cols-3">
       <Link href="/dashboard/pacientes">
@@ -24,7 +25,7 @@ export function DashboardSummary() {
               <Users className="size-4 text-muted-foreground" />
               <CardTitle className="text-base">Pacientes</CardTitle>
             </div>
-            <CardDescription>{patients.length} registrados</CardDescription>
+            <CardDescription>{patientCount} registrados</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             Alta, búsqueda e historial de pacientes.
@@ -39,7 +40,7 @@ export function DashboardSummary() {
               <ClipboardList className="size-4 text-muted-foreground" />
               <CardTitle className="text-base">Consultas/Tratamientos</CardTitle>
             </div>
-            <CardDescription>{consultations.length} registradas</CardDescription>
+            <CardDescription>{consultationCount} registradas</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             Historial de tratamientos realizados.
