@@ -18,14 +18,95 @@ const COLOR_SELECTED = "#38bdf8";
 const COLOR_HOVER = "#bae6fd";
 const COLOR_GUM = "#e3a194";
 
-// Capsule [radius, length] by tooth type — molars read wider and flatter,
-// incisors narrower and more tapered, so the arch isn't a row of
-// identical pills.
-const SHAPE_BY_TYPE: Record<string, [number, number]> = {
-  incisor: [0.12, 0.24],
-  canine: [0.13, 0.27],
-  premolar: [0.15, 0.24],
-  molar: [0.18, 0.22],
+// Anatomically-inspired crown shapes, built from primitives (no external
+// model/asset): a chisel-like incisor, a single-cusp canine, a two-cusp
+// premolar, a four-cusp molar. Each sits on a short tapered root stub
+// that disappears into the gum ridge.
+function ToothCrown({ type, color }: { type: ReturnType<typeof toothType>; color: THREE.Color | string }) {
+  const mat = <meshStandardMaterial color={color} roughness={0.35} metalness={0.05} />;
+  const root = (
+    <mesh position={[0, -0.2, 0]}>
+      <coneGeometry args={[0.07, 0.16, 8]} />
+      {mat}
+    </mesh>
+  );
+
+  switch (type) {
+    case "incisor":
+      return (
+        <group>
+          {root}
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[0.2, 0.3, 0.1]} />
+            {mat}
+          </mesh>
+          <mesh position={[0, 0.14, 0]} rotation={[0, 0, 0]}>
+            <boxGeometry args={[0.2, 0.03, 0.1]} />
+            {mat}
+          </mesh>
+        </group>
+      );
+    case "canine":
+      return (
+        <group>
+          {root}
+          <mesh position={[0, -0.02, 0]}>
+            <cylinderGeometry args={[0.1, 0.11, 0.18, 10]} />
+            {mat}
+          </mesh>
+          <mesh position={[0, 0.17, 0]}>
+            <coneGeometry args={[0.1, 0.18, 10]} />
+            {mat}
+          </mesh>
+        </group>
+      );
+    case "premolar":
+      return (
+        <group>
+          {root}
+          <mesh>
+            <cylinderGeometry args={[0.14, 0.13, 0.24, 12]} />
+            {mat}
+          </mesh>
+          <mesh position={[0.065, 0.12, 0]}>
+            <sphereGeometry args={[0.065, 10, 10]} />
+            {mat}
+          </mesh>
+          <mesh position={[-0.065, 0.12, 0]}>
+            <sphereGeometry args={[0.06, 10, 10]} />
+            {mat}
+          </mesh>
+        </group>
+      );
+    case "molar":
+      return (
+        <group>
+          {root}
+          <mesh>
+            <boxGeometry args={[0.3, 0.22, 0.28]} />
+            {mat}
+          </mesh>
+          {[
+            [0.1, 0.1],
+            [-0.1, 0.1],
+            [0.1, -0.1],
+            [-0.1, -0.1],
+          ].map(([cx, cz]) => (
+            <mesh key={`${cx}-${cz}`} position={[cx, 0.12, cz]}>
+              <sphereGeometry args={[0.06, 10, 10]} />
+              {mat}
+            </mesh>
+          ))}
+        </group>
+      );
+  }
+}
+
+const HIT_RADIUS_BY_TYPE: Record<string, number> = {
+  incisor: 0.16,
+  canine: 0.16,
+  premolar: 0.18,
+  molar: 0.22,
 };
 
 function ToothMesh({
@@ -42,7 +123,7 @@ function ToothMesh({
   onClick: (fdi: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const [radius, length] = SHAPE_BY_TYPE[toothType(tooth.positionInQuadrant)];
+  const type = toothType(tooth.positionInQuadrant);
 
   // A touch of per-tooth tone variation so the row doesn't read as one
   // mass-produced primitive repeated 32 times.
@@ -67,7 +148,7 @@ function ToothMesh({
       rotation={[0, position.rotationY, 0]}
     >
       <mesh
-        castShadow
+        visible={false}
         onClick={(e) => {
           e.stopPropagation();
           onClick(tooth.fdi);
@@ -82,9 +163,9 @@ function ToothMesh({
           document.body.style.cursor = "auto";
         }}
       >
-        <capsuleGeometry args={[radius, length, 6, 12]} />
-        <meshStandardMaterial color={color} roughness={0.35} metalness={0.05} />
+        <sphereGeometry args={[HIT_RADIUS_BY_TYPE[type], 8, 8]} />
       </mesh>
+      <ToothCrown type={type} color={color} />
       {(hovered || isSelected) && (
         <Html center distanceFactor={8} style={{ pointerEvents: "none" }}>
           <div className="rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-background">
