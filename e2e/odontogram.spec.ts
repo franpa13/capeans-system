@@ -20,15 +20,14 @@ test("clicking a tooth in the 3D odontogram opens a consultation pre-filled with
 
   const canvas = page.locator("canvas");
   await canvas.waitFor();
-  await page.waitForTimeout(1000); // let the WebGL scene finish its first render
+  await page.waitForTimeout(2500); // let the ~16MB model load and the camera auto-fit settle
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
 
-  // One of the upper-row front teeth, found empirically against this
-  // camera/arch layout (see tooth-chart-3d.tsx) — absolute page
-  // coordinates, since canvas-relative clicks don't reliably reach
-  // React Three Fiber's raycaster in this setup.
-  await page.mouse.click(box.x + box.width * 0.57, box.y + box.height * 0.25);
+  // A central upper incisor, found empirically against this camera/arch
+  // layout (see tooth-chart-3d.tsx and the ARCH_CALIBRATION constants in
+  // odontogram.ts, fitted to the real "/teeth/teeth.glb" model).
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.185);
 
   const toothInput = page.locator("#tooth");
   await expect(toothInput).toBeVisible();

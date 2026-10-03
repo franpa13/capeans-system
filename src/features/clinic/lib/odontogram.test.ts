@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ALL_TEETH, isValidToothFdi, LOWER_ARCH, toothType, UPPER_ARCH } from "./odontogram";
+import {
+  ALL_TEETH,
+  isValidToothFdi,
+  LOWER_ARCH,
+  positionOnArch,
+  toothType,
+  UPPER_ARCH,
+} from "./odontogram";
 
 describe("FDI tooth numbering", () => {
   it("has 32 teeth total, 16 upper and 16 lower", () => {
@@ -58,5 +65,31 @@ describe("toothType", () => {
     expect(toothType(6)).toBe("molar");
     expect(toothType(7)).toBe("molar");
     expect(toothType(8)).toBe("molar");
+  });
+});
+
+describe("positionOnArch", () => {
+  it("places the leftmost and rightmost upper teeth symmetrically, roughly matching the calibrated model's measured width", () => {
+    const first = positionOnArch(0, 16, "upper");
+    const last = positionOnArch(15, 16, "upper");
+    expect(first.x).toBeCloseTo(-last.x, 1);
+    expect(Math.abs(first.x)).toBeGreaterThan(0.7);
+  });
+
+  it("places the center teeth furthest forward (highest z) in both arches", () => {
+    const centerUpper = positionOnArch(7, 16, "upper");
+    const edgeUpper = positionOnArch(0, 16, "upper");
+    expect(centerUpper.z).toBeGreaterThan(edgeUpper.z);
+
+    const centerLower = positionOnArch(7, 16, "lower");
+    const edgeLower = positionOnArch(0, 16, "lower");
+    expect(centerLower.z).toBeGreaterThan(edgeLower.z);
+  });
+
+  it("keeps the upper arch above y=0 and the lower arch below it", () => {
+    for (let i = 0; i < 16; i++) {
+      expect(positionOnArch(i, 16, "upper").y).toBeGreaterThan(0);
+      expect(positionOnArch(i, 16, "lower").y).toBeLessThan(0);
+    }
   });
 });

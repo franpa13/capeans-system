@@ -54,25 +54,36 @@ export function toothType(positionInQuadrant: number): ToothType {
   return "molar";
 }
 
-export type ToothPosition3D = { x: number; y: number; z: number; rotationY: number };
+export type ToothPosition3D = { x: number; y: number; z: number };
+
+// Calibrated against the real "/teeth/teeth.glb" model (not guessed): each
+// constant below comes from raycasting real clicks onto the rendered mesh,
+// centered the same way the viewer centers it (see tooth-chart-3d.tsx),
+// then fitting the same half-ellipse-in-XZ shape used before — this model's
+// teeth really do sit on one, it just has different radii than a guess
+// would. radiusZ/zOffset give the front-to-back curve (center teeth project
+// furthest toward the camera); yEdge/yCenter capture the mild vertical bow
+// across the row.
+const ARCH_CALIBRATION = {
+  upper: { radiusX: 0.88, radiusZ: 0.65, zOffset: 0.5, yEdge: 0.45, yCenter: 0.42 },
+  lower: { radiusX: 0.84, radiusZ: 0.56, zOffset: 0.57, yEdge: -0.33, yCenter: -0.26 },
+} as const;
 
 /**
- * Positions a row of teeth along a horseshoe-shaped arch in the XZ plane,
- * viewed from above: the midline is at x=0 toward +z, the arch opens
- * toward -z. `archY` separates the upper arch from the lower arch.
+ * Positions a row of teeth along the real model's arch curve (see
+ * ARCH_CALIBRATION). The midline is at x=0 toward +z; left-to-right
+ * matches each arch's FDI reading order (UPPER_ARCH / LOWER_ARCH above).
  */
 export function positionOnArch(
   indexInRow: number,
   teethInRow: number,
-  archY: number,
+  arch: "upper" | "lower",
 ): ToothPosition3D {
-  // Spread teeth across a half-ellipse, midline tooth at the front (+z).
+  const { radiusX, radiusZ, zOffset, yEdge, yCenter } = ARCH_CALIBRATION[arch];
   const t = (indexInRow + 0.5) / teethInRow; // 0..1 across the row
   const angle = t * Math.PI; // 0..PI
-  const radiusX = 2.6;
-  const radiusZ = 2.0;
-  const x = Math.cos(angle) * radiusX * -1; // left-to-right matches reading order
-  const z = Math.sin(angle) * radiusZ - radiusZ + 2.2;
-  const rotationY = angle - Math.PI / 2;
-  return { x, y: archY, z, rotationY };
+  const x = -Math.cos(angle) * radiusX;
+  const z = Math.sin(angle) * radiusZ + zOffset;
+  const y = yEdge + (yCenter - yEdge) * Math.sin(angle);
+  return { x, y, z };
 }
