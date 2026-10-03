@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_TEETH, isValidToothFdi, LOWER_ARCH, UPPER_ARCH } from "./odontogram";
+import { ALL_TEETH, isValidToothFdi, LOWER_ARCH, toothType, UPPER_ARCH } from "./odontogram";
 
 describe("FDI tooth numbering", () => {
   it("has 32 teeth total, 16 upper and 16 lower", () => {
@@ -36,5 +36,27 @@ describe("FDI tooth numbering", () => {
     expect(isValidToothFdi("99")).toBe(false);
     expect(isValidToothFdi("19")).toBe(false); // quadrant 1 only goes to 8
     expect(isValidToothFdi("")).toBe(false);
+  });
+});
+
+describe("toothType", () => {
+  it("classifies positions 1-2 as incisors", () => {
+    expect(toothType(1)).toBe("incisor");
+    expect(toothType(2)).toBe("incisor");
+  });
+
+  it("classifies position 3 as a canine", () => {
+    expect(toothType(3)).toBe("canine");
+  });
+
+  it("classifies positions 4-5 as premolars", () => {
+    expect(toothType(4)).toBe("premolar");
+    expect(toothType(5)).toBe("premolar");
+  });
+
+  it("classifies positions 6-8 as molars", () => {
+    expect(toothType(6)).toBe("molar");
+    expect(toothType(7)).toBe("molar");
+    expect(toothType(8)).toBe("molar");
   });
 });

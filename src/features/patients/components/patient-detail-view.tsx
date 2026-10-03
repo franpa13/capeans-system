@@ -75,6 +75,7 @@ export function PatientDetailView({
               fixedPatientId={patient.id}
               fixedPatientName={patient.name}
               treatmentOptions={treatmentOptions}
+              treatedTeeth={treatedTeeth}
             />
           }
         />
@@ -121,6 +122,7 @@ export function PatientDetailView({
           fixedPatientId={patient.id}
           fixedPatientName={patient.name}
           treatmentOptions={treatmentOptions}
+          treatedTeeth={treatedTeeth}
           initialTooth={selectedTooth}
         />
       )}

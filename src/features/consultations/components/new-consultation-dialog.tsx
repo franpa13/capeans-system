@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
+import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
@@ -49,6 +50,7 @@ export function NewConsultationDialog({
   treatmentOptions,
   insuranceOptions = [],
   initialTooth,
+  treatedTeeth = [],
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: {
@@ -58,6 +60,7 @@ export function NewConsultationDialog({
   treatmentOptions: string[];
   insuranceOptions?: string[];
   initialTooth?: string;
+  treatedTeeth?: string[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -72,6 +75,7 @@ export function NewConsultationDialog({
     reset,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<ConsultationValues>({
     resolver: zodResolver(consultationSchema),
@@ -96,6 +100,7 @@ export function NewConsultationDialog({
 
   const patientId = watch("patientId");
   const treatment = watch("treatment");
+  const tooth = watch("tooth");
   const isNewPatient = !fixedPatientId && patientId === NEW_PATIENT_VALUE;
 
   const onSubmit = async (values: ConsultationValues) => {
@@ -324,6 +329,15 @@ export function NewConsultationDialog({
                 </div>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label>Odontograma (opcional)</Label>
+              <ToothChart3D
+                treatedTeeth={treatedTeeth}
+                selectedTooth={tooth || undefined}
+                onToothClick={(fdi) => setValue("tooth", fdi)}
+              />
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

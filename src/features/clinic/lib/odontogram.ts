@@ -45,6 +45,15 @@ export function isValidToothFdi(value: string): boolean {
   return ALL_TEETH.some((t) => t.fdi === value);
 }
 
+export type ToothType = "incisor" | "canine" | "premolar" | "molar";
+
+export function toothType(positionInQuadrant: number): ToothType {
+  if (positionInQuadrant <= 2) return "incisor";
+  if (positionInQuadrant === 3) return "canine";
+  if (positionInQuadrant <= 5) return "premolar";
+  return "molar";
+}
+
 export type ToothPosition3D = { x: number; y: number; z: number; rotationY: number };
 
 /**
