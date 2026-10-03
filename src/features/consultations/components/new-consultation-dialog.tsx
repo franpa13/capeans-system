@@ -48,14 +48,23 @@ export function NewConsultationDialog({
   fixedPatientName,
   treatmentOptions,
   insuranceOptions = [],
+  initialTooth,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: {
   patients?: PatientOption[];
   fixedPatientId?: string;
   fixedPatientName?: string;
   treatmentOptions: string[];
   insuranceOptions?: string[];
+  initialTooth?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? setControlledOpen! : setInternalOpen;
 
   const {
     register,
@@ -80,7 +89,7 @@ export function NewConsultationDialog({
       date: todayISO(),
       treatment: "",
       treatmentOther: "",
-      tooth: "",
+      tooth: initialTooth ?? "",
       notes: "",
     },
   });
@@ -148,12 +157,14 @@ export function NewConsultationDialog({
         if (!next) reset();
       }}
     >
-      <DialogTrigger asChild>
-        <Button>
-          <Plus />
-          Nueva consulta
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus />
+            Nueva consulta
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
