@@ -112,7 +112,12 @@ export function ToothChart3D({
         <directionalLight position={[-2, 1, 1]} intensity={0.4} />
 
         <Suspense fallback={null}>
-          <Bounds fit clip observe margin={1.3}>
+          {/* observe keeps the overview correctly fitted as the container's
+              size settles — but once a tooth is focused, a later resize
+              (e.g. the dialog's own open animation still finishing) would
+              re-trigger Bounds' own fit and silently cancel our explicit
+              zoom below. Turning it off while focused freezes that out. */}
+          <Bounds fit clip observe={!focusFdi} margin={1.3}>
             <MouthModel />
             <CameraFocus fdi={focusFdi} />
 
@@ -137,7 +142,12 @@ export function ToothChart3D({
           </Bounds>
         </Suspense>
 
-        <OrbitControls enablePan={false} minDistance={0.3} maxDistance={10} />
+        {/* makeDefault registers these controls where Bounds can see them
+            (useThree's `controls` state) — without it, Bounds has no way
+            to keep the controls' own target in sync with a camera move it
+            animates, so the two fight over the camera position and which
+            one "wins" each frame is unpredictable. */}
+        <OrbitControls makeDefault enablePan={false} minDistance={0.3} maxDistance={10} />
       </Canvas>
 
       <span className="pointer-events-none absolute top-1 right-1.5 text-[9px] text-muted-foreground/70">
