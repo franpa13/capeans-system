@@ -72,7 +72,7 @@ describe("toothType", () => {
 });
 
 describe("positionOnArch", () => {
-  it("places the leftmost and rightmost upper teeth symmetrically, roughly matching the calibrated model's measured width", () => {
+  it("places the leftmost and rightmost upper teeth symmetrically, roughly matching the real model's measured width", () => {
     const first = positionOnArch(0, 16, "upper");
     const last = positionOnArch(15, 16, "upper");
     expect(first.x).toBeCloseTo(-last.x, 1);
@@ -89,8 +89,15 @@ describe("positionOnArch", () => {
     expect(centerLower.z).toBeGreaterThan(edgeLower.z);
   });
 
-  it("keeps the upper arch above y=0 and the lower arch below it", () => {
-    for (let i = 0; i < 16; i++) {
+  it("curls the wisdom teeth back behind the arch's own midpoint (negative z) — the real jaw doesn't keep curving forward the way a simple ellipse would", () => {
+    expect(positionOnArch(0, 16, "upper").z).toBeLessThan(0);
+    expect(positionOnArch(15, 16, "upper").z).toBeLessThan(0);
+    expect(positionOnArch(0, 16, "lower").z).toBeLessThan(0);
+    expect(positionOnArch(15, 16, "lower").z).toBeLessThan(0);
+  });
+
+  it("keeps the center of each arch clearly above/below y=0 — the wisdom teeth sit close to y=0 so aren't a reliable sign check", () => {
+    for (let i = 5; i <= 10; i++) {
       expect(positionOnArch(i, 16, "upper").y).toBeGreaterThan(0);
       expect(positionOnArch(i, 16, "lower").y).toBeLessThan(0);
     }
@@ -99,21 +106,27 @@ describe("positionOnArch", () => {
 
 describe("outwardDirection", () => {
   it("points mostly along +z for a front tooth (the arch's center)", () => {
-    const { x, z } = outwardDirection(7, 16); // index 7 of 16 = dead center
+    const { x, z } = outwardDirection(7, "upper");
     expect(z).toBeGreaterThan(Math.abs(x));
   });
 
-  it("points mostly along x for an edge tooth (a back molar), not z", () => {
-    // This is the bug a fixed +z marker/camera offset hits: at the row's
-    // edge the outward direction is almost entirely sideways.
-    const { x, z } = outwardDirection(0, 16);
-    expect(Math.abs(x)).toBeGreaterThan(Math.abs(z));
+  it("points backward (negative z) for a wisdom tooth, not forward", () => {
+    // This is the regression the real-mesh positions fix: the ellipse
+    // this replaced assumed the arch keeps curving forward at the edges
+    // (positive z) the way a smooth oval would. The real jaw curls back
+    // in behind its own widest point instead.
+    expect(outwardDirection(0, "upper").z).toBeLessThan(0);
+    expect(outwardDirection(15, "upper").z).toBeLessThan(0);
+    expect(outwardDirection(0, "lower").z).toBeLessThan(0);
+    expect(outwardDirection(15, "lower").z).toBeLessThan(0);
   });
 
   it("is a unit vector at every position in the row", () => {
     for (let i = 0; i < 16; i++) {
-      const { x, z } = outwardDirection(i, 16);
-      expect(x * x + z * z).toBeCloseTo(1, 10);
+      const upper = outwardDirection(i, "upper");
+      expect(upper.x * upper.x + upper.z * upper.z).toBeCloseTo(1, 10);
+      const lower = outwardDirection(i, "lower");
+      expect(lower.x * lower.x + lower.z * lower.z).toBeCloseTo(1, 10);
     }
   });
 });
@@ -149,12 +162,14 @@ describe("cameraFocusFor", () => {
     expect(dz).toBeGreaterThan(dx);
   });
 
-  it("pulls the camera back mostly along x for a back tooth (a wisdom tooth), not z", () => {
-    // This is the regression this function fixes: a fixed +z pullback
-    // looked at the side/back of edge teeth instead of their face.
+  it("pulls the camera back and away from the arch's center for a wisdom tooth, unlike a fixed +z pullback would", () => {
+    // Old regression this guards differently now: a fixed +z pullback
+    // looked at the side/back of edge teeth instead of their face. Now
+    // that the position itself comes from the real mesh, the real pullback
+    // direction for a wisdom tooth points backward (negative z, see the
+    // outwardDirection tests) rather than forward — the opposite of what
+    // a +z pullback would do.
     const focus = cameraFocusFor("18")!;
-    const dx = Math.abs(focus.cameraPosition.x - focus.target.x);
-    const dz = Math.abs(focus.cameraPosition.z - focus.target.z);
-    expect(dx).toBeGreaterThan(dz);
+    expect(focus.cameraPosition.z).toBeLessThan(focus.target.z);
   });
 });

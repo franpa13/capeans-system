@@ -107,9 +107,15 @@ export function ToothChart3D({
       className={`relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40 ${className}`}
     >
       <Canvas camera={{ position: [0, 0.05, 1], fov: 35 }}>
-        <ambientLight intensity={1} />
-        <directionalLight position={[2, 3, 2]} intensity={1.3} />
+        {/* High ambient relative to the directional lights so a tooth near
+            the back of the arch — now that the camera can pull back behind
+            the model to face it, since the real jaw curls back there — is
+            still clearly lit instead of going dark on the side the two
+            fixed directional lights don't reach. */}
+        <ambientLight intensity={1.8} />
+        <directionalLight position={[2, 3, 2]} intensity={1} />
         <directionalLight position={[-2, 1, 1]} intensity={0.4} />
+        <directionalLight position={[0, -2, -2]} intensity={0.5} />
 
         <Suspense fallback={null}>
           {/* observe keeps the overview correctly fitted as the container's
@@ -125,7 +131,7 @@ export function ToothChart3D({
               <ToothMarker
                 key={tooth.fdi}
                 position={positionOnArch(i, UPPER_ARCH.length, "upper")}
-                outward={outwardDirection(i, UPPER_ARCH.length)}
+                outward={outwardDirection(i, "upper")}
                 isTreated={!!history[tooth.fdi]?.length}
                 isSelected={selectedTeeth.includes(tooth.fdi)}
               />
@@ -134,7 +140,7 @@ export function ToothChart3D({
               <ToothMarker
                 key={tooth.fdi}
                 position={positionOnArch(i, LOWER_ARCH.length, "lower")}
-                outward={outwardDirection(i, LOWER_ARCH.length)}
+                outward={outwardDirection(i, "lower")}
                 isTreated={!!history[tooth.fdi]?.length}
                 isSelected={selectedTeeth.includes(tooth.fdi)}
               />

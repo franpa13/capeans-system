@@ -56,54 +56,108 @@ export function toothType(positionInQuadrant: number): ToothType {
 
 export type ToothPosition3D = { x: number; y: number; z: number };
 
-// Calibrated against the real "/teeth/teeth.glb" model (not guessed): each
-// constant below comes from raycasting real clicks onto the rendered mesh,
-// centered the same way the viewer centers it (see tooth-chart-3d.tsx),
-// then fitting the same half-ellipse-in-XZ shape used before — this model's
-// teeth really do sit on one, it just has different radii than a guess
-// would. radiusZ/zOffset give the front-to-back curve (center teeth project
-// furthest toward the camera); yEdge/yCenter capture the mild vertical bow
-// across the row.
-const ARCH_CALIBRATION = {
-  upper: { radiusX: 0.88, radiusZ: 0.65, zOffset: 0.5, yEdge: 0.45, yCenter: 0.42 },
-  lower: { radiusX: 0.84, radiusZ: 0.56, zOffset: 0.57, yEdge: -0.33, yCenter: -0.26 },
-} as const;
+// The real position of every tooth in "/teeth/teeth.glb", not an
+// approximation: each tooth in the model is its own disconnected island of
+// geometry (confirmed by flood-filling the mesh's triangles), so these are
+// that island's actual vertex centroid, transformed into the same
+// coordinate space the viewer renders in (see tooth-chart-3d.tsx's
+// <Center>, which re-origins the whole model to its bounding-box center —
+// these values already have that offset baked in).
+//
+// An earlier version of this file approximated the arch as a half-ellipse
+// (even angular spacing, fixed radii) instead of using the real mesh. That
+// was close enough for the front teeth, where the real jaw and the ellipse
+// roughly agree, but wrong for the back teeth: a real jaw curves back in
+// behind its widest point, while the ellipse keeps curving forward, so the
+// approximated position for a wisdom tooth could land a noticeable
+// distance from — even in front of vs. behind — where that tooth actually
+// is. Index order matches each arch's FDI reading order (UPPER_ARCH /
+// LOWER_ARCH above): index 0 is the FIRST element of that array.
+const UPPER_TOOTH_POSITIONS: ToothPosition3D[] = [
+  { x: -0.9431, y: 0.1858, z: -0.5261 },
+  { x: -0.9167, y: 0.214, z: -0.1216 },
+  { x: -0.8453, y: 0.2405, z: 0.2319 },
+  { x: -0.7631, y: 0.2787, z: 0.5061 },
+  { x: -0.6814, y: 0.2945, z: 0.7037 },
+  { x: -0.5661, y: 0.3358, z: 0.8892 },
+  { x: -0.3926, y: 0.3224, z: 1.0474 },
+  { x: -0.1384, y: 0.3294, z: 1.1204 },
+  { x: 0.1506, y: 0.3294, z: 1.1193 },
+  { x: 0.4043, y: 0.3224, z: 1.0444 },
+  { x: 0.5767, y: 0.3358, z: 0.885 },
+  { x: 0.6905, y: 0.2945, z: 0.6986 },
+  { x: 0.7707, y: 0.2787, z: 0.5004 },
+  { x: 0.8512, y: 0.2404, z: 0.2244 },
+  { x: 0.9197, y: 0.2139, z: -0.1297 },
+  { x: 0.943, y: 0.1857, z: -0.5344 },
+];
+
+const LOWER_TOOTH_POSITIONS: ToothPosition3D[] = [
+  { x: -0.9056, y: 0.0203, z: -0.4577 },
+  { x: -0.8838, y: -0.0718, z: -0.0536 },
+  { x: -0.8169, y: -0.1575, z: 0.3076 },
+  { x: -0.7265, y: -0.2344, z: 0.5861 },
+  { x: -0.6152, y: -0.2768, z: 0.7788 },
+  { x: -0.498, y: -0.343, z: 0.939 },
+  { x: -0.3248, y: -0.3701, z: 1.0707 },
+  { x: -0.107, y: -0.3786, z: 1.1205 },
+  { x: 0.116, y: -0.3785, z: 1.1199 },
+  { x: 0.3334, y: -0.3698, z: 1.0689 },
+  { x: 0.5059, y: -0.3426, z: 0.9362 },
+  { x: 0.6222, y: -0.2763, z: 0.7753 },
+  { x: 0.7323, y: -0.2338, z: 0.582 },
+  { x: 0.8214, y: -0.1566, z: 0.3019 },
+  { x: 0.8861, y: -0.0708, z: -0.0598 },
+  { x: 0.9055, y: 0.0214, z: -0.4641 },
+];
+
+function toothPositions(arch: "upper" | "lower"): ToothPosition3D[] {
+  return arch === "upper" ? UPPER_TOOTH_POSITIONS : LOWER_TOOTH_POSITIONS;
+}
+
+// The arch's own center in the XZ plane — the average of its 16 real tooth
+// positions — used as the origin outwardDirection measures "away from the
+// mouth's middle" relative to, so it's accurate for the real (non-elliptical)
+// curve instead of assuming a shape.
+function archCenterXZ(arch: "upper" | "lower"): { x: number; z: number } {
+  const positions = toothPositions(arch);
+  const sum = positions.reduce(
+    (acc, p) => ({ x: acc.x + p.x, z: acc.z + p.z }),
+    { x: 0, z: 0 },
+  );
+  return { x: sum.x / positions.length, z: sum.z / positions.length };
+}
 
 export type Direction2D = { x: number; z: number };
 
 /**
  * The outward-facing unit direction (in the XZ plane) for a tooth at this
- * row index — the arch is close enough to circular that this is the same
- * direction the tooth's own position already points in, relative to the
- * arch's center. Used to place teeth around the arch, to pull the camera
- * back to face a chosen tooth (cameraFocusFor), and to nudge a visual
- * marker toward the viewer instead of into the tooth behind it
- * (ToothMarker in tooth-chart-3d.tsx) — the fixed +z pullback/offset this
- * replaced only pointed outward for the front teeth, not the side/back
- * ones.
+ * row index — the real direction from the arch's own center (see
+ * archCenterXZ) to that tooth's real position, so it follows the actual
+ * curve of the jaw instead of assuming a smooth ellipse. Used to pull the
+ * camera back to face a chosen tooth (cameraFocusFor) and to nudge a
+ * visual marker toward the viewer instead of into the tooth behind it
+ * (ToothMarker in tooth-chart-3d.tsx).
  */
-export function outwardDirection(indexInRow: number, teethInRow: number): Direction2D {
-  const t = (indexInRow + 0.5) / teethInRow; // 0..1 across the row
-  const angle = t * Math.PI; // 0..PI
-  return { x: -Math.cos(angle), z: Math.sin(angle) };
+export function outwardDirection(indexInRow: number, arch: "upper" | "lower"): Direction2D {
+  const position = toothPositions(arch)[indexInRow];
+  const center = archCenterXZ(arch);
+  const dx = position.x - center.x;
+  const dz = position.z - center.z;
+  const length = Math.hypot(dx, dz) || 1;
+  return { x: dx / length, z: dz / length };
 }
 
-/**
- * Positions a row of teeth along the real model's arch curve (see
- * ARCH_CALIBRATION). The midline is at x=0 toward +z; left-to-right
- * matches each arch's FDI reading order (UPPER_ARCH / LOWER_ARCH above).
- */
+/** Each tooth's real position in "/teeth/teeth.glb" (see
+ * UPPER_TOOTH_POSITIONS / LOWER_TOOTH_POSITIONS). The teethInRow parameter
+ * is unused — every arch has exactly 16 real teeth — and kept only so
+ * callers don't need special-casing versus other row-indexed helpers. */
 export function positionOnArch(
   indexInRow: number,
-  teethInRow: number,
+  _teethInRow: number,
   arch: "upper" | "lower",
 ): ToothPosition3D {
-  const { radiusX, radiusZ, zOffset, yEdge, yCenter } = ARCH_CALIBRATION[arch];
-  const { x: outwardX, z: outwardZ } = outwardDirection(indexInRow, teethInRow);
-  const x = outwardX * radiusX;
-  const z = outwardZ * radiusZ + zOffset;
-  const y = yEdge + (yCenter - yEdge) * outwardZ;
-  return { x, y, z };
+  return toothPositions(arch)[indexInRow];
 }
 
 /** The 3D position of a tooth by its FDI number, or null if invalid. */
@@ -122,10 +176,9 @@ export type CameraFocus = { target: ToothPosition3D; cameraPosition: ToothPositi
 /**
  * Where to put the camera to look at a given tooth from "in front of" it —
  * not from the chart's single overview direction (+z), which only faces
- * the front teeth correctly. The arch is close enough to circular that the
- * position vector itself (relative to the arch's center) already points
- * outward at every tooth, front or back, so it doubles as the direction to
- * pull the camera back along.
+ * the front teeth correctly. outwardDirection (the real direction from the
+ * arch's own center to this tooth) doubles as the direction to pull the
+ * camera back along, so it works the same for a front tooth or a back one.
  */
 export function cameraFocusFor(fdi: string): CameraFocus | null {
   for (const [arch, teeth] of [
@@ -136,7 +189,7 @@ export function cameraFocusFor(fdi: string): CameraFocus | null {
     if (index === -1) continue;
 
     const { x, y, z } = positionOnArch(index, teeth.length, arch);
-    const { x: outwardX, z: outwardZ } = outwardDirection(index, teeth.length);
+    const { x: outwardX, z: outwardZ } = outwardDirection(index, arch);
     const distance = 0.55;
 
     return {
