@@ -69,6 +69,25 @@ const ARCH_CALIBRATION = {
   lower: { radiusX: 0.84, radiusZ: 0.56, zOffset: 0.57, yEdge: -0.33, yCenter: -0.26 },
 } as const;
 
+export type Direction2D = { x: number; z: number };
+
+/**
+ * The outward-facing unit direction (in the XZ plane) for a tooth at this
+ * row index — the arch is close enough to circular that this is the same
+ * direction the tooth's own position already points in, relative to the
+ * arch's center. Used to place teeth around the arch, to pull the camera
+ * back to face a chosen tooth (cameraFocusFor), and to nudge a visual
+ * marker toward the viewer instead of into the tooth behind it
+ * (ToothMarker in tooth-chart-3d.tsx) — the fixed +z pullback/offset this
+ * replaced only pointed outward for the front teeth, not the side/back
+ * ones.
+ */
+export function outwardDirection(indexInRow: number, teethInRow: number): Direction2D {
+  const t = (indexInRow + 0.5) / teethInRow; // 0..1 across the row
+  const angle = t * Math.PI; // 0..PI
+  return { x: -Math.cos(angle), z: Math.sin(angle) };
+}
+
 /**
  * Positions a row of teeth along the real model's arch curve (see
  * ARCH_CALIBRATION). The midline is at x=0 toward +z; left-to-right
@@ -80,21 +99,11 @@ export function positionOnArch(
   arch: "upper" | "lower",
 ): ToothPosition3D {
   const { radiusX, radiusZ, zOffset, yEdge, yCenter } = ARCH_CALIBRATION[arch];
-  const { x, z, angle } = archXZ(indexInRow, teethInRow, radiusX, radiusZ, zOffset);
-  const y = yEdge + (yCenter - yEdge) * Math.sin(angle);
+  const { x: outwardX, z: outwardZ } = outwardDirection(indexInRow, teethInRow);
+  const x = outwardX * radiusX;
+  const z = outwardZ * radiusZ + zOffset;
+  const y = yEdge + (yCenter - yEdge) * outwardZ;
   return { x, y, z };
-}
-
-function archXZ(
-  indexInRow: number,
-  teethInRow: number,
-  radiusX: number,
-  radiusZ: number,
-  zOffset: number,
-) {
-  const t = (indexInRow + 0.5) / teethInRow; // 0..1 across the row
-  const angle = t * Math.PI; // 0..PI
-  return { x: -Math.cos(angle) * radiusX, z: Math.sin(angle) * radiusZ + zOffset, angle };
 }
 
 /** The 3D position of a tooth by its FDI number, or null if invalid. */
@@ -126,11 +135,8 @@ export function cameraFocusFor(fdi: string): CameraFocus | null {
     const index = teeth.findIndex((t) => t.fdi === fdi);
     if (index === -1) continue;
 
-    const { radiusX, radiusZ, zOffset, yEdge, yCenter } = ARCH_CALIBRATION[arch];
-    const { x, z, angle } = archXZ(index, teeth.length, radiusX, radiusZ, zOffset);
-    const y = yEdge + (yCenter - yEdge) * Math.sin(angle);
-    const outwardX = -Math.cos(angle);
-    const outwardZ = Math.sin(angle);
+    const { x, y, z } = positionOnArch(index, teeth.length, arch);
+    const { x: outwardX, z: outwardZ } = outwardDirection(index, teeth.length);
     const distance = 0.55;
 
     return {

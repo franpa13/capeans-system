@@ -7,6 +7,7 @@ import {
   LOWER_ARCH,
   UPPER_ARCH,
   cameraFocusFor,
+  outwardDirection,
   positionOnArch,
 } from "@/features/clinic/lib/odontogram";
 
@@ -56,10 +57,12 @@ function CameraFocus({ fdi }: { fdi: string | null }) {
 
 function ToothMarker({
   position,
+  outward,
   isTreated,
   isSelected,
 }: {
   position: { x: number; y: number; z: number };
+  outward: { x: number; z: number };
   isTreated: boolean;
   isSelected: boolean;
 }) {
@@ -67,7 +70,13 @@ function ToothMarker({
   const color = isSelected ? COLOR_SELECTED : COLOR_TREATED;
 
   return (
-    <mesh position={[position.x, position.y, position.z + MARKER_OFFSET]}>
+    <mesh
+      position={[
+        position.x + outward.x * MARKER_OFFSET,
+        position.y,
+        position.z + outward.z * MARKER_OFFSET,
+      ]}
+    >
       <sphereGeometry args={[MARKER_RADIUS, 12, 12]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
     </mesh>
@@ -111,6 +120,7 @@ export function ToothChart3D({
               <ToothMarker
                 key={tooth.fdi}
                 position={positionOnArch(i, UPPER_ARCH.length, "upper")}
+                outward={outwardDirection(i, UPPER_ARCH.length)}
                 isTreated={!!history[tooth.fdi]?.length}
                 isSelected={selectedTeeth.includes(tooth.fdi)}
               />
@@ -119,6 +129,7 @@ export function ToothChart3D({
               <ToothMarker
                 key={tooth.fdi}
                 position={positionOnArch(i, LOWER_ARCH.length, "lower")}
+                outward={outwardDirection(i, LOWER_ARCH.length)}
                 isTreated={!!history[tooth.fdi]?.length}
                 isSelected={selectedTeeth.includes(tooth.fdi)}
               />

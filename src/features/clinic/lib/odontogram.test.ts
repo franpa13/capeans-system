@@ -5,6 +5,7 @@ import {
   findToothPosition,
   isValidToothFdi,
   LOWER_ARCH,
+  outwardDirection,
   positionOnArch,
   toothType,
   UPPER_ARCH,
@@ -92,6 +93,27 @@ describe("positionOnArch", () => {
     for (let i = 0; i < 16; i++) {
       expect(positionOnArch(i, 16, "upper").y).toBeGreaterThan(0);
       expect(positionOnArch(i, 16, "lower").y).toBeLessThan(0);
+    }
+  });
+});
+
+describe("outwardDirection", () => {
+  it("points mostly along +z for a front tooth (the arch's center)", () => {
+    const { x, z } = outwardDirection(7, 16); // index 7 of 16 = dead center
+    expect(z).toBeGreaterThan(Math.abs(x));
+  });
+
+  it("points mostly along x for an edge tooth (a back molar), not z", () => {
+    // This is the bug a fixed +z marker/camera offset hits: at the row's
+    // edge the outward direction is almost entirely sideways.
+    const { x, z } = outwardDirection(0, 16);
+    expect(Math.abs(x)).toBeGreaterThan(Math.abs(z));
+  });
+
+  it("is a unit vector at every position in the row", () => {
+    for (let i = 0; i < 16; i++) {
+      const { x, z } = outwardDirection(i, 16);
+      expect(x * x + z * z).toBeCloseTo(1, 10);
     }
   });
 });
