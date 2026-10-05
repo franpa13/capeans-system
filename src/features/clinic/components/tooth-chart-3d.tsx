@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   LOWER_ARCH,
   UPPER_ARCH,
-  findToothPosition,
+  cameraFocusFor,
   positionOnArch,
   type Tooth,
 } from "@/features/clinic/lib/odontogram";
@@ -40,11 +40,12 @@ function CameraFocus({ fdi }: { fdi: string | null }) {
 
   useEffect(() => {
     if (fdi) {
-      const p = findToothPosition(fdi);
-      if (!p) return;
+      const focus = cameraFocusFor(fdi);
+      if (!focus) return;
+      const { target, cameraPosition } = focus;
       bounds.to({
-        position: [p.x * 0.5, p.y * 0.3 + 0.25, p.z + 0.55],
-        target: [p.x, p.y, p.z],
+        position: [cameraPosition.x, cameraPosition.y, cameraPosition.z],
+        target: [target.x, target.y, target.z],
       });
       wasFocused.current = true;
     } else if (wasFocused.current) {

@@ -80,12 +80,21 @@ export function positionOnArch(
   arch: "upper" | "lower",
 ): ToothPosition3D {
   const { radiusX, radiusZ, zOffset, yEdge, yCenter } = ARCH_CALIBRATION[arch];
-  const t = (indexInRow + 0.5) / teethInRow; // 0..1 across the row
-  const angle = t * Math.PI; // 0..PI
-  const x = -Math.cos(angle) * radiusX;
-  const z = Math.sin(angle) * radiusZ + zOffset;
+  const { x, z, angle } = archXZ(indexInRow, teethInRow, radiusX, radiusZ, zOffset);
   const y = yEdge + (yCenter - yEdge) * Math.sin(angle);
   return { x, y, z };
+}
+
+function archXZ(
+  indexInRow: number,
+  teethInRow: number,
+  radiusX: number,
+  radiusZ: number,
+  zOffset: number,
+) {
+  const t = (indexInRow + 0.5) / teethInRow; // 0..1 across the row
+  const angle = t * Math.PI; // 0..PI
+  return { x: -Math.cos(angle) * radiusX, z: Math.sin(angle) * radiusZ + zOffset, angle };
 }
 
 /** The 3D position of a tooth by its FDI number, or null if invalid. */
@@ -96,5 +105,42 @@ export function findToothPosition(fdi: string): ToothPosition3D | null {
   const lowerIndex = LOWER_ARCH.findIndex((t) => t.fdi === fdi);
   if (lowerIndex !== -1) return positionOnArch(lowerIndex, LOWER_ARCH.length, "lower");
 
+  return null;
+}
+
+export type CameraFocus = { target: ToothPosition3D; cameraPosition: ToothPosition3D };
+
+/**
+ * Where to put the camera to look at a given tooth from "in front of" it —
+ * not from the chart's single overview direction (+z), which only faces
+ * the front teeth correctly. The arch is close enough to circular that the
+ * position vector itself (relative to the arch's center) already points
+ * outward at every tooth, front or back, so it doubles as the direction to
+ * pull the camera back along.
+ */
+export function cameraFocusFor(fdi: string): CameraFocus | null {
+  for (const [arch, teeth] of [
+    ["upper", UPPER_ARCH],
+    ["lower", LOWER_ARCH],
+  ] as const) {
+    const index = teeth.findIndex((t) => t.fdi === fdi);
+    if (index === -1) continue;
+
+    const { radiusX, radiusZ, zOffset, yEdge, yCenter } = ARCH_CALIBRATION[arch];
+    const { x, z, angle } = archXZ(index, teeth.length, radiusX, radiusZ, zOffset);
+    const y = yEdge + (yCenter - yEdge) * Math.sin(angle);
+    const outwardX = -Math.cos(angle);
+    const outwardZ = Math.sin(angle);
+    const distance = 0.55;
+
+    return {
+      target: { x, y, z },
+      cameraPosition: {
+        x: x + outwardX * distance,
+        y: y * 0.3 + 0.25,
+        z: z + outwardZ * distance,
+      },
+    };
+  }
   return null;
 }

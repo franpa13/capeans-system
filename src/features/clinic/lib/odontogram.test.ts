@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_TEETH,
+  cameraFocusFor,
   findToothPosition,
   isValidToothFdi,
   LOWER_ARCH,
@@ -106,5 +107,32 @@ describe("findToothPosition", () => {
 
   it("returns null for an invalid FDI number", () => {
     expect(findToothPosition("99")).toBeNull();
+  });
+});
+
+describe("cameraFocusFor", () => {
+  it("returns null for an invalid FDI number", () => {
+    expect(cameraFocusFor("99")).toBeNull();
+  });
+
+  it("targets the tooth's own position", () => {
+    const focus = cameraFocusFor("21");
+    expect(focus?.target).toEqual(findToothPosition("21"));
+  });
+
+  it("pulls the camera back mostly along z for a front tooth (an incisor)", () => {
+    const focus = cameraFocusFor("11")!;
+    const dx = Math.abs(focus.cameraPosition.x - focus.target.x);
+    const dz = Math.abs(focus.cameraPosition.z - focus.target.z);
+    expect(dz).toBeGreaterThan(dx);
+  });
+
+  it("pulls the camera back mostly along x for a back tooth (a wisdom tooth), not z", () => {
+    // This is the regression this function fixes: a fixed +z pullback
+    // looked at the side/back of edge teeth instead of their face.
+    const focus = cameraFocusFor("18")!;
+    const dx = Math.abs(focus.cameraPosition.x - focus.target.x);
+    const dz = Math.abs(focus.cameraPosition.z - focus.target.z);
+    expect(dx).toBeGreaterThan(dz);
   });
 });
