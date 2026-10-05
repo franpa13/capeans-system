@@ -7,6 +7,9 @@ import {
   LOWER_ARCH,
   outwardDirection,
   positionOnArch,
+  PRIMARY_LOWER_ARCH,
+  PRIMARY_TEETH,
+  PRIMARY_UPPER_ARCH,
   toothType,
   UPPER_ARCH,
 } from "./odontogram";
@@ -46,6 +49,46 @@ describe("FDI tooth numbering", () => {
     expect(isValidToothFdi("99")).toBe(false);
     expect(isValidToothFdi("19")).toBe(false); // quadrant 1 only goes to 8
     expect(isValidToothFdi("")).toBe(false);
+  });
+});
+
+describe("primary (baby) teeth numbering", () => {
+  it("has 20 primary teeth total, 10 upper and 10 lower", () => {
+    expect(PRIMARY_TEETH).toHaveLength(20);
+    expect(PRIMARY_UPPER_ARCH).toHaveLength(10);
+    expect(PRIMARY_LOWER_ARCH).toHaveLength(10);
+  });
+
+  it("has no duplicate FDI numbers, and none overlap with the permanent set", () => {
+    const seen = new Set(PRIMARY_TEETH.map((t) => t.fdi));
+    expect(seen.size).toBe(20);
+    for (const tooth of PRIMARY_TEETH) {
+      expect(ALL_TEETH.some((t) => t.fdi === tooth.fdi)).toBe(false);
+    }
+  });
+
+  it("upper arch reads 55..51 then 61..65, left to right", () => {
+    expect(PRIMARY_UPPER_ARCH.map((t) => t.fdi)).toEqual([
+      "55", "54", "53", "52", "51",
+      "61", "62", "63", "64", "65",
+    ]);
+  });
+
+  it("lower arch reads 85..81 then 71..75, left to right (aligned under the upper row)", () => {
+    expect(PRIMARY_LOWER_ARCH.map((t) => t.fdi)).toEqual([
+      "85", "84", "83", "82", "81",
+      "71", "72", "73", "74", "75",
+    ]);
+  });
+
+  it("recognizes a valid primary FDI number", () => {
+    expect(isValidToothFdi("55")).toBe(true);
+    expect(isValidToothFdi("71")).toBe(true);
+  });
+
+  it("rejects an invalid primary FDI number", () => {
+    expect(isValidToothFdi("56")).toBe(false); // primary quadrants only go to 5
+    expect(isValidToothFdi("91")).toBe(false);
   });
 });
 

@@ -1,20 +1,27 @@
 // FDI two-digit tooth notation (ISO 3950), the standard used in Argentina
 // and most of Latin America/Europe — not the US "Universal" 1-32 system.
-// Quadrants: 1 = upper right, 2 = upper left, 3 = lower left, 4 = lower right.
-// Within a quadrant, teeth are numbered 1 (central incisor) to 8 (third molar,
-// "wisdom tooth"), increasing outward from the midline.
+// Quadrants: 1 = upper right, 2 = upper left, 3 = lower left, 4 = lower right
+// for PERMANENT (adult) teeth; 5/6/7/8 are the same four quadrants again for
+// PRIMARY (baby) teeth — see PRIMARY_TEETH below. Within a quadrant, teeth
+// are numbered starting at 1 (central incisor), increasing outward from the
+// midline: up to 8 (third molar, "wisdom tooth") for permanent teeth, up to
+// 5 (second molar — primary dentition has no premolars) for primary teeth.
 
-export type ToothQuadrant = 1 | 2 | 3 | 4;
+export type ToothQuadrant = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export type Tooth = {
   fdi: string;
   quadrant: ToothQuadrant;
-  positionInQuadrant: number; // 1..8, 1 = closest to the midline
+  positionInQuadrant: number; // 1..8 (permanent) or 1..5 (primary), 1 = closest to the midline
   arch: "upper" | "lower";
 };
 
-function quadrantTeeth(quadrant: ToothQuadrant, arch: "upper" | "lower"): Tooth[] {
-  return Array.from({ length: 8 }, (_, i) => {
+function quadrantTeeth(
+  quadrant: ToothQuadrant,
+  arch: "upper" | "lower",
+  teethInQuadrant: number,
+): Tooth[] {
+  return Array.from({ length: teethInQuadrant }, (_, i) => {
     const positionInQuadrant = i + 1;
     return {
       fdi: `${quadrant}${positionInQuadrant}`,
@@ -30,19 +37,36 @@ function quadrantTeeth(quadrant: ToothQuadrant, arch: "upper" | "lower"): Tooth[
 // quadrant 2 (inward to outward); lower row mirrors the same left/right
 // sides so each column lines up with the tooth above/below it.
 export const UPPER_ARCH: Tooth[] = [
-  ...quadrantTeeth(1, "upper").reverse(),
-  ...quadrantTeeth(2, "upper"),
+  ...quadrantTeeth(1, "upper", 8).reverse(),
+  ...quadrantTeeth(2, "upper", 8),
 ];
 
 export const LOWER_ARCH: Tooth[] = [
-  ...quadrantTeeth(4, "lower").reverse(),
-  ...quadrantTeeth(3, "lower"),
+  ...quadrantTeeth(4, "lower", 8).reverse(),
+  ...quadrantTeeth(3, "lower", 8),
 ];
 
 export const ALL_TEETH: Tooth[] = [...UPPER_ARCH, ...LOWER_ARCH];
 
+// Primary (baby) teeth — same reading-order convention as the permanent
+// arches above, just five teeth per quadrant instead of eight. Kept as a
+// separate set rather than folded into ALL_TEETH: they're a distinct
+// clinical concept (a child's consultation may reference these FDI numbers
+// instead of the permanent ones), not an extension of the permanent arch.
+export const PRIMARY_UPPER_ARCH: Tooth[] = [
+  ...quadrantTeeth(5, "upper", 5).reverse(),
+  ...quadrantTeeth(6, "upper", 5),
+];
+
+export const PRIMARY_LOWER_ARCH: Tooth[] = [
+  ...quadrantTeeth(8, "lower", 5).reverse(),
+  ...quadrantTeeth(7, "lower", 5),
+];
+
+export const PRIMARY_TEETH: Tooth[] = [...PRIMARY_UPPER_ARCH, ...PRIMARY_LOWER_ARCH];
+
 export function isValidToothFdi(value: string): boolean {
-  return ALL_TEETH.some((t) => t.fdi === value);
+  return ALL_TEETH.some((t) => t.fdi === value) || PRIMARY_TEETH.some((t) => t.fdi === value);
 }
 
 export type ToothType = "incisor" | "canine" | "premolar" | "molar";

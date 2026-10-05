@@ -10,7 +10,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ALL_TEETH } from "@/features/clinic/lib/odontogram";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ALL_TEETH, PRIMARY_TEETH, type Tooth } from "@/features/clinic/lib/odontogram";
+
+function ToothPicker({
+  id,
+  teeth,
+  value,
+  onChange,
+}: {
+  id: string;
+  teeth: Tooth[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const available = teeth.filter((t) => !value.includes(t.fdi));
+  return (
+    // Remounted on every pick (via key) so the trigger resets to its
+    // placeholder instead of showing the just-added tooth as "selected" —
+    // this is an adder, not a single persistent choice.
+    <Select key={value.length} onValueChange={(fdi) => onChange([...value, fdi])}>
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue placeholder="Agregar una pieza" />
+      </SelectTrigger>
+      <SelectContent>
+        {available.map((t) => (
+          <SelectItem key={t.fdi} value={t.fdi}>
+            {t.fdi}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export function TeethField({
   id = "teeth",
@@ -21,26 +53,26 @@ export function TeethField({
   value: string[];
   onChange: (value: string[]) => void;
 }) {
-  const available = ALL_TEETH.filter((t) => !value.includes(t.fdi));
-
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>Piezas dentales (opcional)</Label>
-      {/* Remounted on every pick (via key) so the trigger resets to its
-          placeholder instead of showing the just-added tooth as "selected" —
-          this is an adder, not a single persistent choice. */}
-      <Select key={value.length} onValueChange={(fdi) => onChange([...value, fdi])}>
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue placeholder="Agregar una pieza" />
-        </SelectTrigger>
-        <SelectContent>
-          {available.map((t) => (
-            <SelectItem key={t.fdi} value={t.fdi}>
-              {t.fdi}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Tabs defaultValue="adulto">
+        <TabsList>
+          <TabsTrigger value="adulto">Adulto</TabsTrigger>
+          <TabsTrigger value="nino">Niño</TabsTrigger>
+        </TabsList>
+        <TabsContent value="adulto">
+          <ToothPicker id={id} teeth={ALL_TEETH} value={value} onChange={onChange} />
+        </TabsContent>
+        <TabsContent value="nino">
+          <ToothPicker
+            id={`${id}-primary`}
+            teeth={PRIMARY_TEETH}
+            value={value}
+            onChange={onChange}
+          />
+        </TabsContent>
+      </Tabs>
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {value.map((fdi) => (
