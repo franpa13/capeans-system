@@ -105,7 +105,7 @@ export function ToothChart3D({
         <directionalLight position={[-2, 1, 1]} intensity={0.4} />
 
         <Suspense fallback={null}>
-          <Bounds fit clip observe margin={1.6}>
+          <Bounds fit clip observe margin={1.3}>
             <MouthModel />
           </Bounds>
 
@@ -131,7 +131,7 @@ export function ToothChart3D({
           ))}
         </Suspense>
 
-        <OrbitControls enablePan={false} minDistance={0.5} maxDistance={3} />
+        <OrbitControls enablePan={false} minDistance={0.5} maxDistance={10} />
       </Canvas>
       <span className="pointer-events-none absolute right-1.5 bottom-1 text-[9px] text-muted-foreground/70">
         Modelo 3D &quot;Teeth&quot; por dewa (Sketchfab, CC BY)

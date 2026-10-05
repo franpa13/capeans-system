@@ -24,10 +24,10 @@ test("clicking a tooth in the 3D odontogram opens a consultation pre-filled with
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
 
-  // A central upper incisor, found empirically against this camera/arch
-  // layout (see tooth-chart-3d.tsx and the ARCH_CALIBRATION constants in
+  // An upper tooth, found by sweeping real clicks against this camera/
+  // Bounds setup (see tooth-chart-3d.tsx and ARCH_CALIBRATION in
   // odontogram.ts, fitted to the real "/teeth/teeth.glb" model).
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.185);
+  await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.34);
 
   const toothInput = page.locator("#tooth");
   await expect(toothInput).toBeVisible();
@@ -52,11 +52,12 @@ test("opening the odontogram from Nueva consulta shows it as a separate modal, c
   const canvas = page.locator("canvas");
   await canvas.waitFor();
   await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("3D odontogram canvas not found");
 
-  // A central upper incisor — absolute page coordinates (this modal's
-  // size/position is fixed by its own sm:max-w-2xl + fixed canvas height,
-  // unlike the embedded card elsewhere, so a fixed point is reliable here).
-  await page.mouse.click(770, 230);
+  // Same fraction as the standalone card test — both share the same
+  // camera/Bounds setup in tooth-chart-3d.tsx.
+  await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.34);
 
   // The odontogram modal closes itself once a tooth is picked, and the
   // Nueva consulta form underneath reflects the selection.
