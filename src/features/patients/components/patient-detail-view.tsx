@@ -35,8 +35,10 @@ export function PatientDetailView({
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
     for (const c of consultations) {
-      if (c.tooth && isValidToothFdi(c.tooth)) {
-        (history[c.tooth] ??= []).push({ date: c.date, treatment: c.treatment });
+      for (const tooth of c.teeth) {
+        if (isValidToothFdi(tooth)) {
+          (history[tooth] ??= []).push({ date: c.date, treatment: c.treatment });
+        }
       }
     }
     for (const entries of Object.values(history)) {

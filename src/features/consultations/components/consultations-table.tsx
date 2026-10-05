@@ -80,7 +80,7 @@ export function ConsultationsTable({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {c.tooth ?? "—"}
+                  {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
                 </TableCell>
                 <TableCell className="max-w-xs truncate text-muted-foreground">
                   {c.notes ?? "—"}

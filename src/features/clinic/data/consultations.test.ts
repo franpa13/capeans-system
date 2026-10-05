@@ -37,6 +37,27 @@ describe("consultations data layer", () => {
     expect(consultation.clinicId).toBe(clinicA.id);
   });
 
+  it("persists multiple teeth on a single consultation", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      teeth: ["16", "17", "26"],
+    });
+    expect(consultation.teeth).toEqual(["16", "17", "26"]);
+  });
+
+  it("defaults to an empty teeth array when none is given", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+    });
+    expect(consultation.teeth).toEqual([]);
+  });
+
   it("does not return a clinic A consultation when queried with clinic B's id", async () => {
     const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
     const consultation = await createConsultation(clinicA.id, {

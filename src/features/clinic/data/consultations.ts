@@ -5,7 +5,7 @@ export type NewConsultationInput = {
   patientId: string;
   date: Date;
   treatment: string;
-  tooth?: string;
+  teeth?: string[];
   notes?: string;
 };
 
@@ -49,7 +49,7 @@ export async function createConsultation(
       patientId: input.patientId,
       date: input.date,
       treatment: input.treatment,
-      tooth: input.tooth ?? null,
+      teeth: input.teeth ?? [],
       notes: input.notes ?? null,
       clinicId,
     },

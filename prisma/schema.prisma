@@ -48,7 +48,7 @@ model Consultation {
 
   date      DateTime
   treatment String
-  tooth     String?
+  teeth     String[] @default([])
   notes     String?
 
   @@index([clinicId])

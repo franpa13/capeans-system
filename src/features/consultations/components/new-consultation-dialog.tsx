@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
+import { TeethField } from "@/features/clinic/components/teeth-field";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
@@ -84,14 +85,14 @@ export function NewConsultationDialog({
       date: todayISO(),
       treatment: "",
       treatmentOther: "",
-      tooth: "",
+      teeth: [],
       notes: "",
     },
   });
 
   const patientId = watch("patientId");
   const treatment = watch("treatment");
-  const tooth = watch("tooth");
+  const teeth = watch("teeth") ?? [];
   const isNewPatient = !fixedPatientId && patientId === NEW_PATIENT_VALUE;
 
   const onSubmit = async (values: ConsultationValues) => {
@@ -104,7 +105,7 @@ export function NewConsultationDialog({
         values.treatment === OTHER_TREATMENT
           ? values.treatmentOther!.trim()
           : values.treatment,
-      tooth: values.tooth || undefined,
+      teeth: values.teeth?.length ? values.teeth : undefined,
       notes: values.notes || undefined,
       newPatient: isNewPatient
         ? {
@@ -139,7 +140,7 @@ export function NewConsultationDialog({
       date: todayISO(),
       treatment: "",
       treatmentOther: "",
-      tooth: "",
+      teeth: [],
       notes: "",
     });
     setOpen(false);
@@ -320,6 +321,27 @@ export function NewConsultationDialog({
             )}
 
             <div className="space-y-2">
+              <Label htmlFor="date">Fecha</Label>
+              <Input
+                id="date"
+                type="date"
+                aria-invalid={!!errors.date}
+                {...register("date")}
+              />
+              {errors.date && (
+                <p className="text-sm text-destructive">{errors.date.message}</p>
+              )}
+            </div>
+
+            <Controller
+              control={control}
+              name="teeth"
+              render={({ field }) => (
+                <TeethField value={field.value ?? []} onChange={field.onChange} />
+              )}
+            />
+
+            <div className="space-y-2">
               <Button
                 type="button"
                 variant="outline"
@@ -327,7 +349,9 @@ export function NewConsultationDialog({
                 onClick={() => setOdontogramOpen(true)}
               >
                 <Smile />
-                {tooth ? `Ver pieza ${tooth}` : "Ver odontograma"}
+                {teeth.length === 0
+                  ? "Ver odontograma"
+                  : `Ver ${teeth.length === 1 ? "pieza" : "piezas"} ${teeth.join(", ")}`}
               </Button>
             </div>
 
@@ -336,37 +360,18 @@ export function NewConsultationDialog({
                 <DialogHeader>
                   <DialogTitle>Odontograma</DialogTitle>
                   <DialogDescription>
-                    {tooth
-                      ? `Vista de la pieza ${tooth}. Para cambiarla, editá el campo "Pieza dental".`
-                      : 'Elegí una pieza en el campo "Pieza dental" para verla acá.'}
+                    {teeth.length > 0
+                      ? `Vista de ${teeth.length === 1 ? "la pieza" : "las piezas"} ${teeth.join(", ")}. Para cambiarla, editá el campo "Piezas dentales".`
+                      : 'Elegí una pieza en el campo "Piezas dentales" para verla acá.'}
                   </DialogDescription>
                 </DialogHeader>
                 <ToothChart3D
                   className="h-128"
                   history={toothHistory}
-                  selectedTooth={tooth || undefined}
+                  selectedTeeth={teeth}
                 />
               </DialogContent>
             </Dialog>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="date">Fecha</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  aria-invalid={!!errors.date}
-                  {...register("date")}
-                />
-                {errors.date && (
-                  <p className="text-sm text-destructive">{errors.date.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tooth">Pieza dental (opcional)</Label>
-                <Input id="tooth" placeholder="Ej: 16" {...register("tooth")} />
-              </div>
-            </div>
 
             <div className="space-y-2">
               <Label>Tratamiento realizado</Label>

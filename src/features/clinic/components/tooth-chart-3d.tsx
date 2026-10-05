@@ -75,20 +75,24 @@ function ToothMarker({
 }
 
 /**
- * A read-only view of the mouth: pieces are chosen elsewhere (the "Pieza
- * dental" field), never by clicking here. Selecting a tooth paints it and
- * zooms the camera toward it; teeth with consultation history stay marked
- * in green so the whole chart gives an at-a-glance treatment summary.
+ * A read-only view of the mouth: pieces are chosen elsewhere (the "Piezas
+ * dentales" field), never by clicking here. Selecting teeth paints them;
+ * with exactly one selected, the camera also zooms toward it (with
+ * several, the full-mouth overview stays, since there's no single sane
+ * target to zoom to). Teeth with consultation history stay marked in
+ * green so the whole chart gives an at-a-glance treatment summary.
  */
 export function ToothChart3D({
   history = {},
-  selectedTooth,
+  selectedTeeth = [],
   className = "h-112",
 }: {
   history?: ToothHistory;
-  selectedTooth?: string;
+  selectedTeeth?: string[];
   className?: string;
 }) {
+  const focusFdi = selectedTeeth.length === 1 ? selectedTeeth[0] : null;
+
   return (
     <div
       className={`relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40 ${className}`}
@@ -101,14 +105,14 @@ export function ToothChart3D({
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.3}>
             <MouthModel />
-            <CameraFocus fdi={selectedTooth ?? null} />
+            <CameraFocus fdi={focusFdi} />
 
             {UPPER_ARCH.map((tooth, i) => (
               <ToothMarker
                 key={tooth.fdi}
                 position={positionOnArch(i, UPPER_ARCH.length, "upper")}
                 isTreated={!!history[tooth.fdi]?.length}
-                isSelected={selectedTooth === tooth.fdi}
+                isSelected={selectedTeeth.includes(tooth.fdi)}
               />
             ))}
             {LOWER_ARCH.map((tooth, i) => (
@@ -116,7 +120,7 @@ export function ToothChart3D({
                 key={tooth.fdi}
                 position={positionOnArch(i, LOWER_ARCH.length, "lower")}
                 isTreated={!!history[tooth.fdi]?.length}
-                isSelected={selectedTooth === tooth.fdi}
+                isSelected={selectedTeeth.includes(tooth.fdi)}
               />
             ))}
           </Bounds>

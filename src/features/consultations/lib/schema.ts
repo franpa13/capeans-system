@@ -18,7 +18,7 @@ export const consultationSchema = z
     date: z.string().min(1, "Ingresá la fecha"),
     treatment: z.string().min(1, "Elegí un tratamiento"),
     treatmentOther: z.string().optional(),
-    tooth: z.string().optional(),
+    teeth: z.array(z.string()).optional(),
     notes: z.string().optional(),
   })
   .superRefine((data, ctx) => {
