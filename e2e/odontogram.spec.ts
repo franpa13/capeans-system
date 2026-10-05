@@ -36,7 +36,7 @@ test("the odontogram on a patient page is read-only: clicking it does nothing", 
   expect(pageErrors).toHaveLength(0);
 });
 
-test("the odontogram inside Nueva consulta shows whichever teeth are picked, and ignores clicks", async ({
+test("the odontogram inside Nueva consulta is always visible and ignores clicks; teeth are picked via the select", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -48,35 +48,33 @@ test("the odontogram inside Nueva consulta shows whichever teeth are picked, and
   await page.goto("/dashboard/consultas");
   await page.getByRole("button", { name: "Nueva consulta" }).click();
 
-  // Collapsed by default: no 3D canvas until the button is pressed.
-  await expect(page.locator("canvas")).toHaveCount(0);
+  // The odontogram is shown by default — no button to open it.
+  const canvas = page.locator("canvas");
+  await canvas.waitFor();
+  await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle
 
-  // Pick two teeth from the "Piezas dentales" select.
+  // Pick two teeth from the "Piezas dentales" select; each becomes a chip.
   await page.locator("#teeth").click();
   await page.getByRole("option", { name: "16", exact: true }).click();
   await page.locator("#teeth").click();
   await page.getByRole("option", { name: "17", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Ver piezas 16, 17" })).toBeVisible();
+  await expect(page.getByText("16", { exact: true })).toBeVisible();
+  await expect(page.getByText("17", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Ver piezas 16, 17" }).click();
-  await page.getByText("Vista de las piezas 16, 17.", { exact: false }).waitFor();
-
-  const canvas = page.locator("canvas");
-  await canvas.waitFor();
-  await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle
+  // Clicking inside the viewer must not change the selection — the
+  // "Piezas dentales" select is the only way to choose teeth now.
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
-
-  // Clicking inside the viewer must not change the selection or close it —
-  // the "Piezas dentales" field is the only way to choose teeth now.
   await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.34);
   await page.waitForTimeout(500);
   await expect(page.locator("canvas")).toHaveCount(1);
-  await page.getByText("Vista de las piezas 16, 17.", { exact: false }).waitFor();
+  await expect(page.getByRole("button", { name: "Quitar pieza 16" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quitar pieza 17" })).toBeVisible();
 
-  // Closing the viewer confirms the underlying form kept the same selection.
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Ver piezas 16, 17" })).toBeVisible();
+  // Chips can be removed directly, without touching the 3D view.
+  await page.getByRole("button", { name: "Quitar pieza 16" }).click();
+  await expect(page.getByRole("button", { name: "Quitar pieza 16" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Quitar pieza 17" })).toBeVisible();
 
   expect(pageErrors).toHaveLength(0);
 });

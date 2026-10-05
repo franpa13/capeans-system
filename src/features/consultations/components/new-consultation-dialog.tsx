@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Smile, UserPlus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +61,6 @@ export function NewConsultationDialog({
   toothHistory?: ToothHistory;
 }) {
   const [open, setOpen] = useState(false);
-  const [odontogramOpen, setOdontogramOpen] = useState(false);
 
   const {
     register,
@@ -333,45 +333,18 @@ export function NewConsultationDialog({
               )}
             </div>
 
-            <Controller
-              control={control}
-              name="teeth"
-              render={({ field }) => (
-                <TeethField value={field.value ?? []} onChange={field.onChange} />
-              )}
-            />
-
-            <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setOdontogramOpen(true)}
-              >
-                <Smile />
-                {teeth.length === 0
-                  ? "Ver odontograma"
-                  : `Ver ${teeth.length === 1 ? "pieza" : "piezas"} ${teeth.join(", ")}`}
-              </Button>
-            </div>
-
-            <Dialog open={odontogramOpen} onOpenChange={setOdontogramOpen}>
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Odontograma</DialogTitle>
-                  <DialogDescription>
-                    {teeth.length > 0
-                      ? `Vista de ${teeth.length === 1 ? "la pieza" : "las piezas"} ${teeth.join(", ")}. Para cambiarla, editá el campo "Piezas dentales".`
-                      : 'Elegí una pieza en el campo "Piezas dentales" para verla acá.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <ToothChart3D
-                  className="h-128"
-                  history={toothHistory}
-                  selectedTeeth={teeth}
+            <Card>
+              <CardContent className="space-y-4">
+                <Controller
+                  control={control}
+                  name="teeth"
+                  render={({ field }) => (
+                    <TeethField value={field.value ?? []} onChange={field.onChange} />
+                  )}
                 />
-              </DialogContent>
-            </Dialog>
+                <ToothChart3D history={toothHistory} selectedTeeth={teeth} />
+              </CardContent>
+            </Card>
 
             <div className="space-y-2">
               <Label>Tratamiento realizado</Label>
