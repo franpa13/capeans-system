@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_TEETH,
+  findToothPosition,
   isValidToothFdi,
   LOWER_ARCH,
   positionOnArch,
@@ -91,5 +92,19 @@ describe("positionOnArch", () => {
       expect(positionOnArch(i, 16, "upper").y).toBeGreaterThan(0);
       expect(positionOnArch(i, 16, "lower").y).toBeLessThan(0);
     }
+  });
+});
+
+describe("findToothPosition", () => {
+  it("finds an upper tooth's position matching positionOnArch", () => {
+    expect(findToothPosition("11")).toEqual(positionOnArch(7, 16, "upper"));
+  });
+
+  it("finds a lower tooth's position matching positionOnArch", () => {
+    expect(findToothPosition("31")).toEqual(positionOnArch(8, 16, "lower"));
+  });
+
+  it("returns null for an invalid FDI number", () => {
+    expect(findToothPosition("99")).toBeNull();
   });
 });

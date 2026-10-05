@@ -87,3 +87,14 @@ export function positionOnArch(
   const y = yEdge + (yCenter - yEdge) * Math.sin(angle);
   return { x, y, z };
 }
+
+/** The 3D position of a tooth by its FDI number, or null if invalid. */
+export function findToothPosition(fdi: string): ToothPosition3D | null {
+  const upperIndex = UPPER_ARCH.findIndex((t) => t.fdi === fdi);
+  if (upperIndex !== -1) return positionOnArch(upperIndex, UPPER_ARCH.length, "upper");
+
+  const lowerIndex = LOWER_ARCH.findIndex((t) => t.fdi === fdi);
+  if (lowerIndex !== -1) return positionOnArch(lowerIndex, LOWER_ARCH.length, "lower");
+
+  return null;
+}

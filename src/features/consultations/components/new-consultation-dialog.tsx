@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
-import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
+import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
@@ -50,7 +50,7 @@ export function NewConsultationDialog({
   treatmentOptions,
   insuranceOptions = [],
   initialTooth,
-  treatedTeeth = [],
+  toothHistory = {},
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: {
@@ -60,7 +60,7 @@ export function NewConsultationDialog({
   treatmentOptions: string[];
   insuranceOptions?: string[];
   initialTooth?: string;
-  treatedTeeth?: string[];
+  toothHistory?: ToothHistory;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -348,12 +348,13 @@ export function NewConsultationDialog({
                 <DialogHeader>
                   <DialogTitle>Odontograma</DialogTitle>
                   <DialogDescription>
-                    Click en un diente para elegirlo como pieza dental.
+                    Click en un diente para verlo de cerca y elegirlo como
+                    pieza dental.
                   </DialogDescription>
                 </DialogHeader>
                 <ToothChart3D
                   className="h-128"
-                  treatedTeeth={treatedTeeth}
+                  history={toothHistory}
                   selectedTooth={tooth || undefined}
                   onToothClick={(fdi) => {
                     setValue("tooth", fdi);

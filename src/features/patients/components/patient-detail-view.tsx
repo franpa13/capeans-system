@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
-import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
+import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { isValidToothFdi } from "@/features/clinic/lib/odontogram";
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
@@ -34,12 +34,17 @@ export function PatientDetailView({
 }) {
   const [selectedTooth, setSelectedTooth] = useState<string | null>(null);
 
-  const treatedTeeth = useMemo(() => {
-    const teeth = new Set<string>();
+  const toothHistory: ToothHistory = useMemo(() => {
+    const history: ToothHistory = {};
     for (const c of consultations) {
-      if (c.tooth && isValidToothFdi(c.tooth)) teeth.add(c.tooth);
+      if (c.tooth && isValidToothFdi(c.tooth)) {
+        (history[c.tooth] ??= []).push({ date: c.date, treatment: c.treatment });
+      }
     }
-    return Array.from(teeth);
+    for (const entries of Object.values(history)) {
+      entries.sort((a, b) => b.date.getTime() - a.date.getTime());
+    }
+    return history;
   }, [consultations]);
 
   if (!patient) {
@@ -75,7 +80,7 @@ export function PatientDetailView({
               fixedPatientId={patient.id}
               fixedPatientName={patient.name}
               treatmentOptions={treatmentOptions}
-              treatedTeeth={treatedTeeth}
+              toothHistory={toothHistory}
             />
           }
         />
@@ -99,13 +104,14 @@ export function PatientDetailView({
         <CardHeader>
           <CardTitle>Odontograma</CardTitle>
           <CardDescription>
-            Click en un diente para cargar una consulta en esa pieza. En verde,
-            los dientes con consultas registradas.
+            Click en un diente para verlo de cerca, ver su historial y
+            cargarle una consulta. En verde, los dientes con consultas
+            registradas.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ToothChart3D
-            treatedTeeth={treatedTeeth}
+            history={toothHistory}
             selectedTooth={selectedTooth ?? undefined}
             onToothClick={setSelectedTooth}
           />
@@ -122,7 +128,7 @@ export function PatientDetailView({
           fixedPatientId={patient.id}
           fixedPatientName={patient.name}
           treatmentOptions={treatmentOptions}
-          treatedTeeth={treatedTeeth}
+          toothHistory={toothHistory}
           initialTooth={selectedTooth}
         />
       )}
