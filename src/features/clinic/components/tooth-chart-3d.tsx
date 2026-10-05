@@ -74,7 +74,7 @@ function ToothHitTarget({
         </mesh>
       )}
       {(hovered || isSelected) && (
-        <Html center distanceFactor={14} style={{ pointerEvents: "none" }}>
+        <Html center distanceFactor={3} style={{ pointerEvents: "none" }}>
           <div className="rounded bg-foreground px-1 py-px text-[8px] font-medium whitespace-nowrap text-background">
             {tooth.fdi}
           </div>
