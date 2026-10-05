@@ -74,8 +74,8 @@ function ToothHitTarget({
         </mesh>
       )}
       {(hovered || isSelected) && (
-        <Html center distanceFactor={6} style={{ pointerEvents: "none" }}>
-          <div className="rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap text-background">
+        <Html center distanceFactor={14} style={{ pointerEvents: "none" }}>
+          <div className="rounded bg-foreground px-1 py-px text-[8px] font-medium whitespace-nowrap text-background">
             {tooth.fdi}
           </div>
         </Html>
@@ -94,7 +94,7 @@ export function ToothChart3D({
   onToothClick: (fdi: string) => void;
 }) {
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40">
+    <div className="relative h-112 w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40">
       <Canvas camera={{ position: [0, 0.05, 1], fov: 35 }}>
         <ambientLight intensity={1} />
         <directionalLight position={[2, 3, 2]} intensity={1.3} />

@@ -20,7 +20,7 @@ test("clicking a tooth in the 3D odontogram opens a consultation pre-filled with
 
   const canvas = page.locator("canvas");
   await canvas.waitFor();
-  await page.waitForTimeout(2500); // let the ~16MB model load and the camera auto-fit settle
+  await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle (generous: WebGL contends with other parallel E2E workers)
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
 
