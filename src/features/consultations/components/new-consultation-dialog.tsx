@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
-import { TeethField } from "@/features/clinic/components/teeth-field";
+import { TeethField, type DentitionMode } from "@/features/clinic/components/teeth-field";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
@@ -61,6 +61,7 @@ export function NewConsultationDialog({
   toothHistory?: ToothHistory;
 }) {
   const [open, setOpen] = useState(false);
+  const [dentitionMode, setDentitionMode] = useState<DentitionMode>("adulto");
 
   const {
     register,
@@ -339,10 +340,20 @@ export function NewConsultationDialog({
                   control={control}
                   name="teeth"
                   render={({ field }) => (
-                    <TeethField value={field.value ?? []} onChange={field.onChange} />
+                    <TeethField
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      mode={dentitionMode}
+                      onModeChange={setDentitionMode}
+                    />
                   )}
                 />
-                <ToothChart3D history={toothHistory} selectedTeeth={teeth} />
+                {/* No 3D model for primary (baby) teeth yet — showing the
+                    adult odontogram while "Niño" is picked would just be an
+                    empty, unrelated mouth. */}
+                {dentitionMode === "adulto" && (
+                  <ToothChart3D history={toothHistory} selectedTeeth={teeth} />
+                )}
               </CardContent>
             </Card>
 

@@ -44,19 +44,25 @@ function ToothPicker({
   );
 }
 
+export type DentitionMode = "adulto" | "nino";
+
 export function TeethField({
   id = "teeth",
   value,
   onChange,
+  mode,
+  onModeChange,
 }: {
   id?: string;
   value: string[];
   onChange: (value: string[]) => void;
+  mode: DentitionMode;
+  onModeChange: (mode: DentitionMode) => void;
 }) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>Piezas dentales (opcional)</Label>
-      <Tabs defaultValue="adulto">
+      <Tabs value={mode} onValueChange={(v) => onModeChange(v as DentitionMode)}>
         <TabsList>
           <TabsTrigger value="adulto">Adulto</TabsTrigger>
           <TabsTrigger value="nino">Niño</TabsTrigger>

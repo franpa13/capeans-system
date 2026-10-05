@@ -36,7 +36,7 @@ test("the odontogram on a patient page is read-only: clicking it does nothing", 
   expect(pageErrors).toHaveLength(0);
 });
 
-test("the odontogram inside Nueva consulta is always visible and ignores clicks; teeth are picked via the select", async ({
+test("the odontogram inside Nueva consulta is visible on the Adulto tab by default and ignores clicks; teeth are picked via the select", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -77,4 +77,24 @@ test("the odontogram inside Nueva consulta is always visible and ignores clicks;
   await expect(page.getByRole("button", { name: "Quitar pieza 17" })).toBeVisible();
 
   expect(pageErrors).toHaveLength(0);
+});
+
+test("the odontogram hides on the Niño tab — no 3D model for primary teeth yet", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+
+  await expect(page.locator("canvas")).toHaveCount(1);
+
+  await page.getByRole("tab", { name: "Niño" }).click();
+  await expect(page.locator("canvas")).toHaveCount(0);
+  await page.locator("#teeth-primary").click();
+  await page.getByRole("option", { name: "55", exact: true }).click();
+  await expect(page.locator("canvas")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Adulto" }).click();
+  await expect(page.locator("canvas")).toHaveCount(1);
 });
