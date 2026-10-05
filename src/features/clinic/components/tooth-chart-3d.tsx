@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Bounds, Center, useBounds, useGLTF } from "@react-three/drei";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import {
   LOWER_ARCH,
   UPPER_ARCH,
   cameraFocusFor,
+  nearestTooth,
   positionOnArch,
   type Tooth,
 } from "@/features/clinic/lib/odontogram";
@@ -23,11 +24,26 @@ const COLOR_HOVER = "#7dd3fc";
 const HIT_RADIUS = 0.1;
 const MARKER_RADIUS = 0.055;
 
-function MouthModel() {
+/**
+ * Clicking the real, visible mesh is more reliable than clicking the
+ * invisible per-tooth hit-spheres: those are calibrated against the
+ * default front-on camera and drift out of alignment with the real
+ * geometry once the user orbits the model, so a click that visually
+ * lands on a tooth can miss its sphere. A click here is on the actual
+ * geometry the user sees, from any angle, so it always lands; snapping
+ * to the nearest calibrated tooth position recovers which tooth it was.
+ */
+function MouthModel({ onFocus }: { onFocus: (fdi: string) => void }) {
   const { scene } = useGLTF("/teeth/teeth.glb");
+
+  function handleClick(e: ThreeEvent<MouseEvent>) {
+    e.stopPropagation();
+    onFocus(nearestTooth(e.point));
+  }
+
   return (
     <Center>
-      <primitive object={scene} />
+      <primitive object={scene} onClick={handleClick} />
     </Center>
   );
 }
@@ -178,7 +194,7 @@ export function ToothChart3D({
 
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.3}>
-            <MouthModel />
+            <MouthModel onFocus={setFocusedTooth} />
             <CameraFocus fdi={focusedTooth} />
 
             {UPPER_ARCH.map((tooth, i) => (

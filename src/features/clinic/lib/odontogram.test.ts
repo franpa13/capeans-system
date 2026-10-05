@@ -5,6 +5,7 @@ import {
   findToothPosition,
   isValidToothFdi,
   LOWER_ARCH,
+  nearestTooth,
   positionOnArch,
   toothType,
   UPPER_ARCH,
@@ -134,5 +135,24 @@ describe("cameraFocusFor", () => {
     const dx = Math.abs(focus.cameraPosition.x - focus.target.x);
     const dz = Math.abs(focus.cameraPosition.z - focus.target.z);
     expect(dx).toBeGreaterThan(dz);
+  });
+});
+
+describe("nearestTooth", () => {
+  it("returns the tooth whose own position is given exactly", () => {
+    const pos = findToothPosition("27")!;
+    expect(nearestTooth(pos)).toBe("27");
+  });
+
+  it("returns the closest tooth to a point that isn't exactly on any tooth", () => {
+    // Nudged slightly from 36 toward the midline, but still much closer to
+    // 36 than to any other tooth.
+    const pos = findToothPosition("36")!;
+    expect(nearestTooth({ x: pos.x * 0.95, y: pos.y, z: pos.z })).toBe("36");
+  });
+
+  it("picks correctly for a point far off the model (e.g. a raycast hit on nearby gum tissue)", () => {
+    const pos = findToothPosition("11")!;
+    expect(nearestTooth({ x: pos.x, y: pos.y - 0.3, z: pos.z + 0.2 })).toBe("11");
   });
 });

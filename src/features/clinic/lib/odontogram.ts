@@ -108,6 +108,34 @@ export function findToothPosition(fdi: string): ToothPosition3D | null {
   return null;
 }
 
+/**
+ * The tooth whose calibrated position is closest to a given 3D point —
+ * used to resolve a raycast hit on the real model's visible mesh to a
+ * tooth, since the invisible per-tooth hit-spheres only reliably line up
+ * with the real geometry from the default front-on camera angle. Any
+ * click on the model itself, from any orbit angle, lands close to its
+ * tooth's calibrated position, so nearest-neighbor is robust even where
+ * the calibration isn't pixel-perfect.
+ */
+export function nearestTooth(point: ToothPosition3D): string {
+  let bestFdi = ALL_TEETH[0].fdi;
+  let bestDistance = Infinity;
+
+  for (const tooth of ALL_TEETH) {
+    const pos = findToothPosition(tooth.fdi)!;
+    const dx = pos.x - point.x;
+    const dy = pos.y - point.y;
+    const dz = pos.z - point.z;
+    const distance = dx * dx + dy * dy + dz * dz;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestFdi = tooth.fdi;
+    }
+  }
+
+  return bestFdi;
+}
+
 export type CameraFocus = { target: ToothPosition3D; cameraPosition: ToothPosition3D };
 
 /**
