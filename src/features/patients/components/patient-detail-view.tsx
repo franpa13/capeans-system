@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { Consultation, Patient } from "@prisma/client";
@@ -32,8 +32,6 @@ export function PatientDetailView({
   consultations: Consultation[];
   treatmentOptions: string[];
 }) {
-  const [selectedTooth, setSelectedTooth] = useState<string | null>(null);
-
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
     for (const c of consultations) {
@@ -104,34 +102,14 @@ export function PatientDetailView({
         <CardHeader>
           <CardTitle>Odontograma</CardTitle>
           <CardDescription>
-            Click en un diente para verlo de cerca, ver su historial y
-            cargarle una consulta. En verde, los dientes con consultas
-            registradas.
+            Vista de la boca del paciente. En verde, los dientes con
+            consultas registradas.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ToothChart3D
-            history={toothHistory}
-            selectedTooth={selectedTooth ?? undefined}
-            onToothClick={setSelectedTooth}
-          />
+          <ToothChart3D history={toothHistory} />
         </CardContent>
       </Card>
-
-      {selectedTooth && (
-        <NewConsultationDialog
-          key={selectedTooth}
-          open
-          onOpenChange={(next) => {
-            if (!next) setSelectedTooth(null);
-          }}
-          fixedPatientId={patient.id}
-          fixedPatientName={patient.name}
-          treatmentOptions={treatmentOptions}
-          toothHistory={toothHistory}
-          initialTooth={selectedTooth}
-        />
-      )}
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">Historial de consultas</h2>

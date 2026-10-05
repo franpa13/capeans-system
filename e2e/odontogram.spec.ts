@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 
-test("clicking a tooth focuses it with an info panel; confirming it pre-fills the consultation", async ({
+test("the odontogram on a patient page is read-only: clicking it does nothing", async ({
   page,
 }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (err) => pageErrors.push(err.message));
+
   await page.goto("/sign-in");
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
@@ -20,35 +23,23 @@ test("clicking a tooth focuses it with an info panel; confirming it pre-fills th
 
   const canvas = page.locator("canvas");
   await canvas.waitFor();
-  await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle (generous: WebGL contends with other parallel E2E workers)
+  await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
 
-  // An upper tooth, found by sweeping real clicks against this camera/
-  // Bounds setup (see tooth-chart-3d.tsx and ARCH_CALIBRATION in
-  // odontogram.ts, fitted to the real "/teeth/teeth.glb" model).
   await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.34);
+  await page.waitForTimeout(500);
 
-  // Clicking only focuses the tooth (camera zooms in) and opens an info
-  // panel — it does not select it yet.
-  await page.getByText("Sin consultas registradas en esta pieza.").waitFor();
+  // Clicking the model doesn't open a consultation dialog or any tooth
+  // picker — the odontogram here is a read-only treatment summary.
   await expect(page.locator("#tooth")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Usar esta pieza" }).click();
-
-  const toothInput = page.locator("#tooth");
-  await expect(toothInput).toBeVisible();
-  const toothValue = await toothInput.inputValue();
-  expect(toothValue).toMatch(/^[1-4][1-8]$/); // a valid FDI number
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(pageErrors).toHaveLength(0);
 });
 
-test("opening the odontogram from Nueva consulta shows it as a separate modal, closing once a tooth is confirmed", async ({
+test("the odontogram inside Nueva consulta shows whichever tooth is typed, and ignores clicks", async ({
   page,
 }) => {
-  // The modal closing itself the instant a tooth is confirmed used to
-  // unmount the Canvas (and drei's Html-portaled tooth labels inside
-  // it) synchronously in the same tick as the click — React: "Attempted
-  // to synchronously unmount a root while React was already rendering."
   const pageErrors: string[] = [];
   page.on("pageerror", (err) => pageErrors.push(err.message));
 
@@ -61,38 +52,23 @@ test("opening the odontogram from Nueva consulta shows it as a separate modal, c
   // Collapsed by default: no 3D canvas until the button is pressed.
   await expect(page.locator("canvas")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Agregar odontograma" }).click();
-  await page
-    .getByText("Click en un diente para verlo de cerca y elegirlo como pieza dental.")
-    .waitFor();
+  await page.fill("#tooth", "16");
+  await expect(page.getByRole("button", { name: "Ver pieza 16" })).toBeVisible();
+  await page.getByRole("button", { name: "Ver pieza 16" }).click();
+  await page.getByText("Vista de la pieza 16.", { exact: false }).waitFor();
+
   const canvas = page.locator("canvas");
   await canvas.waitFor();
   await page.waitForTimeout(5000); // let the ~16MB model load and the camera auto-fit settle
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
 
-  // Same fraction as the standalone card test — both share the same
-  // camera/Bounds setup in tooth-chart-3d.tsx.
+  // Clicking inside the viewer must not change the selection or close it —
+  // the "Pieza dental" field is the only way to choose a tooth now.
   await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.34);
-  await page.getByRole("button", { name: "Usar esta pieza" }).waitFor();
-
-  // The modal stays open while the tooth is only focused — the odontogram
-  // is still here, just zoomed in with its info panel.
+  await page.waitForTimeout(500);
   await expect(page.locator("canvas")).toHaveCount(1);
+  await expect(page.locator("#tooth")).toHaveValue("16");
 
-  await page.getByRole("button", { name: "Usar esta pieza" }).click();
-
-  // Confirming closes the odontogram modal, and the Nueva consulta form
-  // underneath reflects the selection.
-  await expect(page.locator("canvas")).toHaveCount(0);
-  const toothInput = page.locator("#tooth");
-  await expect(toothInput).toBeVisible();
-  const toothValue = await toothInput.inputValue();
-  expect(toothValue).toMatch(/^[1-4][1-8]$/);
-  await expect(
-    page.getByRole("button", { name: `Odontograma (pieza ${toothValue})` }),
-  ).toBeVisible();
-
-  await page.waitForTimeout(500); // let any deferred unmount settle
   expect(pageErrors).toHaveLength(0);
 });

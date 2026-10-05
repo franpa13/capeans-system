@@ -49,25 +49,16 @@ export function NewConsultationDialog({
   fixedPatientName,
   treatmentOptions,
   insuranceOptions = [],
-  initialTooth,
   toothHistory = {},
-  open: controlledOpen,
-  onOpenChange: setControlledOpen,
 }: {
   patients?: PatientOption[];
   fixedPatientId?: string;
   fixedPatientName?: string;
   treatmentOptions: string[];
   insuranceOptions?: string[];
-  initialTooth?: string;
   toothHistory?: ToothHistory;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
 }) {
-  const isControlled = controlledOpen !== undefined;
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = isControlled ? setControlledOpen! : setInternalOpen;
+  const [open, setOpen] = useState(false);
   const [odontogramOpen, setOdontogramOpen] = useState(false);
 
   const {
@@ -76,7 +67,6 @@ export function NewConsultationDialog({
     reset,
     control,
     watch,
-    setValue,
     formState: { errors },
   } = useForm<ConsultationValues>({
     resolver: zodResolver(consultationSchema),
@@ -94,7 +84,7 @@ export function NewConsultationDialog({
       date: todayISO(),
       treatment: "",
       treatmentOther: "",
-      tooth: initialTooth ?? "",
+      tooth: "",
       notes: "",
     },
   });
@@ -163,14 +153,12 @@ export function NewConsultationDialog({
         if (!next) reset();
       }}
     >
-      {!isControlled && (
-        <DialogTrigger asChild>
-          <Button>
-            <Plus />
-            Nueva consulta
-          </Button>
-        </DialogTrigger>
-      )}
+      <DialogTrigger asChild>
+        <Button>
+          <Plus />
+          Nueva consulta
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
@@ -339,7 +327,7 @@ export function NewConsultationDialog({
                 onClick={() => setOdontogramOpen(true)}
               >
                 <Smile />
-                {tooth ? `Odontograma (pieza ${tooth})` : "Agregar odontograma"}
+                {tooth ? `Ver pieza ${tooth}` : "Ver odontograma"}
               </Button>
             </div>
 
@@ -348,23 +336,15 @@ export function NewConsultationDialog({
                 <DialogHeader>
                   <DialogTitle>Odontograma</DialogTitle>
                   <DialogDescription>
-                    Click en un diente para verlo de cerca y elegirlo como
-                    pieza dental.
+                    {tooth
+                      ? `Vista de la pieza ${tooth}. Para cambiarla, editá el campo "Pieza dental".`
+                      : 'Elegí una pieza en el campo "Pieza dental" para verla acá.'}
                   </DialogDescription>
                 </DialogHeader>
                 <ToothChart3D
                   className="h-128"
                   history={toothHistory}
                   selectedTooth={tooth || undefined}
-                  onToothClick={(fdi) => {
-                    setValue("tooth", fdi);
-                    // Deferred: closing the dialog unmounts the whole
-                    // Canvas (and drei's Html-portaled labels inside it)
-                    // — doing that synchronously, in the same tick as
-                    // the click that's still bubbling through the 3D
-                    // scene, raced with React's own commit and threw.
-                    setTimeout(() => setOdontogramOpen(false), 0);
-                  }}
                 />
               </DialogContent>
             </Dialog>

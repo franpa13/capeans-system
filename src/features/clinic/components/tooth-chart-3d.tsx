@@ -1,55 +1,35 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { Suspense, useEffect, useRef } from "react";
+import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Bounds, Center, useBounds, useGLTF } from "@react-three/drei";
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   LOWER_ARCH,
   UPPER_ARCH,
   cameraFocusFor,
-  nearestTooth,
   positionOnArch,
-  type Tooth,
 } from "@/features/clinic/lib/odontogram";
 
 export type ToothHistoryEntry = { date: Date; treatment: string };
 export type ToothHistory = Record<string, ToothHistoryEntry[]>;
 
 const COLOR_TREATED = "#4ade80";
-const COLOR_HIGHLIGHT = "#38bdf8";
-const COLOR_HOVER = "#7dd3fc";
+const COLOR_SELECTED = "#38bdf8";
 
-const HIT_RADIUS = 0.1;
+const MARKER_OFFSET = 0.06;
 const MARKER_RADIUS = 0.055;
 
-/**
- * Clicking the real, visible mesh is more reliable than clicking the
- * invisible per-tooth hit-spheres: those are calibrated against the
- * default front-on camera and drift out of alignment with the real
- * geometry once the user orbits the model, so a click that visually
- * lands on a tooth can miss its sphere. A click here is on the actual
- * geometry the user sees, from any angle, so it always lands; snapping
- * to the nearest calibrated tooth position recovers which tooth it was.
- */
-function MouthModel({ onFocus }: { onFocus: (fdi: string) => void }) {
+function MouthModel() {
   const { scene } = useGLTF("/teeth/teeth.glb");
-
-  function handleClick(e: ThreeEvent<MouseEvent>) {
-    e.stopPropagation();
-    onFocus(nearestTooth(e.point));
-  }
-
   return (
     <Center>
-      <primitive object={scene} onClick={handleClick} />
+      <primitive object={scene} />
     </Center>
   );
 }
 
-/** Zooms the Bounds-managed camera toward a tooth, or back to the
- * full-mouth overview when cleared. Must render inside <Bounds>. */
+/** Zooms the Bounds-managed camera toward the selected tooth, or back to
+ * the full-mouth overview when cleared. Must render inside <Bounds>. */
 function CameraFocus({ fdi }: { fdi: string | null }) {
   const bounds = useBounds();
   const wasFocused = useRef(false);
@@ -74,115 +54,41 @@ function CameraFocus({ fdi }: { fdi: string | null }) {
   return null;
 }
 
-function ToothHitTarget({
-  tooth,
+function ToothMarker({
   position,
   isTreated,
-  isFocused,
-  onFocus,
+  isSelected,
 }: {
-  tooth: Tooth;
   position: { x: number; y: number; z: number };
   isTreated: boolean;
-  isFocused: boolean;
-  onFocus: (fdi: string) => void;
+  isSelected: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
-  const highlighted = isFocused || hovered;
-  const markerColor = isFocused ? COLOR_HIGHLIGHT : hovered ? COLOR_HOVER : COLOR_TREATED;
+  if (!isTreated && !isSelected) return null;
+  const color = isSelected ? COLOR_SELECTED : COLOR_TREATED;
 
   return (
-    <group position={[position.x, position.y, position.z]}>
-      <mesh
-        visible={false}
-        onClick={(e) => {
-          e.stopPropagation();
-          onFocus(tooth.fdi);
-        }}
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          setHovered(true);
-          document.body.style.cursor = "pointer";
-        }}
-        onPointerOut={() => {
-          setHovered(false);
-          document.body.style.cursor = "auto";
-        }}
-      >
-        <sphereGeometry args={[HIT_RADIUS, 10, 10]} />
-      </mesh>
-      {(highlighted || isTreated) && (
-        <mesh position={[0, 0, HIT_RADIUS * 0.6]}>
-          <sphereGeometry args={[MARKER_RADIUS, 12, 12]} />
-          <meshStandardMaterial
-            color={markerColor}
-            emissive={markerColor}
-            emissiveIntensity={0.5}
-          />
-        </mesh>
-      )}
-    </group>
+    <mesh position={[position.x, position.y, position.z + MARKER_OFFSET]}>
+      <sphereGeometry args={[MARKER_RADIUS, 12, 12]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+    </mesh>
   );
 }
 
-function ToothInfoPanel({
-  fdi,
-  history,
-  onConfirm,
-  onClose,
-}: {
-  fdi: string;
-  history: ToothHistoryEntry[];
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="absolute inset-x-2 bottom-2 rounded-lg border bg-card/95 p-3 shadow-lg backdrop-blur-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Pieza {fdi}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-6"
-          onClick={onClose}
-        >
-          <X className="size-3.5" />
-        </Button>
-      </div>
-      {history.length > 0 ? (
-        <ul className="mt-1.5 max-h-20 space-y-0.5 overflow-y-auto text-xs text-muted-foreground">
-          {history.map((entry, i) => (
-            <li key={i}>
-              {entry.date.toLocaleDateString("es-AR")} — {entry.treatment}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          Sin consultas registradas en esta pieza.
-        </p>
-      )}
-      <Button type="button" size="sm" className="mt-2 w-full" onClick={onConfirm}>
-        Usar esta pieza
-      </Button>
-    </div>
-  );
-}
-
+/**
+ * A read-only view of the mouth: pieces are chosen elsewhere (the "Pieza
+ * dental" field), never by clicking here. Selecting a tooth paints it and
+ * zooms the camera toward it; teeth with consultation history stay marked
+ * in green so the whole chart gives an at-a-glance treatment summary.
+ */
 export function ToothChart3D({
   history = {},
   selectedTooth,
-  onToothClick,
   className = "h-112",
 }: {
   history?: ToothHistory;
   selectedTooth?: string;
-  onToothClick: (fdi: string) => void;
   className?: string;
 }) {
-  const [focusedTooth, setFocusedTooth] = useState<string | null>(null);
-
   return (
     <div
       className={`relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40 ${className}`}
@@ -194,27 +100,23 @@ export function ToothChart3D({
 
         <Suspense fallback={null}>
           <Bounds fit clip observe margin={1.3}>
-            <MouthModel onFocus={setFocusedTooth} />
-            <CameraFocus fdi={focusedTooth} />
+            <MouthModel />
+            <CameraFocus fdi={selectedTooth ?? null} />
 
             {UPPER_ARCH.map((tooth, i) => (
-              <ToothHitTarget
+              <ToothMarker
                 key={tooth.fdi}
-                tooth={tooth}
                 position={positionOnArch(i, UPPER_ARCH.length, "upper")}
                 isTreated={!!history[tooth.fdi]?.length}
-                isFocused={focusedTooth === tooth.fdi || selectedTooth === tooth.fdi}
-                onFocus={setFocusedTooth}
+                isSelected={selectedTooth === tooth.fdi}
               />
             ))}
             {LOWER_ARCH.map((tooth, i) => (
-              <ToothHitTarget
+              <ToothMarker
                 key={tooth.fdi}
-                tooth={tooth}
                 position={positionOnArch(i, LOWER_ARCH.length, "lower")}
                 isTreated={!!history[tooth.fdi]?.length}
-                isFocused={focusedTooth === tooth.fdi || selectedTooth === tooth.fdi}
-                onFocus={setFocusedTooth}
+                isSelected={selectedTooth === tooth.fdi}
               />
             ))}
           </Bounds>
@@ -222,18 +124,6 @@ export function ToothChart3D({
 
         <OrbitControls enablePan={false} minDistance={0.3} maxDistance={10} />
       </Canvas>
-
-      {focusedTooth && (
-        <ToothInfoPanel
-          fdi={focusedTooth}
-          history={history[focusedTooth] ?? []}
-          onConfirm={() => {
-            onToothClick(focusedTooth);
-            setFocusedTooth(null);
-          }}
-          onClose={() => setFocusedTooth(null)}
-        />
-      )}
 
       <span className="pointer-events-none absolute top-1 right-1.5 text-[9px] text-muted-foreground/70">
         Modelo 3D &quot;Teeth&quot; por dewa (Sketchfab, CC BY)
