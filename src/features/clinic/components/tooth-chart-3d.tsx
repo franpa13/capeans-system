@@ -17,8 +17,8 @@ export type ToothHistory = Record<string, ToothHistoryEntry[]>;
 const COLOR_TREATED = "#4ade80";
 const COLOR_SELECTED = "#38bdf8";
 
-const MARKER_OFFSET = 0.06;
-const MARKER_RADIUS = 0.055;
+const MARKER_OFFSET = 0.08;
+const MARKER_RADIUS = 0.085;
 
 function MouthModel() {
   const { scene } = useGLTF("/teeth/teeth.glb");
