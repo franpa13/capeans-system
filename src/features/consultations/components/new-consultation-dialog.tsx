@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, UserPlus } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +68,7 @@ export function NewConsultationDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? setControlledOpen! : setInternalOpen;
+  const [showOdontogram, setShowOdontogram] = useState(!!initialTooth);
 
   const {
     register,
@@ -331,12 +332,22 @@ export function NewConsultationDialog({
             )}
 
             <div className="space-y-2">
-              <Label>Odontograma (opcional)</Label>
-              <ToothChart3D
-                treatedTeeth={treatedTeeth}
-                selectedTooth={tooth || undefined}
-                onToothClick={(fdi) => setValue("tooth", fdi)}
-              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => setShowOdontogram((v) => !v)}
+              >
+                Odontograma (opcional)
+                {showOdontogram ? <ChevronUp /> : <ChevronDown />}
+              </Button>
+              {showOdontogram && (
+                <ToothChart3D
+                  treatedTeeth={treatedTeeth}
+                  selectedTooth={tooth || undefined}
+                  onToothClick={(fdi) => setValue("tooth", fdi)}
+                />
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
