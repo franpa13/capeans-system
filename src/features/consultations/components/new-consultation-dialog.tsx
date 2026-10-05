@@ -357,7 +357,12 @@ export function NewConsultationDialog({
                   selectedTooth={tooth || undefined}
                   onToothClick={(fdi) => {
                     setValue("tooth", fdi);
-                    setOdontogramOpen(false);
+                    // Deferred: closing the dialog unmounts the whole
+                    // Canvas (and drei's Html-portaled labels inside it)
+                    // — doing that synchronously, in the same tick as
+                    // the click that's still bubbling through the 3D
+                    // scene, raced with React's own commit and threw.
+                    setTimeout(() => setOdontogramOpen(false), 0);
                   }}
                 />
               </DialogContent>

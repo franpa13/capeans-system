@@ -73,13 +73,22 @@ function ToothHitTarget({
           />
         </mesh>
       )}
-      {(hovered || isSelected) && (
-        <Html center distanceFactor={3} style={{ pointerEvents: "none" }}>
-          <div className="rounded bg-foreground px-1 py-px text-[8px] font-medium whitespace-nowrap text-background">
-            {tooth.fdi}
-          </div>
-        </Html>
-      )}
+      {/* Always mounted, visibility toggled by CSS rather than
+          conditional rendering — drei's Html portals a DOM node outside
+          React's tree, and mounting/unmounting it right as this whole
+          chart unmounts (e.g. the odontogram modal closing itself on
+          tooth pick) can race with React's commit and throw
+          "Attempted to synchronously unmount a root while React was
+          already rendering". Keeping it mounted avoids that churn. */}
+      <Html center distanceFactor={3} style={{ pointerEvents: "none" }}>
+        <div
+          className={`rounded bg-foreground px-1 py-px text-[8px] font-medium whitespace-nowrap text-background ${
+            hovered || isSelected ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {tooth.fdi}
+        </div>
+      </Html>
     </group>
   );
 }

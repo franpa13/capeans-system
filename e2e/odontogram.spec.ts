@@ -38,6 +38,13 @@ test("clicking a tooth in the 3D odontogram opens a consultation pre-filled with
 test("opening the odontogram from Nueva consulta shows it as a separate modal, closing on tooth pick", async ({
   page,
 }) => {
+  // The modal closing itself the instant a tooth is clicked used to
+  // unmount the Canvas (and drei's Html-portaled tooth labels inside
+  // it) synchronously in the same tick as the click — React: "Attempted
+  // to synchronously unmount a root while React was already rendering."
+  const pageErrors: string[] = [];
+  page.on("pageerror", (err) => pageErrors.push(err.message));
+
   await page.goto("/sign-in");
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
@@ -69,4 +76,7 @@ test("opening the odontogram from Nueva consulta shows it as a separate modal, c
   await expect(
     page.getByRole("button", { name: `Odontograma (pieza ${toothValue})` }),
   ).toBeVisible();
+
+  await page.waitForTimeout(500); // let any deferred unmount settle
+  expect(pageErrors).toHaveLength(0);
 });
