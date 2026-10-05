@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, ChevronUp, Plus, UserPlus } from "lucide-react";
+import { Plus, Smile, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -68,7 +68,7 @@ export function NewConsultationDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? setControlledOpen! : setInternalOpen;
-  const [showOdontogram, setShowOdontogram] = useState(!!initialTooth);
+  const [odontogramOpen, setOdontogramOpen] = useState(false);
 
   const {
     register,
@@ -335,20 +335,33 @@ export function NewConsultationDialog({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full justify-between"
-                onClick={() => setShowOdontogram((v) => !v)}
+                className="w-full"
+                onClick={() => setOdontogramOpen(true)}
               >
-                Odontograma (opcional)
-                {showOdontogram ? <ChevronUp /> : <ChevronDown />}
+                <Smile />
+                {tooth ? `Odontograma (pieza ${tooth})` : "Agregar odontograma"}
               </Button>
-              {showOdontogram && (
+            </div>
+
+            <Dialog open={odontogramOpen} onOpenChange={setOdontogramOpen}>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Odontograma</DialogTitle>
+                  <DialogDescription>
+                    Click en un diente para elegirlo como pieza dental.
+                  </DialogDescription>
+                </DialogHeader>
                 <ToothChart3D
+                  className="h-128"
                   treatedTeeth={treatedTeeth}
                   selectedTooth={tooth || undefined}
-                  onToothClick={(fdi) => setValue("tooth", fdi)}
+                  onToothClick={(fdi) => {
+                    setValue("tooth", fdi);
+                    setOdontogramOpen(false);
+                  }}
                 />
-              )}
-            </div>
+              </DialogContent>
+            </Dialog>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

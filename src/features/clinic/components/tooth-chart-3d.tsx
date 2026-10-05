@@ -88,13 +88,17 @@ export function ToothChart3D({
   treatedTeeth = [],
   selectedTooth,
   onToothClick,
+  className = "h-112",
 }: {
   treatedTeeth?: string[];
   selectedTooth?: string;
   onToothClick: (fdi: string) => void;
+  className?: string;
 }) {
   return (
-    <div className="relative h-112 w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40">
+    <div
+      className={`relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40 ${className}`}
+    >
       <Canvas camera={{ position: [0, 0.05, 1], fov: 35 }}>
         <ambientLight intensity={1} />
         <directionalLight position={[2, 3, 2]} intensity={1.3} />
