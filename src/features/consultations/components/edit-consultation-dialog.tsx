@@ -158,7 +158,9 @@ export function EditConsultationDialog({
                     />
                   )}
                 />
-                {dentitionMode === "adulto" && <ToothChart3D selectedTeeth={teeth} />}
+                {dentitionMode === "adulto" && (
+                  <ToothChart3D selectedTeeth={teeth} autoFocus={false} />
+                )}
               </CardContent>
             </Card>
 

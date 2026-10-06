@@ -181,22 +181,27 @@ function CameraFocus({ fdi }: { fdi: string | null }) {
 /**
  * A read-only view of the mouth: pieces are chosen elsewhere (the "Piezas
  * dentales" field), never by clicking here. Selecting teeth paints their
- * real shape (not a floating marker); with exactly one selected, the
- * camera also zooms toward it (with several, the full-mouth overview
- * stays, since there's no single sane target to zoom to). Teeth with
+ * real shape (not a floating marker); with autoFocus on and exactly one
+ * selected, the camera also zooms toward it (with several, the full-mouth
+ * overview stays, since there's no single sane target to zoom to) — useful
+ * while actively picking a tooth, but distracting when just reviewing an
+ * already-complete consultation, so view/edit dialogs turn it off and stay
+ * on the overview regardless of how many teeth are selected. Teeth with
  * consultation history stay painted green so the whole chart gives an
  * at-a-glance treatment summary.
  */
 export function ToothChart3D({
   history = {},
   selectedTeeth = [],
+  autoFocus = true,
   className = "h-112",
 }: {
   history?: ToothHistory;
   selectedTeeth?: string[];
+  autoFocus?: boolean;
   className?: string;
 }) {
-  const focusFdi = selectedTeeth.length === 1 ? selectedTeeth[0] : null;
+  const focusFdi = autoFocus && selectedTeeth.length === 1 ? selectedTeeth[0] : null;
 
   const paintedTeeth = useMemo(() => {
     const map = new Map<string, string>();

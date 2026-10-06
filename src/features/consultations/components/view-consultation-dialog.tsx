@@ -92,7 +92,11 @@ export function ViewConsultationDialog({
           </Field>
         </div>
 
-        <ToothChart3D className="h-128" selectedTeeth={consultation.teeth} />
+        <ToothChart3D
+          className="h-128"
+          selectedTeeth={consultation.teeth}
+          autoFocus={false}
+        />
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onEdit}>
