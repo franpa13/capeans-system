@@ -102,7 +102,7 @@ export function PatientActions({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletePatientAction(patient.id)}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive! text-white! hover:bg-destructive/90!"
             >
               Eliminar
             </AlertDialogAction>

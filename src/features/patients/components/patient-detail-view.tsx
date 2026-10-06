@@ -118,6 +118,7 @@ export function PatientDetailView({
         <ConsultationsList
           consultations={consultations}
           showPatient={false}
+          fixedPatientName={patient.name}
           emptyMessage="Todavía no hay consultas registradas para este paciente."
           treatmentOptions={treatmentOptions}
         />

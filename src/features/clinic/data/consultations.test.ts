@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/clinic/data/patients";
 import {
   createConsultation,
+  deleteConsultation,
   getConsultation,
   getConsultations,
   getConsultationsForPatient,
+  updateConsultation,
 } from "@/features/clinic/data/consultations";
 
 let clinicA: { id: string };
@@ -131,5 +133,70 @@ describe("consultations data layer", () => {
         treatment: "Limpieza",
       }),
     ).rejects.toThrow("Patient not found for this clinic");
+  });
+
+  it("updates a consultation's editable fields", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      teeth: ["16"],
+      notes: "Original",
+    });
+
+    const updated = await updateConsultation(clinicA.id, consultation.id, {
+      date: new Date("2026-02-02"),
+      treatment: "Extracción",
+      teeth: ["17", "18"],
+      notes: "Corregido",
+    });
+
+    expect(updated.date).toEqual(new Date("2026-02-02"));
+    expect(updated.treatment).toBe("Extracción");
+    expect(updated.teeth).toEqual(["17", "18"]);
+    expect(updated.notes).toBe("Corregido");
+  });
+
+  it("does not update a consultation belonging to another clinic", async () => {
+    const patient = await createPatient(clinicB.id, { name: "Paciente B", phone: "222" });
+    const consultation = await createConsultation(clinicB.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+    });
+
+    await expect(
+      updateConsultation(clinicA.id, consultation.id, {
+        date: new Date("2026-02-02"),
+        treatment: "Extracción",
+      }),
+    ).rejects.toThrow("Consultation not found for this clinic");
+  });
+
+  it("deletes a consultation scoped to the given clinic", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+    });
+
+    await deleteConsultation(clinicA.id, consultation.id);
+
+    expect(await getConsultation(clinicA.id, consultation.id)).toBeNull();
+  });
+
+  it("does not delete a consultation belonging to another clinic", async () => {
+    const patient = await createPatient(clinicB.id, { name: "Paciente B", phone: "222" });
+    const consultation = await createConsultation(clinicB.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+    });
+
+    await deleteConsultation(clinicA.id, consultation.id);
+
+    expect(await getConsultation(clinicB.id, consultation.id)).not.toBeNull();
   });
 });

@@ -58,3 +58,23 @@ export const consultationSchema = z
   });
 
 export type ConsultationValues = z.infer<typeof consultationSchema>;
+
+export const editConsultationSchema = z
+  .object({
+    date: z.string().min(1, "Ingresá la fecha"),
+    treatment: z.string().min(1, "Elegí un tratamiento"),
+    treatmentOther: z.string().optional(),
+    teeth: z.array(z.string()).optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.treatment === "Otro" && !data.treatmentOther?.trim()) {
+      ctx.addIssue({
+        path: ["treatmentOther"],
+        code: z.ZodIssueCode.custom,
+        message: "Describí el tratamiento realizado",
+      });
+    }
+  });
+
+export type EditConsultationValues = z.infer<typeof editConsultationSchema>;

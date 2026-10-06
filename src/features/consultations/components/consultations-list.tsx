@@ -35,12 +35,14 @@ export function ConsultationsList({
   consultations,
   patients,
   showPatient = true,
+  fixedPatientName,
   emptyMessage = "Todavía no hay consultas registradas.",
   treatmentOptions,
 }: {
   consultations: Consultation[];
   patients?: Patient[];
   showPatient?: boolean;
+  fixedPatientName?: string;
   emptyMessage?: string;
   treatmentOptions: string[];
 }) {
@@ -127,6 +129,8 @@ export function ConsultationsList({
         consultations={filtered}
         patients={patients}
         showPatient={showPatient}
+        fixedPatientName={fixedPatientName}
+        treatmentOptions={treatmentOptions}
         emptyMessage={
           hasFilters
             ? "No hay consultas que coincidan con los filtros."

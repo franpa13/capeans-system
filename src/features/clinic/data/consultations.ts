@@ -55,3 +55,34 @@ export async function createConsultation(
     },
   });
 }
+
+export type UpdateConsultationInput = {
+  date: Date;
+  treatment: string;
+  teeth?: string[];
+  notes?: string;
+};
+
+export async function updateConsultation(
+  clinicId: string,
+  id: string,
+  input: UpdateConsultationInput,
+): Promise<Consultation> {
+  const result = await prisma.consultation.updateMany({
+    where: { id, clinicId },
+    data: {
+      date: input.date,
+      treatment: input.treatment,
+      teeth: input.teeth ?? [],
+      notes: input.notes ?? null,
+    },
+  });
+  if (result.count === 0) {
+    throw new Error("Consultation not found for this clinic");
+  }
+  return (await getConsultation(clinicId, id))!;
+}
+
+export async function deleteConsultation(clinicId: string, id: string): Promise<void> {
+  await prisma.consultation.deleteMany({ where: { id, clinicId } });
+}
