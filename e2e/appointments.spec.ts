@@ -41,7 +41,15 @@ test("a created appointment appears on the calendar, and double-booking the same
   await page.fill("#name", patientName);
   await page.fill("#phone", "11 3333-3333");
   await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("link", { name: patientName })).toBeVisible();
+  // With pagination, a new patient isn't necessarily on the first page
+  // (the list sorts alphabetically) — search for it like a real user would.
+  // The server action's post-mutation refresh can land after the fill and
+  // wipe the typed search text, so retry the fill until it sticks instead
+  // of gambling on a fixed delay.
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
 
   await page.goto("/dashboard/turnos");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();

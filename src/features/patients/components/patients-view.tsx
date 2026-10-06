@@ -22,10 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationNavigation } from "@/components/pagination-navigation";
+import { usePagination } from "@/hooks/use-pagination";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientActions } from "@/features/patients/components/patient-actions";
 
 const ALL_INSURANCES = "__all__";
+const PAGE_SIZE = 20;
 
 function matchesInsurance(
   patientInsurance: string | null,
@@ -66,6 +69,7 @@ export function PatientsView({
   }, [patients, query, insurance, insuranceOptions]);
 
   const hasFilters = !!query || insurance !== ALL_INSURANCES;
+  const { page, setPage, pageCount, pageItems } = usePagination(filtered, PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-4">
@@ -134,7 +138,7 @@ export function PatientsView({
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((patient) => (
+              pageItems.map((patient) => (
                 <TableRow key={patient.id}>
                   <TableCell className="p-0">
                     <Link
@@ -160,6 +164,8 @@ export function PatientsView({
           </TableBody>
         </Table>
       </div>
+
+      <PaginationNavigation page={page} pageCount={pageCount} onPageChange={setPage} />
     </div>
   );
 }

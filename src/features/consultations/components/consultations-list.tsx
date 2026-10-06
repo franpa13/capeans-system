@@ -13,11 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PaginationNavigation } from "@/components/pagination-navigation";
+import { usePagination } from "@/hooks/use-pagination";
 import { ConsultationsTable } from "@/features/consultations/components/consultations-table";
+import { toLocalDateString } from "@/features/clinic/lib/format";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import type { Consultation, Patient } from "@prisma/client";
 
 const ALL_TREATMENTS = "__all__";
+const PAGE_SIZE = 20;
 
 function matchesTreatment(
   consultationTreatment: string,
@@ -49,24 +53,41 @@ export function ConsultationsList({
   const [treatment, setTreatment] = useState(ALL_TREATMENTS);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [patientQuery, setPatientQuery] = useState("");
+  const [toothQuery, setToothQuery] = useState("");
+
+  const patientName = (id: string | null) =>
+    (id && patients?.find((p) => p.id === id)?.name) || "";
 
   const filtered = useMemo(() => {
+    const p = patientQuery.trim().toLowerCase();
+    const tooth = toothQuery.trim();
     return consultations.filter((c) => {
       if (!matchesTreatment(c.treatment, treatment, treatmentOptions)) return false;
-      const dateStr = c.date.toISOString().slice(0, 10);
+      // Not toISOString().slice(0, 10): that reads the UTC day, which can
+      // already be tomorrow for a late-evening local time (see format.ts).
+      const dateStr = toLocalDateString(c.date);
       if (from && dateStr < from) return false;
       if (to && dateStr > to) return false;
+      if (p && !patientName(c.patientId).toLowerCase().includes(p)) return false;
+      if (tooth && !c.teeth.some((t) => t.includes(tooth))) return false;
       return true;
     });
-  }, [consultations, treatment, from, to, treatmentOptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [consultations, treatment, from, to, treatmentOptions, patientQuery, toothQuery, patients]);
 
-  const hasFilters = treatment !== ALL_TREATMENTS || !!from || !!to;
+  const hasFilters =
+    treatment !== ALL_TREATMENTS || !!from || !!to || !!patientQuery || !!toothQuery;
 
   const clearFilters = () => {
     setTreatment(ALL_TREATMENTS);
     setFrom("");
     setTo("");
+    setPatientQuery("");
+    setToothQuery("");
   };
+
+  const { page, setPage, pageCount, pageItems } = usePagination(filtered, PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,6 +110,34 @@ export function ConsultationsList({
               <SelectItem value={OTHER_TREATMENT}>{OTHER_TREATMENT}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {showPatient && (
+          <div className="space-y-1.5">
+            <Label htmlFor="filter-patient" className="text-xs text-muted-foreground">
+              Paciente
+            </Label>
+            <Input
+              id="filter-patient"
+              placeholder="Buscar por nombre..."
+              value={patientQuery}
+              onChange={(e) => setPatientQuery(e.target.value)}
+              className="w-full sm:w-48"
+            />
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="filter-tooth" className="text-xs text-muted-foreground">
+            Pieza
+          </Label>
+          <Input
+            id="filter-tooth"
+            placeholder="Ej: 16"
+            value={toothQuery}
+            onChange={(e) => setToothQuery(e.target.value)}
+            className="w-full sm:w-28"
+          />
         </div>
 
         <div className="space-y-1.5">
@@ -126,7 +175,7 @@ export function ConsultationsList({
       </div>
 
       <ConsultationsTable
-        consultations={filtered}
+        consultations={pageItems}
         patients={patients}
         showPatient={showPatient}
         fixedPatientName={fixedPatientName}
@@ -137,6 +186,8 @@ export function ConsultationsList({
             : emptyMessage
         }
       />
+
+      <PaginationNavigation page={page} pageCount={pageCount} onPageChange={setPage} />
     </div>
   );
 }

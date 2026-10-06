@@ -19,9 +19,17 @@ test("a user from clinic A cannot see a patient created by clinic B", async ({
   await clinicAPage.fill("#name", patientName);
   await clinicAPage.fill("#phone", "11 2222-2222");
   await clinicAPage.getByRole("button", { name: "Guardar" }).click();
-  await expect(
-    clinicAPage.getByRole("link", { name: patientName }),
-  ).toBeVisible();
+  // With pagination, a new patient isn't necessarily on the first page
+  // (the list sorts alphabetically) — search for it like a real user would.
+  // The server action's post-mutation refresh can land after the fill and
+  // wipe the typed search text, so retry the fill until it sticks instead
+  // of gambling on a fixed delay.
+  await expect(async () => {
+    await clinicAPage.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(clinicAPage.getByRole("link", { name: patientName })).toBeVisible({
+      timeout: 1000,
+    });
+  }).toPass({ timeout: 10000 });
 
   const patientLink = clinicAPage.getByRole("link", { name: patientName });
   const patientHref = await patientLink.getAttribute("href");
