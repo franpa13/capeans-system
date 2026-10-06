@@ -98,3 +98,25 @@ test("the odontogram hides on the Niño tab — no 3D model for primary teeth ye
   await page.getByRole("tab", { name: "Adulto" }).click();
   await expect(page.locator("canvas")).toHaveCount(1);
 });
+
+test("switching dentition tabs clears previously picked teeth", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+
+  await page.locator("#teeth").click();
+  await page.getByRole("option", { name: "14", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Quitar pieza 14" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Niño" }).click();
+  await expect(page.getByRole("button", { name: "Quitar pieza 14" })).toHaveCount(0);
+
+  await page.locator("#teeth-primary").click();
+  await page.getByRole("option", { name: "55", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Quitar pieza 55" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Adulto" }).click();
+  await expect(page.getByRole("button", { name: "Quitar pieza 55" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Quitar pieza 14" })).toHaveCount(0);
+});

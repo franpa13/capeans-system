@@ -344,7 +344,13 @@ export function NewConsultationDialog({
                       value={field.value ?? []}
                       onChange={field.onChange}
                       mode={dentitionMode}
-                      onModeChange={setDentitionMode}
+                      onModeChange={(mode) => {
+                        setDentitionMode(mode);
+                        // Per feedback: switching tabs starts the piece
+                        // list over, rather than carrying over whatever was
+                        // picked under the other dentition.
+                        field.onChange([]);
+                      }}
                     />
                   )}
                 />
