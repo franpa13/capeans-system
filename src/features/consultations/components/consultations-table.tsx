@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { Eye, FileText, Pencil, Trash2 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,8 +24,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/features/clinic/lib/format";
+import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
+import { deleteConsultationAction } from "@/features/consultations/actions";
 import { EditConsultationDialog } from "@/features/consultations/components/edit-consultation-dialog";
+import { ViewConsultationDialog } from "@/features/consultations/components/view-consultation-dialog";
 import type { Consultation, Patient } from "@prisma/client";
 
 export function ConsultationsTable({
@@ -32,10 +45,21 @@ export function ConsultationsTable({
   fixedPatientName?: string;
   emptyMessage?: string;
 }) {
+  const [viewing, setViewing] = useState<Consultation | null>(null);
   const [editing, setEditing] = useState<Consultation | null>(null);
+  const [deleting, setDeleting] = useState<Consultation | null>(null);
 
   const patientName = (id: string) =>
     fixedPatientName ?? patients?.find((p) => p.id === id)?.name ?? "Paciente eliminado";
+
+  const nameFor = (c: Consultation) =>
+    c.patientId ? patientName(c.patientId) : "Paciente eliminado";
+
+  const handleDelete = async () => {
+    if (!deleting) return;
+    await deleteConsultationAction(deleting.id);
+    setDeleting(null);
+  };
 
   return (
     <div className="rounded-lg border">
@@ -47,13 +71,14 @@ export function ConsultationsTable({
             <TableHead>Tratamiento</TableHead>
             <TableHead>Pieza</TableHead>
             <TableHead>Observaciones</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {consultations.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={showPatient ? 5 : 4}
+                colSpan={showPatient ? 6 : 5}
                 className="h-32 text-center text-muted-foreground"
               >
                 <div className="flex flex-col items-center gap-2">
@@ -64,13 +89,9 @@ export function ConsultationsTable({
             </TableRow>
           ) : (
             consultations.map((c) => (
-              <TableRow
-                key={c.id}
-                className="cursor-pointer"
-                onClick={() => setEditing(c)}
-              >
+              <TableRow key={c.id}>
                 <TableCell className="whitespace-nowrap">
-                  {formatDate(c.date.toISOString().slice(0, 10))}
+                  {formatDate(toLocalDateString(c.date))} {formatTime(c.date)}
                 </TableCell>
                 {showPatient && (
                   <TableCell className="font-medium">
@@ -78,7 +99,6 @@ export function ConsultationsTable({
                       <Link
                         href={`/dashboard/pacientes/${c.patientId}`}
                         className="hover:underline"
-                        onClick={(e) => e.stopPropagation()}
                       >
                         {patientName(c.patientId)}
                       </Link>
@@ -98,17 +118,65 @@ export function ConsultationsTable({
                 <TableCell className="max-w-xs truncate text-muted-foreground">
                   {c.notes ?? "—"}
                 </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Ver consulta"
+                      onClick={() => setViewing(c)}
+                    >
+                      <Eye />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Editar consulta"
+                      onClick={() => setEditing(c)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Eliminar consulta"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleting(c)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
 
+      {viewing && (
+        <ViewConsultationDialog
+          key={`view-${viewing.id}`}
+          consultation={viewing}
+          patientName={nameFor(viewing)}
+          open
+          onOpenChange={(next) => {
+            if (!next) setViewing(null);
+          }}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(null);
+          }}
+        />
+      )}
+
       {editing && (
         <EditConsultationDialog
-          key={editing.id}
+          key={`edit-${editing.id}`}
           consultation={editing}
-          patientName={editing.patientId ? patientName(editing.patientId) : "Paciente eliminado"}
+          patientName={nameFor(editing)}
           treatmentOptions={treatmentOptions}
           open
           onOpenChange={(next) => {
@@ -116,6 +184,28 @@ export function ConsultationsTable({
           }}
         />
       )}
+
+      <AlertDialog open={!!deleting} onOpenChange={(next) => !next && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar esta consulta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El registro de esta visita
+              {deleting ? ` para ${nameFor(deleting)}` : ""} se va a borrar
+              por completo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive! text-white! hover:bg-destructive/90!"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

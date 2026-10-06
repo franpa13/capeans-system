@@ -16,6 +16,7 @@ export const consultationSchema = z
     newPatientInsuranceOther: z.string().optional(),
     newPatientAllergies: z.string().optional(),
     date: z.string().min(1, "Ingresá la fecha"),
+    time: z.string().min(1, "Ingresá la hora"),
     treatment: z.string().min(1, "Elegí un tratamiento"),
     treatmentOther: z.string().optional(),
     teeth: z.array(z.string()).optional(),
@@ -62,6 +63,7 @@ export type ConsultationValues = z.infer<typeof consultationSchema>;
 export const editConsultationSchema = z
   .object({
     date: z.string().min(1, "Ingresá la fecha"),
+    time: z.string().min(1, "Ingresá la hora"),
     treatment: z.string().min(1, "Elegí un tratamiento"),
     treatmentOther: z.string().optional(),
     teeth: z.array(z.string()).optional(),

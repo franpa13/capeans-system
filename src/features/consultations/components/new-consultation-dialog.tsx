@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
 import { TeethField, type DentitionMode } from "@/features/clinic/components/teeth-field";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
+import { combineDateAndTime, toLocalDateString } from "@/features/clinic/lib/format";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
@@ -42,7 +43,13 @@ import {
 type PatientOption = { id: string; name: string };
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  // Not toISOString().slice(0, 10): that reads the UTC date, which is
+  // already tomorrow for anyone in Argentina (UTC-3) past 21:00 local.
+  return toLocalDateString(new Date());
+}
+
+function nowHHMM() {
+  return new Date().toTimeString().slice(0, 5);
 }
 
 export function NewConsultationDialog({
@@ -84,6 +91,7 @@ export function NewConsultationDialog({
       newPatientInsuranceOther: "",
       newPatientAllergies: "",
       date: todayISO(),
+      time: nowHHMM(),
       treatment: "",
       treatmentOther: "",
       teeth: [],
@@ -101,7 +109,7 @@ export function NewConsultationDialog({
 
     await createConsultationAction({
       patientId: finalPatientId,
-      date: new Date(values.date),
+      date: combineDateAndTime(values.date, values.time),
       treatment:
         values.treatment === OTHER_TREATMENT
           ? values.treatmentOther!.trim()
@@ -139,6 +147,7 @@ export function NewConsultationDialog({
       newPatientInsuranceOther: "",
       newPatientAllergies: "",
       date: todayISO(),
+      time: nowHHMM(),
       treatment: "",
       treatmentOther: "",
       teeth: [],
@@ -321,17 +330,31 @@ export function NewConsultationDialog({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="date">Fecha</Label>
-              <Input
-                id="date"
-                type="date"
-                aria-invalid={!!errors.date}
-                {...register("date")}
-              />
-              {errors.date && (
-                <p className="text-sm text-destructive">{errors.date.message}</p>
-              )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="date">Fecha</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  aria-invalid={!!errors.date}
+                  {...register("date")}
+                />
+                {errors.date && (
+                  <p className="text-sm text-destructive">{errors.date.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time">Hora</Label>
+                <Input
+                  id="time"
+                  type="time"
+                  aria-invalid={!!errors.time}
+                  {...register("time")}
+                />
+                {errors.time && (
+                  <p className="text-sm text-destructive">{errors.time.message}</p>
+                )}
+              </div>
             </div>
 
             <Card>
