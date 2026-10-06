@@ -33,7 +33,12 @@ function ToothPicker({
       <SelectTrigger id={id} className="w-full">
         <SelectValue placeholder="Agregar una pieza" />
       </SelectTrigger>
-      <SelectContent>
+      {/* popper (vs. the default item-aligned) anchors the list to the
+          trigger and caps it to a fixed height with scroll buttons on both
+          ends — item-aligned instead tries to align the selected row with
+          the trigger, which for a 32-row list made it balloon upward with
+          no visible way to tell, since there's rarely room above. */}
+      <SelectContent position="popper" className="max-h-64">
         {available.map((t) => (
           <SelectItem key={t.fdi} value={t.fdi}>
             {t.fdi}
