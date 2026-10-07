@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaginationNavigation } from "@/components/pagination-navigation";
+import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { usePagination } from "@/hooks/use-pagination";
 import { useUrlFilters } from "@/hooks/use-url-filters";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
@@ -48,6 +49,20 @@ export function PatientsView({
   const query = values.q;
 
   const hasFilters = !!query || insurance !== ALL_INSURANCES;
+
+  const chips: FilterChip[] = [
+    !!query && {
+      key: "q",
+      label: `Nombre: ${query}`,
+      onRemove: () => setValue("q", ""),
+    },
+    insurance !== ALL_INSURANCES && {
+      key: "obra",
+      label: `Obra social: ${insurance}`,
+      onRemove: () => setValue("obra", ""),
+    },
+  ].filter((chip): chip is FilterChip => chip !== false);
+
   const { page, setPage, pageCount, pageItems } = usePagination(patients, PAGE_SIZE);
 
   return (
@@ -89,6 +104,8 @@ export function PatientsView({
           </Button>
         )}
       </div>
+
+      <ActiveFilterChips chips={chips} />
 
       <div className="rounded-lg border">
         <Table>

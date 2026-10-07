@@ -48,14 +48,25 @@ export function useUrlFilters<K extends string>(
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
+  // Navigation is a side effect, so it can't live inside a setValues
+  // updater — React may invoke that updater during another component's
+  // render (e.g. a bail-out check), and calling router.replace from there
+  // trips "Cannot update a component while rendering a different
+  // component". Each setValue/setMany call only ever runs once per event
+  // (one input, one onChange), so reading `values` from the closure
+  // instead of a functional update is safe here.
+  const setMany = (patch: Partial<Record<K, string>>) => {
+    const next = { ...values, ...patch };
+    setValues(next);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    navigate(next);
+  };
+
   const setValue = (key: K, value: string) => {
-    // Navigation is a side effect, so it can't live inside the setValues
-    // updater above — React may invoke that updater during another
-    // component's render (e.g. a bail-out check), and calling router.replace
-    // from there trips "Cannot update a component while rendering a
-    // different component". Each setValue call only ever runs once per
-    // event (one input, one onChange), so reading `values` from the
-    // closure instead of a functional update is safe here.
     const next = { ...values, [key]: value };
     setValues(next);
 
@@ -79,5 +90,5 @@ export function useUrlFilters<K extends string>(
     router.replace(pathname, { scroll: false });
   };
 
-  return { values, setValue, clear };
+  return { values, setValue, setMany, clear };
 }

@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
+import { DateRangeFilter } from "@/features/consultations/components/date-range-filter";
 
 export const ALL_TREATMENTS = "__all__";
 
@@ -31,9 +32,8 @@ export function ConsultationFilterBar({
   toothQuery,
   onToothQueryChange,
   from,
-  onFromChange,
   to,
-  onToChange,
+  onRangeChange,
   hasFilters,
   onClear,
 }: {
@@ -46,9 +46,8 @@ export function ConsultationFilterBar({
   toothQuery: string;
   onToothQueryChange: (value: string) => void;
   from: string;
-  onFromChange: (value: string) => void;
   to: string;
-  onToChange: (value: string) => void;
+  onRangeChange: (range: { from: string; to: string }) => void;
   hasFilters: boolean;
   onClear: () => void;
 }) {
@@ -100,31 +99,7 @@ export function ConsultationFilterBar({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="filter-from" className="text-xs text-muted-foreground">
-          Desde
-        </Label>
-        <Input
-          id="filter-from"
-          type="date"
-          value={from}
-          onChange={(e) => onFromChange(e.target.value)}
-          className="w-full sm:w-40"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="filter-to" className="text-xs text-muted-foreground">
-          Hasta
-        </Label>
-        <Input
-          id="filter-to"
-          type="date"
-          value={to}
-          onChange={(e) => onToChange(e.target.value)}
-          className="w-full sm:w-40"
-        />
-      </div>
+      <DateRangeFilter from={from} to={to} onChange={onRangeChange} />
 
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={onClear}>

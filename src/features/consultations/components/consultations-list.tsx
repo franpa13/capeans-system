@@ -93,9 +93,11 @@ export function ConsultationsList({
         toothQuery={toothQuery}
         onToothQueryChange={setToothQuery}
         from={from}
-        onFromChange={setFrom}
         to={to}
-        onToChange={setTo}
+        onRangeChange={(r) => {
+          setFrom(r.from);
+          setTo(r.to);
+        }}
         hasFilters={hasFilters}
         onClear={clearFilters}
       />
