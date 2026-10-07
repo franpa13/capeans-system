@@ -49,19 +49,25 @@ export function useUrlFilters<K extends string>(
   };
 
   const setValue = (key: K, value: string) => {
-    setValues((prev) => {
-      const next = { ...prev, [key]: value };
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      if (debouncedKeys.includes(key)) {
-        timeoutRef.current = setTimeout(() => navigate(next), delayMs);
-      } else {
-        navigate(next);
-      }
-      return next;
-    });
+    // Navigation is a side effect, so it can't live inside the setValues
+    // updater above — React may invoke that updater during another
+    // component's render (e.g. a bail-out check), and calling router.replace
+    // from there trips "Cannot update a component while rendering a
+    // different component". Each setValue call only ever runs once per
+    // event (one input, one onChange), so reading `values` from the
+    // closure instead of a functional update is safe here.
+    const next = { ...values, [key]: value };
+    setValues(next);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    if (debouncedKeys.includes(key)) {
+      timeoutRef.current = setTimeout(() => navigate(next), delayMs);
+    } else {
+      navigate(next);
+    }
   };
 
   const clear = () => {
