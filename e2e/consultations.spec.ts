@@ -105,6 +105,46 @@ test("deleting a consultation from the table removes it after confirming", async
   await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
 });
 
+test("filtering by Paciente and Pieza narrows the list via the backend", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  const patientName = `Paciente Filtro E2E ${Date.now()}`;
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 7777-7777");
+  await page.locator("#teeth").click();
+  await page.getByRole("option", { name: "16", exact: true }).click();
+  await page.getByRole("combobox").nth(3).click();
+  await page.getByRole("option", { name: "Limpieza" }).click();
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.locator("tbody").getByText(patientName)).toBeVisible();
+
+  // The Paciente filter is a free-text query joined against the patient's
+  // name on the server (see getConsultations) — it should narrow the table
+  // down to just this patient's consultation and reflect in the URL.
+  await page.locator("#filter-patient").fill(patientName);
+  await expect(page).toHaveURL(/paciente=/);
+  await expect(page.locator("tbody").getByText(patientName)).toBeVisible();
+
+  // The Pieza filter matches a tooth exactly against the stored teeth
+  // array — 16 was picked, 27 was not.
+  await page.locator("#filter-tooth").fill("27");
+  await expect(page).toHaveURL(/pieza=27/);
+  await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
+
+  await page.locator("#filter-tooth").fill("16");
+  await expect(page).toHaveURL(/pieza=16/);
+  await expect(page.locator("tbody").getByText(patientName)).toBeVisible();
+
+  await page.getByRole("button", { name: "Limpiar filtros" }).click();
+  await expect(page).not.toHaveURL(/pieza=|paciente=/);
+  await expect(page.locator("tbody").getByText(patientName)).toBeVisible();
+});
+
 test("a consultation records the time it was logged, not just the date", async ({ page }) => {
   await page.goto("/sign-in");
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });

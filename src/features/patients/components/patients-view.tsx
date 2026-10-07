@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, Users, X } from "lucide-react";
 import type { Patient } from "@prisma/client";
@@ -24,31 +23,19 @@ import {
 } from "@/components/ui/table";
 import { PaginationNavigation } from "@/components/pagination-navigation";
 import { usePagination } from "@/hooks/use-pagination";
+import { useUrlFilters } from "@/hooks/use-url-filters";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientActions } from "@/features/patients/components/patient-actions";
 
 const ALL_INSURANCES = "__all__";
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
+const PARAM_KEYS = ["q", "obra"] as const;
+const DEBOUNCED_KEYS = ["q"] as const;
 
-function matchesInsurance(
-  patientInsurance: string | null,
-  filter: string,
-  insuranceOptions: string[],
-) {
-  if (filter === ALL_INSURANCES) return true;
-  if (filter === NO_INSURANCE) {
-    return !patientInsurance || patientInsurance === NO_INSURANCE;
-  }
-  if (filter === OTHER_INSURANCE) {
-    return (
-      !!patientInsurance &&
-      patientInsurance !== NO_INSURANCE &&
-      !insuranceOptions.includes(patientInsurance)
-    );
-  }
-  return patientInsurance === filter;
-}
-
+/** Filters live in the URL (so they survive a reload and can be shared /
+ * bookmarked) and are applied by getPatients in the Server Component above
+ * — `patients` here is already the filtered result. Only pagination stays
+ * client-side, slicing that already-filtered array. */
 export function PatientsView({
   patients,
   insuranceOptions,
@@ -56,20 +43,12 @@ export function PatientsView({
   patients: Patient[];
   insuranceOptions: string[];
 }) {
-  const [query, setQuery] = useState("");
-  const [insurance, setInsurance] = useState(ALL_INSURANCES);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return patients.filter((p) => {
-      if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (!matchesInsurance(p.insurance, insurance, insuranceOptions)) return false;
-      return true;
-    });
-  }, [patients, query, insurance, insuranceOptions]);
+  const { values, setValue, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
+  const insurance = values.obra || ALL_INSURANCES;
+  const query = values.q;
 
   const hasFilters = !!query || insurance !== ALL_INSURANCES;
-  const { page, setPage, pageCount, pageItems } = usePagination(filtered, PAGE_SIZE);
+  const { page, setPage, pageCount, pageItems } = usePagination(patients, PAGE_SIZE);
 
   return (
     <div className="flex flex-col gap-4">
@@ -80,11 +59,14 @@ export function PatientsView({
             placeholder="Buscar por nombre..."
             className="pl-8"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => setValue("q", e.target.value)}
           />
         </div>
 
-        <Select value={insurance} onValueChange={setInsurance}>
+        <Select
+          value={insurance}
+          onValueChange={(v) => setValue("obra", v === ALL_INSURANCES ? "" : v)}
+        >
           <SelectTrigger className="w-full sm:w-56">
             <SelectValue />
           </SelectTrigger>
@@ -101,14 +83,7 @@ export function PatientsView({
         </Select>
 
         {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setQuery("");
-              setInsurance(ALL_INSURANCES);
-            }}
-          >
+          <Button variant="ghost" size="sm" onClick={clear}>
             <X />
             Limpiar filtros
           </Button>
@@ -126,14 +101,14 @@ export function PatientsView({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {patients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
                     <Users className="size-5" />
-                    {patients.length === 0
-                      ? "Todavía no hay pacientes cargados."
-                      : "No se encontraron pacientes con esos filtros."}
+                    {hasFilters
+                      ? "No se encontraron pacientes con esos filtros."
+                      : "Todavía no hay pacientes cargados."}
                   </div>
                 </TableCell>
               </TableRow>

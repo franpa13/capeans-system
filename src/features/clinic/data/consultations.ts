@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { Consultation } from "@prisma/client";
+import type { Consultation, Prisma } from "@prisma/client";
+import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 
 export type NewConsultationInput = {
   patientId: string;
@@ -9,9 +10,49 @@ export type NewConsultationInput = {
   notes?: string;
 };
 
-export async function getConsultations(clinicId: string): Promise<Consultation[]> {
+export type ConsultationListFilters = {
+  /** An exact treatment label, or the OTHER_TREATMENT sentinel — undefined
+   * means no treatment filter at all. */
+  treatment?: string;
+  /** "YYYY-MM-DD", inclusive, compared in local time to match how the date
+   * inputs and the stored visit time are read elsewhere (see format.ts). */
+  from?: string;
+  to?: string;
+  patientQuery?: string;
+  /** A tooth number, matched exactly against entries in `teeth`. */
+  tooth?: string;
+};
+
+export async function getConsultations(
+  clinicId: string,
+  filters: ConsultationListFilters = {},
+  treatmentOptions: string[] = [],
+): Promise<Consultation[]> {
+  const where: Prisma.ConsultationWhereInput = { clinicId };
+
+  if (filters.treatment === OTHER_TREATMENT) {
+    where.treatment = { notIn: treatmentOptions };
+  } else if (filters.treatment) {
+    where.treatment = filters.treatment;
+  }
+
+  if (filters.from || filters.to) {
+    where.date = {
+      ...(filters.from ? { gte: new Date(`${filters.from}T00:00:00`) } : {}),
+      ...(filters.to ? { lte: new Date(`${filters.to}T23:59:59.999`) } : {}),
+    };
+  }
+
+  if (filters.patientQuery) {
+    where.patient = { name: { contains: filters.patientQuery, mode: "insensitive" } };
+  }
+
+  if (filters.tooth) {
+    where.teeth = { has: filters.tooth };
+  }
+
   return prisma.consultation.findMany({
-    where: { clinicId },
+    where,
     orderBy: { date: "desc" },
   });
 }

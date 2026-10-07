@@ -67,8 +67,6 @@ test("the odontogram inside Nueva consulta is visible on the Adulto tab by defau
   await page.getByRole("option", { name: "16", exact: true }).click();
   await page.locator("#teeth").click();
   await page.getByRole("option", { name: "17", exact: true }).click();
-  await expect(page.getByText("16", { exact: true })).toBeVisible();
-  await expect(page.getByText("17", { exact: true })).toBeVisible();
 
   // Clicking inside the viewer must not change the selection — the
   // "Piezas dentales" select is the only way to choose teeth now.

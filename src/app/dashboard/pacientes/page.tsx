@@ -5,15 +5,21 @@ import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 
-export default async function PacientesPage() {
+export default async function PacientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const query = typeof params.q === "string" ? params.q : undefined;
+  const insurance = typeof params.obra === "string" ? params.obra : undefined;
+
   const clinic = await getCurrentClinic();
-  const [patients, insuranceOptions] = clinic
-    ? await Promise.all([
-        getPatients(clinic.id),
-        getClinicOptions(clinic.id, "insurance"),
-      ])
-    : [[], []];
+  const insuranceOptions = clinic ? await getClinicOptions(clinic.id, "insurance") : [];
   const insuranceLabels = insuranceOptions.map((o) => o.label);
+  const patients = clinic
+    ? await getPatients(clinic.id, { query, insurance }, insuranceLabels)
+    : [];
 
   return (
     <div className="flex flex-col gap-6">

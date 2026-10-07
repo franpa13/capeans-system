@@ -1,27 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PaginationNavigation } from "@/components/pagination-navigation";
 import { usePagination } from "@/hooks/use-pagination";
 import { ConsultationsTable } from "@/features/consultations/components/consultations-table";
+import {
+  ALL_TREATMENTS,
+  ConsultationFilterBar,
+} from "@/features/consultations/components/consultation-filter-bar";
 import { toLocalDateString } from "@/features/clinic/lib/format";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import type { Consultation, Patient } from "@prisma/client";
 
-const ALL_TREATMENTS = "__all__";
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 function matchesTreatment(
   consultationTreatment: string,
@@ -91,88 +83,22 @@ export function ConsultationsList({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Tratamiento</Label>
-          <Select value={treatment} onValueChange={setTreatment}>
-            <SelectTrigger className="w-full sm:w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_TREATMENTS}>
-                Todos los tratamientos
-              </SelectItem>
-              {treatmentOptions.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-              <SelectItem value={OTHER_TREATMENT}>{OTHER_TREATMENT}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {showPatient && (
-          <div className="space-y-1.5">
-            <Label htmlFor="filter-patient" className="text-xs text-muted-foreground">
-              Paciente
-            </Label>
-            <Input
-              id="filter-patient"
-              placeholder="Buscar por nombre..."
-              value={patientQuery}
-              onChange={(e) => setPatientQuery(e.target.value)}
-              className="w-full sm:w-48"
-            />
-          </div>
-        )}
-
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-tooth" className="text-xs text-muted-foreground">
-            Pieza
-          </Label>
-          <Input
-            id="filter-tooth"
-            placeholder="Ej: 16"
-            value={toothQuery}
-            onChange={(e) => setToothQuery(e.target.value)}
-            className="w-full sm:w-28"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-from" className="text-xs text-muted-foreground">
-            Desde
-          </Label>
-          <Input
-            id="filter-from"
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="w-full sm:w-40"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="filter-to" className="text-xs text-muted-foreground">
-            Hasta
-          </Label>
-          <Input
-            id="filter-to"
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="w-full sm:w-40"
-          />
-        </div>
-
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X />
-            Limpiar filtros
-          </Button>
-        )}
-      </div>
+      <ConsultationFilterBar
+        treatment={treatment}
+        onTreatmentChange={setTreatment}
+        treatmentOptions={treatmentOptions}
+        showPatient={showPatient}
+        patientQuery={patientQuery}
+        onPatientQueryChange={setPatientQuery}
+        toothQuery={toothQuery}
+        onToothQueryChange={setToothQuery}
+        from={from}
+        onFromChange={setFrom}
+        to={to}
+        onToChange={setTo}
+        hasFilters={hasFilters}
+        onClear={clearFilters}
+      />
 
       <ConsultationsTable
         consultations={pageItems}

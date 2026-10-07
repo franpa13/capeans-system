@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { Patient } from "@prisma/client";
+import type { Patient, Prisma } from "@prisma/client";
+import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 
 export type NewPatientInput = {
   name: string;
@@ -12,9 +13,34 @@ export type NewPatientInput = {
   allergies?: string;
 };
 
-export async function getPatients(clinicId: string): Promise<Patient[]> {
+export type PatientListFilters = {
+  query?: string;
+  /** An exact insurance label, or the NO_INSURANCE / OTHER_INSURANCE
+   * sentinel — undefined means no insurance filter at all. */
+  insurance?: string;
+};
+
+export async function getPatients(
+  clinicId: string,
+  filters: PatientListFilters = {},
+  insuranceOptions: string[] = [],
+): Promise<Patient[]> {
+  const where: Prisma.PatientWhereInput = { clinicId };
+
+  if (filters.query) {
+    where.name = { contains: filters.query, mode: "insensitive" };
+  }
+
+  if (filters.insurance === NO_INSURANCE) {
+    where.OR = [{ insurance: null }, { insurance: NO_INSURANCE }];
+  } else if (filters.insurance === OTHER_INSURANCE) {
+    where.insurance = { not: null, notIn: [NO_INSURANCE, ...insuranceOptions] };
+  } else if (filters.insurance) {
+    where.insurance = filters.insurance;
+  }
+
   return prisma.patient.findMany({
-    where: { clinicId },
+    where,
     orderBy: { name: "asc" },
   });
 }
