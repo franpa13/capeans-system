@@ -8,6 +8,7 @@ import type { BusinessHours } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import {
   Card,
@@ -113,21 +114,28 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
 
                 {draft.isOpen && (
                   <>
-                    <Input
-                      type="time"
-                      aria-label={`Entrada ${WEEKDAY_FULL_LABELS[weekday]}`}
-                      value={draft.openTime1}
-                      onChange={(e) => patch(weekday, { openTime1: e.target.value })}
-                      className="w-32"
-                    />
-                    <span className="text-sm text-muted-foreground">a</span>
-                    <Input
-                      type="time"
-                      aria-label={`Salida ${WEEKDAY_FULL_LABELS[weekday]}`}
-                      value={draft.closeTime1}
-                      onChange={(e) => patch(weekday, { closeTime1: e.target.value })}
-                      className="w-32"
-                    />
+                    <div className="flex items-center gap-2">
+                      {draft.hasSecondShift && (
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Mañana
+                        </span>
+                      )}
+                      <Input
+                        type="time"
+                        aria-label={`Entrada ${WEEKDAY_FULL_LABELS[weekday]}`}
+                        value={draft.openTime1}
+                        onChange={(e) => patch(weekday, { openTime1: e.target.value })}
+                        className="w-32"
+                      />
+                      <span className="text-sm text-muted-foreground">a</span>
+                      <Input
+                        type="time"
+                        aria-label={`Salida ${WEEKDAY_FULL_LABELS[weekday]}`}
+                        value={draft.closeTime1}
+                        onChange={(e) => patch(weekday, { closeTime1: e.target.value })}
+                        className="w-32"
+                      />
+                    </div>
 
                     {!draft.hasSecondShift ? (
                       <Button
@@ -142,30 +150,36 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
                       </Button>
                     ) : (
                       <>
-                        <Input
-                          type="time"
-                          aria-label={`Entrada turno tarde ${WEEKDAY_FULL_LABELS[weekday]}`}
-                          value={draft.openTime2}
-                          onChange={(e) => patch(weekday, { openTime2: e.target.value })}
-                          className="w-32"
-                        />
-                        <span className="text-sm text-muted-foreground">a</span>
-                        <Input
-                          type="time"
-                          aria-label={`Salida turno tarde ${WEEKDAY_FULL_LABELS[weekday]}`}
-                          value={draft.closeTime2}
-                          onChange={(e) => patch(weekday, { closeTime2: e.target.value })}
-                          className="w-32"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Quitar segundo turno ${WEEKDAY_FULL_LABELS[weekday]}`}
-                          onClick={() => patch(weekday, { hasSecondShift: false })}
-                        >
-                          <X />
-                        </Button>
+                        <Separator orientation="vertical" className="h-6" />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Tarde
+                          </span>
+                          <Input
+                            type="time"
+                            aria-label={`Entrada turno tarde ${WEEKDAY_FULL_LABELS[weekday]}`}
+                            value={draft.openTime2}
+                            onChange={(e) => patch(weekday, { openTime2: e.target.value })}
+                            className="w-32"
+                          />
+                          <span className="text-sm text-muted-foreground">a</span>
+                          <Input
+                            type="time"
+                            aria-label={`Salida turno tarde ${WEEKDAY_FULL_LABELS[weekday]}`}
+                            value={draft.closeTime2}
+                            onChange={(e) => patch(weekday, { closeTime2: e.target.value })}
+                            className="w-32"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Quitar segundo turno ${WEEKDAY_FULL_LABELS[weekday]}`}
+                            onClick={() => patch(weekday, { hasSecondShift: false })}
+                          >
+                            <X />
+                          </Button>
+                        </div>
                       </>
                     )}
                   </>
