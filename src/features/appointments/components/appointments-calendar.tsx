@@ -16,6 +16,7 @@ import {
   toWeekParam,
 } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
+import { formatDate } from "@/features/clinic/lib/format";
 
 type PatientOption = { id: string; name: string };
 
@@ -98,6 +99,7 @@ export function AppointmentsCalendar({
   const prevWeek = toWeekParam(addDays(weekStart, -7));
   const nextWeek = toWeekParam(addDays(weekStart, 7));
   const todayWeek = toWeekParam(new Date());
+  const weekEnd = addDays(weekStart, 6);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -116,6 +118,9 @@ export function AppointmentsCalendar({
           <Button variant="outline" asChild>
             <Link href={`/dashboard/turnos?week=${todayWeek}`}>Hoy</Link>
           </Button>
+          <span className="ml-2 text-sm font-medium">
+            Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
+          </span>
         </div>
         <Button
           onClick={() => {
