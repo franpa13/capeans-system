@@ -1,0 +1,217 @@
+"use client";
+
+import { Fragment, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import type { Appointment, BusinessHours } from "@prisma/client";
+
+import { Button } from "@/components/ui/button";
+import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
+import { addDays, formatDayLabel, getWeekStart, toWeekParam } from "@/features/appointments/lib/week";
+import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
+
+type PatientOption = { id: string; name: string };
+
+const HOUR_WIDTH = 80; // px
+const ROW_HEIGHT = 56; // px
+const LABEL_WIDTH = 180; // px
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const TIMELINE_WIDTH = HOUR_WIDTH * 24;
+
+function minutesFromMidnight(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function boundaryMinutes(ranges: { startMinutes: number; endMinutes: number }[]): number[] {
+  const minutes = new Set<number>();
+  for (const range of ranges) {
+    if (range.startMinutes > 0) minutes.add(range.startMinutes);
+    if (range.endMinutes < 24 * 60) minutes.add(range.endMinutes);
+  }
+  return [...minutes];
+}
+
+const STATUS_STYLES: Record<Appointment["status"], string> = {
+  CONFIRMED: "bg-primary/90 text-primary-foreground border-primary",
+  CANCELLED: "bg-muted text-muted-foreground border-border line-through opacity-60",
+  COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
+};
+
+/** The day view: hours on the X axis, one row per appointment (not per
+ * patient — a patient with two appointments that day gets two rows) on
+ * the Y axis, each rendered as a horizontal bar positioned by start time
+ * and duration. Complements the weekly grid, which has days on the X axis
+ * and hours on the Y axis. */
+export function DailyAgenda({
+  day,
+  appointments,
+  patients,
+  businessHours,
+}: {
+  day: Date;
+  appointments: Appointment[];
+  patients: PatientOption[];
+  businessHours: BusinessHours[];
+}) {
+  const router = useRouter();
+  const patientsById = useMemo(
+    () => new Map(patients.map((p) => [p.id, p.name])),
+    [patients],
+  );
+  const sorted = useMemo(
+    () => [...appointments].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
+    [appointments],
+  );
+  const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
+  const boundaries = boundaryMinutes(ranges);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Appointment | undefined>(undefined);
+  const [newStart, setNewStart] = useState<Date | undefined>(undefined);
+
+  function openCreate() {
+    const start = new Date(day);
+    start.setHours(9, 0, 0, 0);
+    setEditing(undefined);
+    setNewStart(start);
+    setDialogOpen(true);
+  }
+
+  function openEdit(appointment: Appointment) {
+    setEditing(appointment);
+    setNewStart(undefined);
+    setDialogOpen(true);
+  }
+
+  function hrefForDay(target: Date) {
+    const targetWeek = toWeekParam(getWeekStart(target));
+    return `/dashboard/turnos?week=${targetWeek}&view=day&day=${toWeekParam(target)}`;
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={hrefForDay(addDays(day, -1))}>
+              <ChevronLeft />
+            </Link>
+          </Button>
+          <Button variant="outline" size="icon" asChild>
+            <Link href={hrefForDay(addDays(day, 1))}>
+              <ChevronRight />
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={hrefForDay(new Date())}>Hoy</Link>
+          </Button>
+          <span className="ml-2 text-sm font-medium">{formatDayLabel(day)}</span>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus />
+          Nuevo turno
+        </Button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `${LABEL_WIDTH}px ${TIMELINE_WIDTH}px` }}
+        >
+          <div className="sticky top-0 left-0 z-20 border-b bg-card" />
+          <div
+            className="sticky top-0 z-10 bg-card"
+            style={{ height: 36, width: TIMELINE_WIDTH }}
+          >
+            {HOURS.map((hour) => (
+              <div
+                key={hour}
+                className="absolute border-b border-l px-1 text-xs text-muted-foreground"
+                style={{ left: hour * HOUR_WIDTH, width: HOUR_WIDTH, height: 36 }}
+              >
+                {String(hour).padStart(2, "0")}:00
+              </div>
+            ))}
+          </div>
+
+          {sorted.length === 0 ? (
+            <div className="col-span-2 flex h-32 items-center justify-center text-sm text-muted-foreground">
+              No hay turnos para este día.
+            </div>
+          ) : (
+            sorted.map((appointment) => {
+              const patientName = appointment.patientId
+                ? (patientsById.get(appointment.patientId) ?? "Paciente")
+                : "Sin paciente";
+              const left = (minutesFromMidnight(appointment.startsAt) / 60) * HOUR_WIDTH;
+              const width = Math.max(
+                (appointment.durationMinutes / 60) * HOUR_WIDTH,
+                40,
+              );
+
+              return (
+                <Fragment key={appointment.id}>
+                  <div
+                    className="sticky left-0 z-10 flex items-center border-t border-r bg-card px-2 text-sm font-medium"
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <span className="truncate">{patientName}</span>
+                  </div>
+                  <div
+                    className="relative border-t"
+                    style={{ height: ROW_HEIGHT, width: TIMELINE_WIDTH }}
+                  >
+                    {ranges.map((range) => (
+                      <div
+                        key={`${range.startMinutes}-${range.endMinutes}`}
+                        aria-hidden
+                        className="pointer-events-none absolute top-0 bottom-0 bg-muted-foreground/15"
+                        style={{
+                          left: (range.startMinutes / 60) * HOUR_WIDTH,
+                          width: ((range.endMinutes - range.startMinutes) / 60) * HOUR_WIDTH,
+                        }}
+                      />
+                    ))}
+                    {boundaries.map((minutes) => (
+                      <div
+                        key={minutes}
+                        aria-hidden
+                        className="pointer-events-none absolute top-0 bottom-0 border-l-2 border-foreground/20"
+                        style={{ left: (minutes / 60) * HOUR_WIDTH }}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => openEdit(appointment)}
+                      style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
+                      className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
+                    >
+                      <div className="truncate font-medium">
+                        {String(appointment.startsAt.getHours()).padStart(2, "0")}:
+                        {String(appointment.startsAt.getMinutes()).padStart(2, "0")}
+                      </div>
+                      {appointment.reason && (
+                        <div className="truncate opacity-90">{appointment.reason}</div>
+                      )}
+                    </button>
+                  </div>
+                </Fragment>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      <AppointmentDialog
+        key={editing?.id ?? newStart?.getTime() ?? "closed"}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        patients={patients}
+        appointment={editing}
+        initialStart={newStart}
+        onSaved={() => router.refresh()}
+      />
+    </div>
+  );
+}

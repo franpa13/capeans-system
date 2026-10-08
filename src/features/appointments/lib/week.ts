@@ -1,7 +1,18 @@
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+/** Full Spanish weekday names, indexed by JS Date.getDay() (0=Sunday). */
+export const WEEKDAY_FULL_LABELS = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-function startOfDay(date: Date): Date {
+export function startOfDay(date: Date): Date {
   const result = new Date(date);
   result.setHours(0, 0, 0, 0);
   return result;

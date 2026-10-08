@@ -41,3 +41,55 @@ test("an insurance option can be added, renamed, and deleted from Configuración
   await page.getByLabel("Obra social").click();
   await expect(page.getByRole("option", { name: anotherLabel })).toBeVisible();
 });
+
+test("business hours can be closed for a day and persist after reload", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Horario de atención" }).click();
+
+  // Tuesday (weekday 2) starts open with default hours seeded — but don't
+  // assume that's still true (a previous run's cleanup step may not have
+  // run if it failed partway through); force a known starting state.
+  if (!(await page.locator("#open-2").isChecked())) {
+    await page.locator("#open-2").click();
+    await page.getByLabel("Entrada Martes").fill("09:00");
+    await page.getByLabel("Salida Martes").fill("18:00");
+  }
+  await page.getByRole("button", { name: "Guardar horario Martes" }).click();
+
+  // Now close it.
+  await page.locator("#open-2").click();
+  await expect(page.getByLabel("Entrada Martes")).toHaveCount(0);
+  await page.getByRole("button", { name: "Guardar horario Martes" }).click();
+
+  await page.reload();
+  await page.getByRole("tab", { name: "Horario de atención" }).click();
+  await expect(page.locator("#open-2")).not.toBeChecked();
+  await expect(page.getByLabel("Entrada Martes")).toHaveCount(0);
+
+  // Reopen it with a lunch-break split, and confirm that persists too.
+  await page.locator("#open-2").click();
+  await page.getByLabel("Entrada Martes").fill("08:00");
+  await page.getByLabel("Salida Martes").fill("12:00");
+  await page.getByRole("button", { name: "Agregar segundo turno Martes" }).click();
+  await page.getByLabel("Entrada turno tarde Martes").fill("14:00");
+  await page.getByLabel("Salida turno tarde Martes").fill("20:00");
+  await page.getByRole("button", { name: "Guardar horario Martes" }).click();
+
+  await page.reload();
+  await page.getByRole("tab", { name: "Horario de atención" }).click();
+  await expect(page.locator("#open-2")).toBeChecked();
+  await expect(page.getByLabel("Entrada Martes")).toHaveValue("08:00");
+  await expect(page.getByLabel("Salida Martes")).toHaveValue("12:00");
+  await expect(page.getByLabel("Entrada turno tarde Martes")).toHaveValue("14:00");
+  await expect(page.getByLabel("Salida turno tarde Martes")).toHaveValue("20:00");
+
+  // Leave it back the way the default seed left it, so other tests (and
+  // the appointments grid) aren't affected by this one.
+  await page.getByRole("button", { name: "Quitar segundo turno Martes" }).click();
+  await page.getByLabel("Entrada Martes").fill("09:00");
+  await page.getByLabel("Salida Martes").fill("18:00");
+  await page.getByRole("button", { name: "Guardar horario Martes" }).click();
+});

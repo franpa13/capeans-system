@@ -17,6 +17,7 @@ model Clinic {
   consultations Consultation[]
   appointments  Appointment[]
   options       ClinicOption[]
+  businessHours BusinessHours[]
 }
 
 model Patient {
@@ -78,6 +79,30 @@ model Appointment {
   @@index([clinicId])
   @@index([patientId])
   @@index([clinicId, startsAt])
+}
+
+model BusinessHours {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // JS Date.getDay() convention (see appointments/lib/week.ts): 0=Sunday,
+  // 1=Monday .. 6=Saturday. Only 1..6 are ever configured/rendered — the
+  // weekly calendar never shows a Sunday column.
+  weekday Int
+
+  isOpen Boolean @default(true)
+
+  // "HH:mm", 24h local time. Null when the day is closed.
+  openTime1  String?
+  closeTime1 String?
+  // Optional second shift, for a clinic that closes for lunch — both null
+  // when unused.
+  openTime2  String?
+  closeTime2 String?
+
+  @@unique([clinicId, weekday])
+  @@index([clinicId])
 }
 
 model ClinicOption {

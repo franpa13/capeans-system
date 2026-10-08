@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import type { Appointment } from "@prisma/client";
+import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
@@ -15,6 +15,7 @@ import {
   isSameDay,
   toWeekParam,
 } from "@/features/appointments/lib/week";
+import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 
 type PatientOption = { id: string; name: string };
 
@@ -23,6 +24,18 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function minutesFromMidnight(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
+}
+
+/** The open/close boundary minutes worth drawing a line at — the start and
+ * end of the full day (0 and 1440) aren't real transitions, so they're
+ * excluded. */
+function boundaryMinutes(ranges: { startMinutes: number; endMinutes: number }[]): number[] {
+  const minutes = new Set<number>();
+  for (const range of ranges) {
+    if (range.startMinutes > 0) minutes.add(range.startMinutes);
+    if (range.endMinutes < 24 * 60) minutes.add(range.endMinutes);
+  }
+  return [...minutes];
 }
 
 const STATUS_STYLES: Record<Appointment["status"], string> = {
@@ -35,10 +48,12 @@ export function AppointmentsCalendar({
   weekStart,
   appointments,
   patients,
+  businessHours,
 }: {
   weekStart: Date;
   appointments: Appointment[];
   patients: PatientOption[];
+  businessHours: BusinessHours[];
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -125,12 +140,33 @@ export function AppointmentsCalendar({
 
           {days.map((day) => {
             const dayAppointments = appointments.filter((a) => isSameDay(a.startsAt, day));
+            const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
             return (
               <div
                 key={day.toISOString()}
                 className="relative border-l"
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
+                {ranges.map((range) => (
+                  <div
+                    key={`${range.startMinutes}-${range.endMinutes}`}
+                    aria-hidden
+                    className="pointer-events-none absolute left-0 right-0 bg-muted-foreground/15"
+                    style={{
+                      top: (range.startMinutes / 60) * HOUR_HEIGHT,
+                      height: ((range.endMinutes - range.startMinutes) / 60) * HOUR_HEIGHT,
+                    }}
+                  />
+                ))}
+                {boundaryMinutes(ranges).map((minutes) => (
+                  <div
+                    key={minutes}
+                    aria-hidden
+                    className="pointer-events-none absolute left-0 right-0 border-t-2 border-foreground/20"
+                    style={{ top: (minutes / 60) * HOUR_HEIGHT }}
+                  />
+                ))}
+
                 {HOURS.map((hour) => (
                   <button
                     key={hour}

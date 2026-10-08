@@ -8,6 +8,13 @@ import { clerk } from "@clerk/testing/playwright";
 // user would. The retry (not a single fill) guards against the same
 // race as patient search: createConsultationAction's revalidatePath can
 // land after the fill and wipe the typed filter text.
+//
+// The URL check has to be INSIDE the retry loop, not a separate
+// assertion after it: a freshly created consultation is often already
+// visible on the unfiltered page 1 (it's the most recent), so the
+// visibility check alone can pass on the very first attempt even when
+// that same remount wiped the fill before its debounced navigation
+// fired — leaving the filter never actually applied.
 async function createConsultationAndFindIt(
   page: import("@playwright/test").Page,
   patientName: string,
@@ -15,6 +22,7 @@ async function createConsultationAndFindIt(
   await expect(async () => {
     await page.locator("#filter-patient").fill(patientName);
     await expect(page.locator("tbody").getByText(patientName)).toBeVisible({ timeout: 1000 });
+    await expect(page).toHaveURL(/paciente=/, { timeout: 1000 });
   }).toPass({ timeout: 10000 });
 }
 

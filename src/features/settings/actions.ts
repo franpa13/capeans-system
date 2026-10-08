@@ -8,6 +8,10 @@ import {
   updateClinicOption,
   type OptionCategory,
 } from "@/features/clinic/data/clinic-options";
+import {
+  upsertBusinessHours,
+  type BusinessHoursInput,
+} from "@/features/clinic/data/business-hours";
 
 async function requireClinicId(): Promise<string> {
   const clinic = await getCurrentClinic();
@@ -33,4 +37,13 @@ export async function deleteClinicOptionAction(id: string) {
   const clinicId = await requireClinicId();
   await deleteClinicOption(clinicId, id);
   revalidatePath("/dashboard/configuracion");
+}
+
+export async function updateBusinessHoursAction(weekday: number, input: BusinessHoursInput) {
+  const clinicId = await requireClinicId();
+  const hours = await upsertBusinessHours(clinicId, weekday, input);
+  revalidatePath("/dashboard/configuracion");
+  // The Turnos grid reads business hours too, to shade closed hours.
+  revalidatePath("/dashboard/turnos");
+  return hours;
 }
