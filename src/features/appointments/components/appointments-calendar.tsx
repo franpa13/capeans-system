@@ -142,7 +142,7 @@ export function AppointmentsCalendar({
             ))}
           </div>
 
-          {days.map((day) => {
+          {days.map((day, dayIndex) => {
             const dayAppointments = appointments.filter((a) => isSameDay(a.startsAt, day));
             const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
             return (
@@ -158,9 +158,14 @@ export function AppointmentsCalendar({
                     className="pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-dashed border-green-500 dark:border-green-400"
                     style={{ top: (minutes / 60) * HOUR_HEIGHT }}
                   >
-                    <span className="absolute left-1 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap text-green-600 dark:text-green-400">
-                      {label}
-                    </span>
+                    {/* Only the leftmost day's column carries the text —
+                        repeating it in all 7 columns was redundant, the
+                        dashed line alone marks the boundary elsewhere. */}
+                    {dayIndex === 0 && (
+                      <span className="absolute left-1 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap text-green-600 dark:text-green-400">
+                        {label}
+                      </span>
+                    )}
                   </div>
                 ))}
 
