@@ -111,7 +111,7 @@ export function DailyAgenda({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" asChild>
@@ -135,7 +135,7 @@ export function DailyAgenda({
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border">
         <div
           className="grid"
           style={{ gridTemplateColumns: `${LABEL_WIDTH}px ${TIMELINE_WIDTH}px` }}
