@@ -28,6 +28,17 @@ function minutesFromMidnight(date: Date): number {
 
 type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
 
+const BOUNDARY_COLORS: Record<Boundary["label"], { line: string; text: string }> = {
+  "Hora inicio": {
+    line: "border-green-500 dark:border-green-400",
+    text: "text-green-600 dark:text-green-400",
+  },
+  "Hora fin": {
+    line: "border-red-500 dark:border-red-400",
+    text: "text-red-600 dark:text-red-400",
+  },
+};
+
 /** The open/close boundaries worth drawing a line at, each labeled by
  * which kind of transition it is — the start and end of the full day (0
  * and 1440) aren't real transitions, so they're excluded. A closed
@@ -155,14 +166,16 @@ export function AppointmentsCalendar({
                   <div
                     key={minutes}
                     aria-hidden
-                    className="pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-dashed border-green-500 dark:border-green-400"
+                    className={`pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                     style={{ top: (minutes / 60) * HOUR_HEIGHT }}
                   >
                     {/* Only the leftmost day's column carries the text —
                         repeating it in all 7 columns was redundant, the
                         dashed line alone marks the boundary elsewhere. */}
                     {dayIndex === 0 && (
-                      <span className="absolute left-1 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap text-green-600 dark:text-green-400">
+                      <span
+                        className={`absolute left-1 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap ${BOUNDARY_COLORS[label].text}`}
+                      >
                         {label}
                       </span>
                     )}

@@ -28,6 +28,17 @@ function minutesFromMidnight(date: Date): number {
 
 type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
 
+const BOUNDARY_COLORS: Record<Boundary["label"], { line: string; text: string }> = {
+  "Hora inicio": {
+    line: "border-green-500 dark:border-green-400",
+    text: "text-green-600 dark:text-green-400",
+  },
+  "Hora fin": {
+    line: "border-red-500 dark:border-red-400",
+    text: "text-red-600 dark:text-red-400",
+  },
+};
+
 /** The open/close boundaries worth drawing a line at, each labeled by
  * which kind of transition it is — the start and end of the full day (0
  * and 1440) aren't real transitions, so they're excluded. A closed
@@ -147,11 +158,11 @@ export function DailyAgenda({
               <div
                 key={minutes}
                 aria-hidden
-                className="pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed border-green-500 dark:border-green-400"
+                className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                 style={{ left: (minutes / 60) * HOUR_WIDTH }}
               >
                 <span
-                  className="absolute left-1 rounded-sm text-[10px] leading-tight font-medium whitespace-nowrap text-green-600 dark:text-green-400"
+                  className={`absolute left-1 rounded-sm text-[10px] leading-tight font-medium whitespace-nowrap ${BOUNDARY_COLORS[label].text}`}
                   style={{ top: 24 }}
                 >
                   {label}
@@ -187,11 +198,11 @@ export function DailyAgenda({
                     className="relative border-t"
                     style={{ height: ROW_HEIGHT, width: TIMELINE_WIDTH }}
                   >
-                    {hourBoundaries.map(({ minutes }) => (
+                    {hourBoundaries.map(({ minutes, label }) => (
                       <div
                         key={minutes}
                         aria-hidden
-                        className="pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed border-green-500 dark:border-green-400"
+                        className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                         style={{ left: (minutes / 60) * HOUR_WIDTH }}
                       />
                     ))}
