@@ -26,16 +26,20 @@ function minutesFromMidnight(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-/** The open/close boundary minutes worth drawing a line at — the start and
- * end of the full day (0 and 1440) aren't real transitions, so they're
- * excluded. */
-function boundaryMinutes(ranges: { startMinutes: number; endMinutes: number }[]): number[] {
-  const minutes = new Set<number>();
+type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
+
+/** The open/close boundaries worth drawing a line at, each labeled by
+ * which kind of transition it is — the start and end of the full day (0
+ * and 1440) aren't real transitions, so they're excluded. A closed
+ * range's end is when business hours start (open), and its start is
+ * when they end (close) — see business-hours.ts's closedRanges. */
+function boundaries(ranges: { startMinutes: number; endMinutes: number }[]): Boundary[] {
+  const byMinute = new Map<number, Boundary["label"]>();
   for (const range of ranges) {
-    if (range.startMinutes > 0) minutes.add(range.startMinutes);
-    if (range.endMinutes < 24 * 60) minutes.add(range.endMinutes);
+    if (range.endMinutes < 24 * 60) byMinute.set(range.endMinutes, "Hora inicio");
+    if (range.startMinutes > 0) byMinute.set(range.startMinutes, "Hora fin");
   }
-  return [...minutes];
+  return [...byMinute.entries()].map(([minutes, label]) => ({ minutes, label }));
 }
 
 const STATUS_STYLES: Record<Appointment["status"], string> = {
@@ -147,13 +151,17 @@ export function AppointmentsCalendar({
                 className="relative border-l"
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
-                {boundaryMinutes(ranges).map((minutes) => (
+                {boundaries(ranges).map(({ minutes, label }) => (
                   <div
                     key={minutes}
                     aria-hidden
-                    className="pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-green-500 dark:border-green-400"
+                    className="pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-dashed border-green-500 dark:border-green-400"
                     style={{ top: (minutes / 60) * HOUR_HEIGHT }}
-                  />
+                  >
+                    <span className="absolute left-1 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap text-green-600 dark:text-green-400">
+                      {label}
+                    </span>
+                  </div>
                 ))}
 
                 {HOURS.map((hour) => (

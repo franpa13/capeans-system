@@ -16,6 +16,9 @@ type PatientOption = { id: string; name: string };
 const HOUR_WIDTH = 80; // px
 const ROW_HEIGHT = 56; // px
 const LABEL_WIDTH = 180; // px
+// Taller than the hour row alone so a "Hora inicio"/"Hora fin" boundary
+// label has its own space underneath, instead of overlapping the hour text.
+const HEADER_HEIGHT = 52; // px
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const TIMELINE_WIDTH = HOUR_WIDTH * 24;
 
@@ -23,13 +26,20 @@ function minutesFromMidnight(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-function boundaryMinutes(ranges: { startMinutes: number; endMinutes: number }[]): number[] {
-  const minutes = new Set<number>();
+type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
+
+/** The open/close boundaries worth drawing a line at, each labeled by
+ * which kind of transition it is — the start and end of the full day (0
+ * and 1440) aren't real transitions, so they're excluded. A closed
+ * range's end is when business hours start (open), and its start is
+ * when they end (close) — see business-hours.ts's closedRanges. */
+function boundaries(ranges: { startMinutes: number; endMinutes: number }[]): Boundary[] {
+  const byMinute = new Map<number, Boundary["label"]>();
   for (const range of ranges) {
-    if (range.startMinutes > 0) minutes.add(range.startMinutes);
-    if (range.endMinutes < 24 * 60) minutes.add(range.endMinutes);
+    if (range.endMinutes < 24 * 60) byMinute.set(range.endMinutes, "Hora inicio");
+    if (range.startMinutes > 0) byMinute.set(range.startMinutes, "Hora fin");
   }
-  return [...minutes];
+  return [...byMinute.entries()].map(([minutes, label]) => ({ minutes, label }));
 }
 
 const STATUS_STYLES: Record<Appointment["status"], string> = {
@@ -64,7 +74,7 @@ export function DailyAgenda({
     [appointments],
   );
   const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
-  const boundaries = boundaryMinutes(ranges);
+  const hourBoundaries = boundaries(ranges);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
@@ -122,15 +132,30 @@ export function DailyAgenda({
           <div className="sticky top-0 left-0 z-20 border-b bg-card" />
           <div
             className="sticky top-0 z-10 bg-card"
-            style={{ height: 36, width: TIMELINE_WIDTH }}
+            style={{ height: HEADER_HEIGHT, width: TIMELINE_WIDTH }}
           >
             {HOURS.map((hour) => (
               <div
                 key={hour}
                 className="absolute border-b border-l px-1 text-xs text-muted-foreground"
-                style={{ left: hour * HOUR_WIDTH, width: HOUR_WIDTH, height: 36 }}
+                style={{ left: hour * HOUR_WIDTH, width: HOUR_WIDTH, height: 24 }}
               >
                 {String(hour).padStart(2, "0")}:00
+              </div>
+            ))}
+            {hourBoundaries.map(({ minutes, label }) => (
+              <div
+                key={minutes}
+                aria-hidden
+                className="pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed border-green-500 dark:border-green-400"
+                style={{ left: (minutes / 60) * HOUR_WIDTH }}
+              >
+                <span
+                  className="absolute left-1 rounded-sm text-[10px] leading-tight font-medium whitespace-nowrap text-green-600 dark:text-green-400"
+                  style={{ top: 24 }}
+                >
+                  {label}
+                </span>
               </div>
             ))}
           </div>
@@ -162,11 +187,11 @@ export function DailyAgenda({
                     className="relative border-t"
                     style={{ height: ROW_HEIGHT, width: TIMELINE_WIDTH }}
                   >
-                    {boundaries.map((minutes) => (
+                    {hourBoundaries.map(({ minutes }) => (
                       <div
                         key={minutes}
                         aria-hidden
-                        className="pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-green-500 dark:border-green-400"
+                        className="pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed border-green-500 dark:border-green-400"
                         style={{ left: (minutes / 60) * HOUR_WIDTH }}
                       />
                     ))}
