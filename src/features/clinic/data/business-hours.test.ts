@@ -20,11 +20,41 @@ afterEach(async () => {
 });
 
 describe("business hours data layer", () => {
-  it("seeds sensible defaults for Monday through Saturday the first time it's read", async () => {
+  it("seeds sensible defaults for all 7 weekdays the first time it's read, Sunday closed", async () => {
     const hours = await getBusinessHours(clinicA.id);
     const weekdays = hours.map((h) => h.weekday).sort((a, b) => a - b);
-    expect(weekdays).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(hours.every((h) => h.isOpen)).toBe(true);
+    expect(weekdays).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    const sunday = hours.find((h) => h.weekday === 0);
+    expect(sunday?.isOpen).toBe(false);
+    expect(hours.filter((h) => h.weekday !== 0).every((h) => h.isOpen)).toBe(true);
+  });
+
+  it("backfills only the missing weekdays for a clinic seeded before Sunday was added, leaving its existing rows untouched", async () => {
+    // Simulates a clinic seeded under the old Monday..Saturday-only
+    // seeding, bypassing getBusinessHours so no Sunday row exists yet.
+    await prisma.businessHours.createMany({
+      data: [1, 2, 3, 4, 5, 6].map((weekday) => ({
+        clinicId: clinicA.id,
+        weekday,
+        isOpen: weekday !== 3,
+        openTime1: weekday === 3 ? null : "10:00",
+        closeTime1: weekday === 3 ? null : "17:00",
+      })),
+    });
+
+    const hours = await getBusinessHours(clinicA.id);
+    const weekdays = hours.map((h) => h.weekday).sort((a, b) => a - b);
+    expect(weekdays).toEqual([0, 1, 2, 3, 4, 5, 6]);
+
+    const sunday = hours.find((h) => h.weekday === 0);
+    expect(sunday?.isOpen).toBe(false);
+
+    // The custom Wednesday-closed value from "before" must survive the
+    // backfill, not get reset to the Wednesday default (open).
+    const wednesday = hours.find((h) => h.weekday === 3);
+    expect(wednesday?.isOpen).toBe(false);
+    const monday = hours.find((h) => h.weekday === 1);
+    expect(monday?.openTime1).toBe("10:00");
   });
 
   it("does not reseed a clinic that already has hours configured", async () => {

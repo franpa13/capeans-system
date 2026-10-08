@@ -6,7 +6,7 @@ function pad(n: number) {
 }
 
 // A fixed slot would collide with leftover appointments from previous
-// runs — pick a random day (Mon..Sat, so it's within the calendar's
+// runs — pick a random day (Mon..Sun, so it's within the calendar's
 // default current-week view) and hour each run, same spirit as the
 // timestamped patient names used elsewhere in these specs, but with
 // enough spread that two runs seconds apart don't collide either.
@@ -25,7 +25,7 @@ function randomSlotInCurrentWeek() {
   monday.setDate(monday.getDate() + diffToMonday);
 
   const date = new Date(monday);
-  date.setDate(date.getDate() + Math.floor(Math.random() * 6)); // Mon..Sat
+  date.setDate(date.getDate() + Math.floor(Math.random() * 7)); // Mon..Sun
   const dateStr = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   return { dateStr, timeStr: randomTime() };
 }
@@ -146,11 +146,11 @@ test("the Día view shows a created appointment as a row with the patient name",
   await saveAppointmentAvoidingConflicts(page, () => randomHourOn(today));
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 
-  await page.getByRole("link", { name: "Día", exact: true }).click();
+  await page.getByRole("link", { name: "Diario", exact: true }).click();
   await expect(page).toHaveURL(/view=day/);
   await expect(page.getByText(patientName)).toBeVisible();
 
-  await page.getByRole("link", { name: "Semana", exact: true }).click();
+  await page.getByRole("link", { name: "Semanal", exact: true }).click();
   await expect(page).not.toHaveURL(/view=day/);
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 });

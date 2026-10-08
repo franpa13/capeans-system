@@ -115,7 +115,7 @@ export function AppointmentsCalendar({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-        <div className="grid grid-cols-[64px_repeat(6,minmax(140px,1fr))]">
+        <div className="grid grid-cols-[64px_repeat(7,minmax(140px,1fr))]">
           <div className="sticky top-0 z-10 border-b bg-card" />
           {days.map((day) => (
             <div
@@ -147,22 +147,11 @@ export function AppointmentsCalendar({
                 className="relative border-l"
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
-                {ranges.map((range) => (
-                  <div
-                    key={`${range.startMinutes}-${range.endMinutes}`}
-                    aria-hidden
-                    className="pointer-events-none absolute left-0 right-0 bg-muted-foreground/15"
-                    style={{
-                      top: (range.startMinutes / 60) * HOUR_HEIGHT,
-                      height: ((range.endMinutes - range.startMinutes) / 60) * HOUR_HEIGHT,
-                    }}
-                  />
-                ))}
                 {boundaryMinutes(ranges).map((minutes) => (
                   <div
                     key={minutes}
                     aria-hidden
-                    className="pointer-events-none absolute left-0 right-0 border-t-2 border-foreground/20"
+                    className="pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-green-500 dark:border-green-400"
                     style={{ top: (minutes / 60) * HOUR_HEIGHT }}
                   />
                 ))}

@@ -19,12 +19,12 @@ describe("getWeekStart", () => {
 });
 
 describe("getWeekDays", () => {
-  it("returns Monday through Saturday, six days, excluding Sunday", () => {
+  it("returns Monday through Sunday, seven days", () => {
     const monday = new Date("2026-02-02T00:00:00");
     const days = getWeekDays(monday);
-    expect(days).toHaveLength(6);
+    expect(days).toHaveLength(7);
     expect(toWeekParam(days[0])).toBe("2026-02-02");
-    expect(toWeekParam(days[5])).toBe("2026-02-07");
+    expect(toWeekParam(days[6])).toBe("2026-02-08");
   });
 });
 

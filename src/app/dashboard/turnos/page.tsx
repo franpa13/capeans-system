@@ -59,13 +59,13 @@ export default async function TurnosPage({
         action={
           <div className="flex gap-1 rounded-md border p-1">
             <Button variant={isDayView ? "ghost" : "secondary"} size="sm" asChild>
-              <Link href={`/dashboard/turnos?week=${weekParam}`}>Semana</Link>
+              <Link href={`/dashboard/turnos?week=${weekParam}`}>Semanal</Link>
             </Button>
             <Button variant={isDayView ? "secondary" : "ghost"} size="sm" asChild>
               <Link
                 href={`/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}`}
               >
-                Día
+                Diario
               </Link>
             </Button>
           </div>

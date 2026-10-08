@@ -20,7 +20,7 @@ import {
 import { WEEKDAY_FULL_LABELS } from "@/features/appointments/lib/week";
 import { updateBusinessHoursAction } from "@/features/settings/actions";
 
-const WEEKDAYS = [1, 2, 3, 4, 5, 6] as const;
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
 type Draft = {
   isOpen: boolean;

@@ -162,22 +162,11 @@ export function DailyAgenda({
                     className="relative border-t"
                     style={{ height: ROW_HEIGHT, width: TIMELINE_WIDTH }}
                   >
-                    {ranges.map((range) => (
-                      <div
-                        key={`${range.startMinutes}-${range.endMinutes}`}
-                        aria-hidden
-                        className="pointer-events-none absolute top-0 bottom-0 bg-muted-foreground/15"
-                        style={{
-                          left: (range.startMinutes / 60) * HOUR_WIDTH,
-                          width: ((range.endMinutes - range.startMinutes) / 60) * HOUR_WIDTH,
-                        }}
-                      />
-                    ))}
                     {boundaries.map((minutes) => (
                       <div
                         key={minutes}
                         aria-hidden
-                        className="pointer-events-none absolute top-0 bottom-0 border-l-2 border-foreground/20"
+                        className="pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-green-500 dark:border-green-400"
                         style={{ left: (minutes / 60) * HOUR_WIDTH }}
                       />
                     ))}

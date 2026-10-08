@@ -27,9 +27,9 @@ export function getWeekStart(date: Date): Date {
   return day;
 }
 
-/** Monday..Saturday (6 days) for the week starting at `weekStart`. */
+/** Monday..Sunday (7 days) for the week starting at `weekStart`. */
 export function getWeekDays(weekStart: Date): Date[] {
-  return Array.from({ length: 6 }, (_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     return d;
