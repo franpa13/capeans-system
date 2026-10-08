@@ -23,7 +23,10 @@ export default async function TurnosPage({
     : [[], []];
 
   return (
-    <div className="flex flex-col gap-6">
+    // Capped to the viewport (minus the 56px header + its border and the
+    // 24px top/bottom padding dashboard/layout.tsx's <main> applies) so
+    // the calendar grid below is the thing that scrolls, not the page.
+    <div className="flex h-[calc(100svh-105px)] flex-col gap-6">
       <PageHeader
         title="Turnos"
         description="Agenda semanal del consultorio."
