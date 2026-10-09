@@ -110,7 +110,6 @@ export function AppointmentsCalendar({
 
   const prevWeek = toWeekParam(addDays(weekStart, -7));
   const nextWeek = toWeekParam(addDays(weekStart, 7));
-  const todayWeek = toWeekParam(new Date());
   const weekEnd = addDays(weekStart, 6);
 
   return (
@@ -125,17 +124,14 @@ export function AppointmentsCalendar({
                 <ChevronLeft />
               </Link>
             </Button>
+            <span className="text-sm font-medium">
+              Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
+            </span>
             <Button variant="outline" size="icon" asChild>
               <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`}>
                 <ChevronRight />
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?week=${todayWeek}&estado=${estado}`}>Hoy</Link>
-            </Button>
-            <span className="ml-2 text-sm font-medium">
-              Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
-            </span>
           </div>
         </div>
         <Button
