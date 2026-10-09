@@ -8,6 +8,7 @@ import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
+import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
 import { addDays, formatDayLabel, getWeekStart, toWeekParam } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 
@@ -90,6 +91,7 @@ export function DailyAgenda({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
   const [newStart, setNewStart] = useState<Date | undefined>(undefined);
+  const [viewing, setViewing] = useState<Appointment | null>(null);
 
   function openCreate() {
     const start = new Date(day);
@@ -99,7 +101,12 @@ export function DailyAgenda({
     setDialogOpen(true);
   }
 
+  function openView(appointment: Appointment) {
+    setViewing(appointment);
+  }
+
   function openEdit(appointment: Appointment) {
+    setViewing(null);
     setEditing(appointment);
     setNewStart(undefined);
     setDialogOpen(true);
@@ -208,7 +215,7 @@ export function DailyAgenda({
                     ))}
                     <button
                       type="button"
-                      onClick={() => openEdit(appointment)}
+                      onClick={() => openView(appointment)}
                       style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
                       className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
                     >
@@ -227,6 +234,23 @@ export function DailyAgenda({
           )}
         </div>
       </div>
+
+      {viewing && (
+        <ViewAppointmentDialog
+          key={`view-${viewing.id}`}
+          appointment={viewing}
+          patientName={
+            viewing.patientId
+              ? (patientsById.get(viewing.patientId) ?? "Paciente")
+              : "Sin paciente"
+          }
+          open
+          onOpenChange={(next) => {
+            if (!next) setViewing(null);
+          }}
+          onEdit={() => openEdit(viewing)}
+        />
+      )}
 
       <AppointmentDialog
         key={editing?.id ?? newStart?.getTime() ?? "closed"}
