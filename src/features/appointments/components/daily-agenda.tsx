@@ -9,6 +9,8 @@ import type { Appointment, BusinessHours } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
+import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
+import { ViewToggle } from "@/features/appointments/components/view-toggle";
 import { addDays, formatDayLabel, getWeekStart, toWeekParam } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 
@@ -71,12 +73,18 @@ export function DailyAgenda({
   patients,
   businessHours,
   estado,
+  isDayView,
+  semanalHref,
+  diarioHref,
 }: {
   day: Date;
   appointments: Appointment[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
+  isDayView: boolean;
+  semanalHref: string;
+  diarioHref: string;
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -121,22 +129,26 @@ export function DailyAgenda({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" asChild>
-            <Link href={hrefForDay(addDays(day, -1))}>
-              <ChevronLeft />
-            </Link>
-          </Button>
-          <Button variant="outline" size="icon" asChild>
-            <Link href={hrefForDay(addDays(day, 1))}>
-              <ChevronRight />
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={hrefForDay(new Date())}>Hoy</Link>
-          </Button>
-          <span className="ml-2 text-sm font-medium">{formatDayLabel(day)}</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewToggle isDayView={isDayView} semanalHref={semanalHref} diarioHref={diarioHref} />
+          <AppointmentStatusFilter value={estado} />
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" asChild>
+              <Link href={hrefForDay(addDays(day, -1))}>
+                <ChevronLeft />
+              </Link>
+            </Button>
+            <Button variant="outline" size="icon" asChild>
+              <Link href={hrefForDay(addDays(day, 1))}>
+                <ChevronRight />
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={hrefForDay(new Date())}>Hoy</Link>
+            </Button>
+            <span className="ml-2 text-sm font-medium">{formatDayLabel(day)}</span>
+          </div>
         </div>
         <Button onClick={openCreate}>
           <Plus />

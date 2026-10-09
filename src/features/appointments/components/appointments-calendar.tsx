@@ -8,6 +8,8 @@ import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
+import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
+import { ViewToggle } from "@/features/appointments/components/view-toggle";
 import {
   addDays,
   formatDayLabel,
@@ -66,12 +68,18 @@ export function AppointmentsCalendar({
   patients,
   businessHours,
   estado,
+  isDayView,
+  semanalHref,
+  diarioHref,
 }: {
   weekStart: Date;
   appointments: Appointment[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
+  isDayView: boolean;
+  semanalHref: string;
+  diarioHref: string;
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -105,24 +113,28 @@ export function AppointmentsCalendar({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" asChild>
-            <Link href={`/dashboard/turnos?week=${prevWeek}&estado=${estado}`}>
-              <ChevronLeft />
-            </Link>
-          </Button>
-          <Button variant="outline" size="icon" asChild>
-            <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`}>
-              <ChevronRight />
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/dashboard/turnos?week=${todayWeek}&estado=${estado}`}>Hoy</Link>
-          </Button>
-          <span className="ml-2 text-sm font-medium">
-            Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewToggle isDayView={isDayView} semanalHref={semanalHref} diarioHref={diarioHref} />
+          <AppointmentStatusFilter value={estado} />
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" asChild>
+              <Link href={`/dashboard/turnos?week=${prevWeek}&estado=${estado}`}>
+                <ChevronLeft />
+              </Link>
+            </Button>
+            <Button variant="outline" size="icon" asChild>
+              <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`}>
+                <ChevronRight />
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/turnos?week=${todayWeek}&estado=${estado}`}>Hoy</Link>
+            </Button>
+            <span className="ml-2 text-sm font-medium">
+              Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
+            </span>
+          </div>
         </div>
         <Button
           onClick={() => {

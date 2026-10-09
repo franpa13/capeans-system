@@ -1,10 +1,6 @@
-import Link from "next/link";
-
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { AppointmentsCalendar } from "@/features/appointments/components/appointments-calendar";
 import { DailyAgenda } from "@/features/appointments/components/daily-agenda";
-import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ALL_STATUSES, DEFAULT_STATUS } from "@/features/appointments/lib/status";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getAppointments } from "@/features/clinic/data/appointments";
@@ -61,33 +57,15 @@ export default async function TurnosPage({
     : [[], [], []];
 
   const weekParam = toWeekParam(weekStart);
+  const semanalHref = `/dashboard/turnos?week=${weekParam}&estado=${statusParam}`;
+  const diarioHref = `/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&estado=${statusParam}`;
 
   return (
     // Capped to the viewport (minus the 56px header + its border and the
     // 24px top/bottom padding dashboard/layout.tsx's <main> applies) so
     // the calendar grid below is the thing that scrolls, not the page.
     <div className="flex h-[calc(100svh-105px)] min-w-0 flex-col gap-6">
-      <PageHeader
-        title="Turnos"
-        description="Agenda semanal del consultorio."
-        action={
-          <div className="flex gap-1 rounded-md border p-1">
-            <Button variant={isDayView ? "ghost" : "secondary"} size="sm" asChild>
-              <Link href={`/dashboard/turnos?week=${weekParam}&estado=${statusParam}`}>
-                Semanal
-              </Link>
-            </Button>
-            <Button variant={isDayView ? "secondary" : "ghost"} size="sm" asChild>
-              <Link
-                href={`/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&estado=${statusParam}`}
-              >
-                Diario
-              </Link>
-            </Button>
-          </div>
-        }
-      />
-      <AppointmentStatusFilter value={statusParam} />
+      <PageHeader title="Turnos" description="Agenda semanal del consultorio." />
       {isDayView ? (
         <DailyAgenda
           day={selectedDay}
@@ -95,6 +73,9 @@ export default async function TurnosPage({
           patients={patients}
           businessHours={businessHours}
           estado={statusParam}
+          isDayView={isDayView}
+          semanalHref={semanalHref}
+          diarioHref={diarioHref}
         />
       ) : (
         <AppointmentsCalendar
@@ -103,6 +84,9 @@ export default async function TurnosPage({
           patients={patients}
           businessHours={businessHours}
           estado={statusParam}
+          isDayView={isDayView}
+          semanalHref={semanalHref}
+          diarioHref={diarioHref}
         />
       )}
     </div>
