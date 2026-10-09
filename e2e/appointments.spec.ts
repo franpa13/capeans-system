@@ -246,3 +246,29 @@ test("a cancelled appointment is hidden from the grid by default, and the estado
   await expect(page).toHaveURL(/estado=ALL/);
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 });
+
+test("a turno can be booked for a brand-new patient without leaving the dialog", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Turno Nuevo E2E ${Date.now()}`;
+
+  await page.goto("/dashboard/turnos");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 8888-8888");
+  await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+
+  // The turno shows up with the new patient's name on the grid.
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+
+  // It's a real patient now, not just a name on the turno — findable from
+  // Pacientes like any other.
+  await page.goto("/dashboard/pacientes");
+  await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+  await expect(page.getByRole("link", { name: patientName })).toBeVisible();
+});

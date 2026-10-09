@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import type { Appointment, AppointmentStatus } from "@prisma/client";
+import type { Appointment, AppointmentStatus, Prisma } from "@prisma/client";
+
+type Db = Prisma.TransactionClient | typeof prisma;
 
 export type NewAppointmentInput = {
   patientId?: string;
@@ -17,6 +19,7 @@ function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
 }
 
 async function findConflict(
+  db: Db,
   clinicId: string,
   startsAt: Date,
   durationMinutes: number,
@@ -24,7 +27,7 @@ async function findConflict(
 ): Promise<Appointment | null> {
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
-  const candidates = await prisma.appointment.findMany({
+  const candidates = await db.appointment.findMany({
     where: {
       clinicId,
       status: { not: "CANCELLED" },
@@ -68,9 +71,10 @@ export async function getAppointment(
 export async function createAppointment(
   clinicId: string,
   input: NewAppointmentInput,
+  db: Db = prisma,
 ): Promise<Appointment> {
   if (input.patientId) {
-    const patient = await prisma.patient.findFirst({
+    const patient = await db.patient.findFirst({
       where: { id: input.patientId, clinicId },
     });
     if (!patient) {
@@ -79,12 +83,12 @@ export async function createAppointment(
   }
 
   const durationMinutes = input.durationMinutes ?? 30;
-  const conflict = await findConflict(clinicId, input.startsAt, durationMinutes);
+  const conflict = await findConflict(db, clinicId, input.startsAt, durationMinutes);
   if (conflict) {
     throw new Error("Ya hay un turno agendado en ese horario");
   }
 
-  return prisma.appointment.create({
+  return db.appointment.create({
     data: {
       clinicId,
       patientId: input.patientId ?? null,
@@ -101,14 +105,15 @@ export async function updateAppointment(
   clinicId: string,
   id: string,
   input: UpdateAppointmentInput,
+  db: Db = prisma,
 ): Promise<Appointment> {
-  const existing = await prisma.appointment.findFirst({ where: { id, clinicId } });
+  const existing = await db.appointment.findFirst({ where: { id, clinicId } });
   if (!existing) {
     throw new Error("Appointment not found for this clinic");
   }
 
   if (input.patientId) {
-    const patient = await prisma.patient.findFirst({
+    const patient = await db.patient.findFirst({
       where: { id: input.patientId, clinicId },
     });
     if (!patient) {
@@ -121,13 +126,13 @@ export async function updateAppointment(
   const status = input.status ?? existing.status;
 
   if (status !== "CANCELLED") {
-    const conflict = await findConflict(clinicId, startsAt, durationMinutes, id);
+    const conflict = await findConflict(db, clinicId, startsAt, durationMinutes, id);
     if (conflict) {
       throw new Error("Ya hay un turno agendado en ese horario");
     }
   }
 
-  return prisma.appointment.update({
+  return db.appointment.update({
     where: { id },
     data: {
       patientId: input.patientId !== undefined ? input.patientId : existing.patientId,

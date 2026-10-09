@@ -71,6 +71,7 @@ export function AppointmentsCalendar({
   isDayView,
   semanalHref,
   diarioHref,
+  insuranceOptions,
 }: {
   weekStart: Date;
   appointments: Appointment[];
@@ -80,6 +81,7 @@ export function AppointmentsCalendar({
   isDayView: boolean;
   semanalHref: string;
   diarioHref: string;
+  insuranceOptions: string[];
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -253,6 +255,7 @@ export function AppointmentsCalendar({
         patients={patients}
         appointment={editing}
         initialStart={newStart}
+        insuranceOptions={insuranceOptions}
         onSaved={() => router.refresh()}
       />
     </div>

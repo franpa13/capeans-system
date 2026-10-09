@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,13 +20,17 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { InsuranceField } from "@/features/clinic/components/insurance-field";
+import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import {
   appointmentSchema,
   DURATION_OPTIONS,
+  NEW_PATIENT_VALUE,
   type AppointmentValues,
 } from "@/features/appointments/lib/schema";
 import {
@@ -54,10 +59,23 @@ function toTimeInputValue(date: Date) {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+const emptyNewPatientFields = {
+  newPatientName: "",
+  newPatientPhone: "",
+  newPatientEmail: "",
+  newPatientDni: "",
+  newPatientBirthDate: "",
+  newPatientAddress: "",
+  newPatientInsurance: "",
+  newPatientInsuranceOther: "",
+  newPatientAllergies: "",
+};
+
 function defaultsFor(appointment?: Appointment, initialStart?: Date): AppointmentValues {
   if (appointment) {
     return {
       patientId: appointment.patientId ?? "",
+      ...emptyNewPatientFields,
       date: toDateInputValue(appointment.startsAt),
       time: toTimeInputValue(appointment.startsAt),
       durationMinutes: appointment.durationMinutes,
@@ -68,6 +86,7 @@ function defaultsFor(appointment?: Appointment, initialStart?: Date): Appointmen
   const start = initialStart ?? new Date();
   return {
     patientId: "",
+    ...emptyNewPatientFields,
     date: toDateInputValue(start),
     time: toTimeInputValue(start),
     durationMinutes: 30,
@@ -82,6 +101,7 @@ export function AppointmentDialog({
   patients,
   appointment,
   initialStart,
+  insuranceOptions = [],
   onSaved,
 }: {
   open: boolean;
@@ -89,6 +109,7 @@ export function AppointmentDialog({
   patients: PatientOption[];
   appointment?: Appointment;
   initialStart?: Date;
+  insuranceOptions?: string[];
   onSaved?: () => void;
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,15 +119,36 @@ export function AppointmentDialog({
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<AppointmentValues>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: defaultsFor(appointment, initialStart),
   });
 
+  const patientId = watch("patientId");
+  const isNewPatient = patientId === NEW_PATIENT_VALUE;
+
   const onSubmit = async (values: AppointmentValues) => {
     setSubmitError(null);
     const startsAt = new Date(`${values.date}T${values.time}:00`);
+    const newPatient = isNewPatient
+      ? {
+          name: values.newPatientName!.trim(),
+          phone: values.newPatientPhone!.trim(),
+          email: values.newPatientEmail || undefined,
+          dni: values.newPatientDni || undefined,
+          birthDate: values.newPatientBirthDate
+            ? new Date(values.newPatientBirthDate)
+            : undefined,
+          address: values.newPatientAddress || undefined,
+          insurance:
+            values.newPatientInsurance === OTHER_INSURANCE
+              ? values.newPatientInsuranceOther?.trim()
+              : values.newPatientInsurance || undefined,
+          allergies: values.newPatientAllergies || undefined,
+        }
+      : undefined;
 
     try {
       if (isEditing) {
@@ -116,6 +158,7 @@ export function AppointmentDialog({
           durationMinutes: values.durationMinutes,
           reason: values.reason || undefined,
           notes: values.notes || undefined,
+          newPatient,
         });
       } else {
         await createAppointmentAction({
@@ -124,6 +167,7 @@ export function AppointmentDialog({
           durationMinutes: values.durationMinutes,
           reason: values.reason || undefined,
           notes: values.notes || undefined,
+          newPatient,
         });
       }
       onOpenChange(false);
@@ -193,6 +237,11 @@ export function AppointmentDialog({
                           {p.name}
                         </SelectItem>
                       ))}
+                      <SelectSeparator />
+                      <SelectItem value={NEW_PATIENT_VALUE}>
+                        <UserPlus className="size-4" />
+                        Agregar paciente nuevo
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -201,6 +250,107 @@ export function AppointmentDialog({
                 <p className="text-sm text-destructive">{errors.patientId.message}</p>
               )}
             </div>
+
+            {isNewPatient && (
+              <div className="grid gap-4 rounded-md border p-3 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="newPatientName">Nombre</Label>
+                  <Input
+                    id="newPatientName"
+                    placeholder="Nombre y apellido"
+                    aria-invalid={!!errors.newPatientName}
+                    {...register("newPatientName")}
+                  />
+                  {errors.newPatientName && (
+                    <p className="text-sm text-destructive">
+                      {errors.newPatientName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPatientPhone">Teléfono</Label>
+                  <Input
+                    id="newPatientPhone"
+                    placeholder="11 4455-0000"
+                    aria-invalid={!!errors.newPatientPhone}
+                    {...register("newPatientPhone")}
+                  />
+                  {errors.newPatientPhone && (
+                    <p className="text-sm text-destructive">
+                      {errors.newPatientPhone.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPatientEmail">Email</Label>
+                  <Input
+                    id="newPatientEmail"
+                    type="email"
+                    placeholder="paciente@email.com"
+                    aria-invalid={!!errors.newPatientEmail}
+                    {...register("newPatientEmail")}
+                  />
+                  {errors.newPatientEmail && (
+                    <p className="text-sm text-destructive">
+                      {errors.newPatientEmail.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPatientDni">DNI</Label>
+                  <Input id="newPatientDni" placeholder="30.123.456" {...register("newPatientDni")} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPatientBirthDate">Fecha de nacimiento</Label>
+                  <Input id="newPatientBirthDate" type="date" {...register("newPatientBirthDate")} />
+                </div>
+
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="newPatientAddress">Dirección</Label>
+                  <Input
+                    id="newPatientAddress"
+                    placeholder="Calle 123, CABA"
+                    {...register("newPatientAddress")}
+                  />
+                </div>
+
+                <Controller
+                  control={control}
+                  name="newPatientInsurance"
+                  render={({ field }) => (
+                    <Controller
+                      control={control}
+                      name="newPatientInsuranceOther"
+                      render={({ field: otherField }) => (
+                        <InsuranceField
+                          id="newPatientInsurance"
+                          value={field.value}
+                          onChange={field.onChange}
+                          otherValue={otherField.value}
+                          onOtherChange={otherField.onChange}
+                          error={errors.newPatientInsurance?.message}
+                          otherError={errors.newPatientInsuranceOther?.message}
+                          options={insuranceOptions}
+                        />
+                      )}
+                    />
+                  )}
+                />
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPatientAllergies">Alergias / antecedentes</Label>
+                  <Input
+                    id="newPatientAllergies"
+                    placeholder="Ej: alergia a penicilina"
+                    {...register("newPatientAllergies")}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2 sm:col-span-2">

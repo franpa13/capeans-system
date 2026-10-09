@@ -76,6 +76,7 @@ export function DailyAgenda({
   isDayView,
   semanalHref,
   diarioHref,
+  insuranceOptions,
 }: {
   day: Date;
   appointments: Appointment[];
@@ -85,6 +86,7 @@ export function DailyAgenda({
   isDayView: boolean;
   semanalHref: string;
   diarioHref: string;
+  insuranceOptions: string[];
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -273,6 +275,7 @@ export function DailyAgenda({
         patients={patients}
         appointment={editing}
         initialStart={newStart}
+        insuranceOptions={insuranceOptions}
         onSaved={() => router.refresh()}
       />
     </div>

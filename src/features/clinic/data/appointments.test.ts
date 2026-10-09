@@ -198,4 +198,35 @@ describe("appointments data layer", () => {
     const appointment = await createAppointment(clinicA.id, injected);
     expect(appointment.clinicId).toBe(clinicA.id);
   });
+
+  // Mirrors how the "Agregar paciente nuevo" flow in the turno dialog
+  // calls these two together inside one prisma.$transaction: if a patient
+  // created alongside a new appointment were committed even when the
+  // appointment itself fails (a conflicting slot), retrying the save —
+  // which real users do, since the dialog stays open on failure — would
+  // leave a duplicate orphan patient behind on every retry.
+  it("rolls back a patient created alongside a conflicting appointment in the same transaction", async () => {
+    await createAppointment(clinicA.id, {
+      startsAt: new Date("2026-02-02T10:00:00Z"),
+      durationMinutes: 60,
+    });
+
+    await expect(
+      prisma.$transaction(async (tx) => {
+        const patient = await createPatient(
+          clinicA.id,
+          { name: "Paciente Transacción", phone: "111" },
+          tx,
+        );
+        await createAppointment(
+          clinicA.id,
+          { startsAt: new Date("2026-02-02T10:30:00Z"), durationMinutes: 30, patientId: patient.id },
+          tx,
+        );
+      }),
+    ).rejects.toThrow("Ya hay un turno agendado en ese horario");
+
+    const patients = await prisma.patient.findMany({ where: { clinicId: clinicA.id } });
+    expect(patients).toHaveLength(0);
+  });
 });

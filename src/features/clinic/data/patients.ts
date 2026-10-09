@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import type { Patient, Prisma } from "@prisma/client";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 
+type Db = Prisma.TransactionClient | typeof prisma;
+
 export type NewPatientInput = {
   name: string;
   phone: string;
@@ -65,8 +67,9 @@ function toPatientWriteData(input: NewPatientInput) {
 export async function createPatient(
   clinicId: string,
   input: NewPatientInput,
+  db: Db = prisma,
 ): Promise<Patient> {
-  return prisma.patient.create({
+  return db.patient.create({
     data: { ...toPatientWriteData(input), clinicId },
   });
 }
