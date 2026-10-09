@@ -65,11 +65,13 @@ export function AppointmentsCalendar({
   appointments,
   patients,
   businessHours,
+  estado,
 }: {
   weekStart: Date;
   appointments: Appointment[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
+  estado: string;
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -106,17 +108,17 @@ export function AppointmentsCalendar({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" asChild>
-            <Link href={`/dashboard/turnos?week=${prevWeek}`}>
+            <Link href={`/dashboard/turnos?week=${prevWeek}&estado=${estado}`}>
               <ChevronLeft />
             </Link>
           </Button>
           <Button variant="outline" size="icon" asChild>
-            <Link href={`/dashboard/turnos?week=${nextWeek}`}>
+            <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`}>
               <ChevronRight />
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href={`/dashboard/turnos?week=${todayWeek}`}>Hoy</Link>
+            <Link href={`/dashboard/turnos?week=${todayWeek}&estado=${estado}`}>Hoy</Link>
           </Button>
           <span className="ml-2 text-sm font-medium">
             Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}

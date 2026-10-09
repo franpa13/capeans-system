@@ -46,11 +46,13 @@ async function findConflict(
 export async function getAppointments(
   clinicId: string,
   range?: { from: Date; to: Date },
+  status?: AppointmentStatus,
 ): Promise<Appointment[]> {
   return prisma.appointment.findMany({
     where: {
       clinicId,
       ...(range ? { startsAt: { gte: range.from, lt: range.to } } : {}),
+      ...(status ? { status } : {}),
     },
     orderBy: { startsAt: "asc" },
   });

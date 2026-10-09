@@ -65,6 +65,25 @@ describe("appointments data layer", () => {
     expect(result).toHaveLength(1);
   });
 
+  it("filters appointments by status", async () => {
+    const confirmed = await createAppointment(clinicA.id, {
+      startsAt: new Date("2026-02-02T10:00:00Z"),
+    });
+    const toCancel = await createAppointment(clinicA.id, {
+      startsAt: new Date("2026-02-02T14:00:00Z"),
+    });
+    await updateAppointment(clinicA.id, toCancel.id, { status: "CANCELLED" });
+
+    const confirmedOnly = await getAppointments(clinicA.id, undefined, "CONFIRMED");
+    expect(confirmedOnly.map((a) => a.id)).toEqual([confirmed.id]);
+
+    const cancelledOnly = await getAppointments(clinicA.id, undefined, "CANCELLED");
+    expect(cancelledOnly.map((a) => a.id)).toEqual([toCancel.id]);
+
+    const all = await getAppointments(clinicA.id);
+    expect(all).toHaveLength(2);
+  });
+
   it("refuses to create an appointment that overlaps an existing one in the same clinic", async () => {
     await createAppointment(clinicA.id, {
       startsAt: new Date("2026-02-02T10:00:00Z"),

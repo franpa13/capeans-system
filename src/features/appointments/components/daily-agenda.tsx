@@ -70,11 +70,13 @@ export function DailyAgenda({
   appointments,
   patients,
   businessHours,
+  estado,
 }: {
   day: Date;
   appointments: Appointment[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
+  estado: string;
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -114,7 +116,7 @@ export function DailyAgenda({
 
   function hrefForDay(target: Date) {
     const targetWeek = toWeekParam(getWeekStart(target));
-    return `/dashboard/turnos?week=${targetWeek}&view=day&day=${toWeekParam(target)}`;
+    return `/dashboard/turnos?week=${targetWeek}&view=day&day=${toWeekParam(target)}&estado=${estado}`;
   }
 
   return (

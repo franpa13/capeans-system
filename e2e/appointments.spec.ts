@@ -198,3 +198,51 @@ test("the Día view shows a created appointment as a row with the patient name",
   await expect(page).not.toHaveURL(/view=day/);
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 });
+
+test("a cancelled appointment is hidden from the grid by default, and the estado filter can show it", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Cancelado E2E ${Date.now()}`;
+
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 7777-7777");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+
+  await page.goto("/dashboard/turnos");
+  // Default filter is "Turnos confirmados" — visible before cancelling.
+  await expect(page.getByRole("combobox")).toHaveText("Turnos confirmados");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+
+  // Cancel it — the weekly grid opens the edit form directly on click.
+  await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("button", { name: "Cancelar turno" }).click();
+  await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
+
+  // Hidden from the default (confirmed-only) view now.
+  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+
+  // Switching the filter to "Turnos cancelados" brings it back.
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Turnos cancelados", exact: true }).click();
+  await expect(page).toHaveURL(/estado=CANCELLED/);
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+
+  // "Todos los turnos" shows it regardless of status.
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Todos los turnos", exact: true }).click();
+  await expect(page).toHaveURL(/estado=ALL/);
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+});
