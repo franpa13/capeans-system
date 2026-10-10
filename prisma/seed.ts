@@ -1,12 +1,16 @@
 /**
  * Dev-only seed script. Fills one clinic with realistic patients,
- * consultations and a week's worth of turnos (spanning every status, a
- * patientless block, next/last week and "today") so the whole app has
- * something to look at without clicking through every form by hand.
+ * consultations and turnos spread across 3 weeks back to 3 weeks ahead —
+ * every status, a patientless block, many different patients — so the
+ * whole app has something to look at without clicking through every form
+ * by hand.
  *
  * Usage:
  *   npm run db:seed                      # only clinic in the DB
  *   CLINIC_ID=<id> npm run db:seed        # pick one, if there's more than one
+ *
+ * Refuses to run with NODE_ENV=production unless ALLOW_SEED=1 is set —
+ * this writes fake patients, don't point it at a real database by accident.
  *
  * Safe to re-run: business hours and clinic options (obra social /
  * tratamiento lists) are only seeded if missing, same as the app does on
@@ -234,50 +238,84 @@ async function seedConsultations(clinicId: string, patients: Awaited<ReturnType<
   }
 }
 
+type AppointmentRow = {
+  startsAt: Date;
+  durationMinutes: number;
+  patientId?: string;
+  status: "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  reason?: string;
+};
+
+const DURATIONS = [30, 45, 60] as const;
+const REASONS = ["Control", "Limpieza", "Urgencia", "Consulta", "Seguimiento", "Endodoncia"];
+
+// Weekday here is a 0..5 offset from each week's Monday (0=Lun..5=Sáb) —
+// Sunday is never scheduled, same as the clinic's own default hours.
+// Saturday only opens until 13:00, so it gets a shorter hour pool than
+// the rest of the week.
+function hourPoolFor(weekday: number): number[] {
+  return weekday === 5 ? [9, 10, 11, 12] : [9, 10, 11, 13, 14, 15, 16, 17];
+}
+
+/** Generates turnos across several weeks (both past and future), cycling
+ * through every patient and mixing all three statuses, so the grid has
+ * enough days/people/estados to actually exercise navigation and the
+ * estado filter instead of just the current week. Past weeks skew toward
+ * CANCELLED/COMPLETED (those turnos already happened), future weeks skew
+ * toward CONFIRMED with an occasional early CANCELLED — rows are placed
+ * on distinct hours within a day by construction, so none overlap. */
+function buildAppointmentRows(weekStart: Date, patients: { id: string }[]): AppointmentRow[] {
+  const rows: AppointmentRow[] = [];
+  let patientCursor = 0;
+  const nextPatientId = () => patients[patientCursor++ % patients.length].id;
+
+  for (let weekOffset = -3; weekOffset <= 3; weekOffset++) {
+    for (let weekday = 0; weekday <= 5; weekday++) {
+      const dayOffset = weekOffset * 7 + weekday;
+      const hourPool = hourPoolFor(weekday);
+      // La mayoría de los días tiene 1 turno, uno de cada tres tiene 2.
+      const slotsToday = (weekOffset + weekday) % 3 === 0 ? 2 : 1;
+
+      for (let slot = 0; slot < slotsToday; slot++) {
+        const hour = hourPool[(weekday * 2 + slot * 3) % hourPool.length];
+        const roll = (weekOffset + weekday + slot * 2 + 10) % 5;
+
+        let status: AppointmentRow["status"];
+        if (weekOffset < 0) {
+          status = roll === 0 ? "CANCELLED" : "COMPLETED";
+        } else if (weekOffset === 0) {
+          status = roll === 0 ? "CANCELLED" : roll === 1 ? "COMPLETED" : "CONFIRMED";
+        } else {
+          status = roll === 0 ? "CANCELLED" : "CONFIRMED";
+        }
+
+        rows.push({
+          startsAt: at(weekStart, dayOffset, hour),
+          durationMinutes: DURATIONS[(weekday + slot) % DURATIONS.length],
+          patientId: nextPatientId(),
+          status,
+          reason: REASONS[(weekOffset + weekday + slot + 12) % REASONS.length],
+        });
+      }
+    }
+  }
+
+  // Un turno sin paciente asignado, a una hora que ningún slot sistemático
+  // usa (la grilla nunca agenda en :30 salvo este), para ejercitar el
+  // bloque "Sin paciente" de la grilla.
+  rows.push({
+    startsAt: at(weekStart, 1, 12, 30),
+    durationMinutes: 30,
+    status: "CONFIRMED",
+    reason: "Bloqueo - reunión",
+  });
+
+  return rows;
+}
+
 async function seedAppointments(clinicId: string, patients: Awaited<ReturnType<typeof seedPatients>>) {
   const weekStart = getWeekStart(new Date());
-  const p = (i: number) => patients[i].id;
-
-  const rows: {
-    startsAt: Date;
-    durationMinutes: number;
-    patientId?: string;
-    status?: "CONFIRMED" | "CANCELLED" | "COMPLETED";
-    reason?: string;
-  }[] = [
-    { startsAt: at(weekStart, 0, 9), durationMinutes: 30, patientId: p(0), reason: "Control" },
-    { startsAt: at(weekStart, 0, 10, 30), durationMinutes: 45, patientId: p(1), reason: "Limpieza" },
-    { startsAt: at(weekStart, 0, 14), durationMinutes: 30, patientId: p(2), status: "CANCELLED", reason: "Urgencia" },
-    { startsAt: at(weekStart, 1, 9), durationMinutes: 60, patientId: p(3), reason: "Endodoncia" },
-    { startsAt: at(weekStart, 1, 11), durationMinutes: 30, patientId: p(4), status: "COMPLETED", reason: "Consulta" },
-    { startsAt: at(weekStart, 1, 16), durationMinutes: 30, reason: "Bloqueo - reunión" }, // sin paciente
-    { startsAt: at(weekStart, 2, 9, 30), durationMinutes: 30, patientId: p(5) },
-    { startsAt: at(weekStart, 2, 15), durationMinutes: 30, patientId: p(0), reason: "Seguimiento" },
-    { startsAt: at(weekStart, 3, 9), durationMinutes: 45, patientId: p(6) },
-    { startsAt: at(weekStart, 4, 10), durationMinutes: 30, patientId: p(7) },
-    { startsAt: at(weekStart, 4, 13), durationMinutes: 60, patientId: p(8), reason: "Corona" },
-    { startsAt: at(weekStart, 5, 9), durationMinutes: 30, patientId: p(9) },
-    // Próxima semana, para probar la flecha de avanzar.
-    { startsAt: at(weekStart, 7, 9), durationMinutes: 30, patientId: p(1) },
-    // Semana pasada, ya completado, para probar la flecha de retroceder
-    // y el filtro de "Turnos completados".
-    { startsAt: at(weekStart, -4, 11), durationMinutes: 30, patientId: p(2), status: "COMPLETED" },
-  ];
-
-  // Garantiza al menos un turno "hoy" sin importar qué día se corra el
-  // seed, para que la vista Diario nunca abra vacía por default.
-  const todayOffset = Math.round(
-    (startOfDay(new Date()).getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  const freeHourByOffset: Record<number, number> = { 0: 17, 1: 13, 2: 11, 3: 13, 4: 16, 5: 11 };
-  if (todayOffset in freeHourByOffset) {
-    rows.push({
-      startsAt: at(weekStart, todayOffset, freeHourByOffset[todayOffset]),
-      durationMinutes: 30,
-      patientId: p(10),
-      reason: "Turno de hoy",
-    });
-  }
+  const rows = buildAppointmentRows(weekStart, patients);
 
   for (const row of rows) {
     await prisma.appointment.create({
@@ -286,14 +324,26 @@ async function seedAppointments(clinicId: string, patients: Awaited<ReturnType<t
         patientId: row.patientId ?? null,
         startsAt: row.startsAt,
         durationMinutes: row.durationMinutes,
-        status: row.status ?? "CONFIRMED",
+        status: row.status,
         reason: row.reason ?? null,
       },
     });
   }
+  return rows.length;
+}
+
+function assertNotProduction() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "1") {
+    throw new Error(
+      "NODE_ENV=production y no se pasó ALLOW_SEED=1 — me niego a sembrar datos de prueba ahí. " +
+        "Si estás 100% seguro de que es lo que querés, volvé a correrlo con ALLOW_SEED=1.",
+    );
+  }
 }
 
 async function main() {
+  assertNotProduction();
+
   const clinic = await resolveClinic();
   console.log(`Sembrando datos en "${clinic.name}" (${clinic.id})...`);
 
@@ -306,8 +356,8 @@ async function main() {
   await seedConsultations(clinic.id, patients);
   console.log(`  consultas creadas`);
 
-  await seedAppointments(clinic.id, patients);
-  console.log(`  turnos creados (semana actual + semana pasada/próxima)`);
+  const appointmentCount = await seedAppointments(clinic.id, patients);
+  console.log(`  ${appointmentCount} turnos creados (3 semanas atrás a 3 semanas adelante)`);
 
   console.log("Listo.");
 }
