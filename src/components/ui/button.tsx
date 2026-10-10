@@ -8,15 +8,30 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // The one variant that always carries weight — it's the single
+        // committing action on a screen ("Guardar", "+ Nuevo turno"), so
+        // it's the only button with presence at rest, not just on hover.
+        // The shadow is tinted with the button's own fill (not generic
+        // black) so it reads as that teal surface catching light, and it
+        // adapts automatically in dark mode since --primary already has
+        // a separate, lighter dark-mode value.
+        default:
+          "bg-primary text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30 active:bg-primary/95 active:shadow-xs active:shadow-primary/20",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-border bg-background hover:bg-muted hover:text-foreground hover:shadow-xs hover:shadow-foreground/5 aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] hover:shadow-xs hover:shadow-foreground/5 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        // Stays flat even on hover — these sit next to filled buttons
+        // (icon/menu triggers, inline row actions) and any lift here
+        // would compete with the one button that's meant to stand out.
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        // Kept soft (a tinted fill, not a solid red block) on purpose —
+        // this is a clinic tool a dentist clicks through dozens of times
+        // a day, not a storefront; "Eliminar" should read as deliberate,
+        // not alarming. Same shadow treatment as default, just quieter.
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive/10 text-destructive shadow-xs shadow-destructive/10 hover:bg-destructive/20 hover:shadow-sm hover:shadow-destructive/15 active:shadow-none focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
