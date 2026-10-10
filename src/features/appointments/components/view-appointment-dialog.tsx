@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { CalendarDays, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,10 @@ export function ViewAppointmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Detalle del turno</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarDays className="size-4 text-primary" />
+            Detalle del turno
+          </DialogTitle>
           <DialogDescription>
             {formatDate(toLocalDateString(appointment.startsAt))} — {formatTime(appointment.startsAt)}
           </DialogDescription>

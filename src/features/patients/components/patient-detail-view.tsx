@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import type { Consultation, Patient } from "@prisma/client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -75,6 +75,7 @@ export function PatientDetailView({
         <PageHeader
           title={patient.name}
           description={patient.phone}
+          icon={User}
           action={
             <NewConsultationDialog
               fixedPatientId={patient.id}

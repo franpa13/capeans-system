@@ -1,3 +1,4 @@
+import { ClipboardList } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ConsultationsView } from "@/features/consultations/components/consultations-view";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
@@ -41,6 +42,7 @@ export default async function ConsultasPage({
       <PageHeader
         title="Consultas/Tratamientos"
         description="Historial de todo lo realizado a los pacientes."
+        icon={ClipboardList}
         action={
           <NewConsultationDialog
             patients={patients}

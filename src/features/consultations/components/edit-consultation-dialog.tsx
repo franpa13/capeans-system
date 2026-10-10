@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ClipboardList } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -90,7 +91,10 @@ export function EditConsultationDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
-            <DialogTitle>Editar consulta</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="size-4 text-primary" />
+              Editar consulta
+            </DialogTitle>
             <DialogDescription>
               Corregí lo que haga falta de esta visita.
             </DialogDescription>

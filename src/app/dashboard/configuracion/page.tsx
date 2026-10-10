@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
@@ -21,6 +22,7 @@ export default async function ConfiguracionPage() {
       <PageHeader
         title="Configuración"
         description="Parámetros propios de tu consultorio."
+        icon={Settings}
       />
 
       <Tabs defaultValue="insurance">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil } from "lucide-react";
+import { ClipboardList, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,10 @@ export function ViewConsultationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Detalle de la consulta</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <ClipboardList className="size-4 text-primary" />
+            Detalle de la consulta
+          </DialogTitle>
           <DialogDescription>
             {formatDate(toLocalDateString(consultation.date))} — {formatTime(consultation.date)}
           </DialogDescription>

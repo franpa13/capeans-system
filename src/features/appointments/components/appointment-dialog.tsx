@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus } from "lucide-react";
+import { CalendarDays, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -212,7 +212,10 @@ export function AppointmentDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
-            <DialogTitle>{isEditing ? "Editar turno" : "Nuevo turno"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarDays className="size-4 text-primary" />
+              {isEditing ? "Editar turno" : "Nuevo turno"}
+            </DialogTitle>
             <DialogDescription>
               {isEditing
                 ? "Modificá el horario o los datos del turno."

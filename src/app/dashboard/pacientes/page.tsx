@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PatientsView } from "@/features/patients/components/patients-view";
 import { NewPatientDialog } from "@/features/patients/components/new-patient-dialog";
@@ -26,6 +27,7 @@ export default async function PacientesPage({
       <PageHeader
         title="Pacientes"
         description="Buscá pacientes existentes o cargá uno nuevo."
+        icon={Users}
         action={<NewPatientDialog insuranceOptions={insuranceLabels} />}
       />
 

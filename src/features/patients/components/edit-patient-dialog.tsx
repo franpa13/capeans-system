@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -91,7 +92,10 @@ export function EditPatientDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
-            <DialogTitle>Editar paciente</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="size-4 text-primary" />
+              Editar paciente
+            </DialogTitle>
             <DialogDescription>
               Actualizá los datos de {patient.name}.
             </DialogDescription>

@@ -92,7 +92,10 @@ export function PatientActions({
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar a {patient.name}?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-4 text-destructive" />
+              ¿Eliminar a {patient.name}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. Las consultas ya registradas
               para este paciente van a quedar sin paciente asociado.

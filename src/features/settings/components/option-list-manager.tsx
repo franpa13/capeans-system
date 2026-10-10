@@ -203,7 +203,10 @@ export function OptionListManager({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar &quot;{deleteTarget?.label}&quot;?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-4 text-destructive" />
+              ¿Eliminar &quot;{deleteTarget?.label}&quot;?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Los pacientes o consultas que ya usan este valor no se modifican,
               solo deja de estar disponible para elegir en registros nuevos.

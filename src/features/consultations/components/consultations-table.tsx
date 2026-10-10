@@ -188,7 +188,10 @@ export function ConsultationsTable({
       <AlertDialog open={!!deleting} onOpenChange={(next) => !next && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar esta consulta?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="size-4 text-destructive" />
+              ¿Eliminar esta consulta?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción no se puede deshacer. El registro de esta visita
               {deleting ? ` para ${nameFor(deleting)}` : ""} se va a borrar

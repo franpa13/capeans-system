@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, UserPlus } from "lucide-react";
+import { ClipboardList, Plus, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -173,7 +173,10 @@ export function NewConsultationDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
-            <DialogTitle>Nueva consulta</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="size-4 text-primary" />
+              Nueva consulta
+            </DialogTitle>
             <DialogDescription>
               Registrá lo que se le hizo al paciente en esta visita.
             </DialogDescription>
