@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -99,11 +99,24 @@ export function DailyAgenda({
   );
   const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
   const hourBoundaries = boundaries(ranges);
+  const openMinutes = hourBoundaries.find((b) => b.label === "Hora inicio")?.minutes;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
   const [newStart, setNewStart] = useState<Date | undefined>(undefined);
   const [viewing, setViewing] = useState<Appointment | null>(null);
+
+  // Lands the view on the clinic's opening time instead of midnight — a
+  // day with few/no turnos before "Hora inicio" would otherwise open on
+  // several empty hours the dentist has to scroll past every time.
+  // useLayoutEffect (not useEffect) so the jump happens before paint,
+  // not as a visible scroll after the day's already rendered at 00:00.
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const dayTime = day.getTime();
+  useLayoutEffect(() => {
+    if (openMinutes === undefined || !scrollContainerRef.current) return;
+    scrollContainerRef.current.scrollLeft = (openMinutes / 60) * HOUR_WIDTH;
+  }, [dayTime, openMinutes]);
 
   function openCreate() {
     const start = new Date(day);
@@ -158,7 +171,7 @@ export function DailyAgenda({
         </Button>
       </div>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border">
+      <div ref={scrollContainerRef} className="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border">
         <div
           className="grid"
           style={{ gridTemplateColumns: `${LABEL_WIDTH}px ${TIMELINE_WIDTH}px` }}
