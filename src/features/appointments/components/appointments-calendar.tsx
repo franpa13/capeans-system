@@ -57,7 +57,10 @@ function boundaries(ranges: { startMinutes: number; endMinutes: number }[]): Bou
 }
 
 const STATUS_STYLES: Record<Appointment["status"], string> = {
-  CONFIRMED: "bg-primary/90 text-primary-foreground border-primary",
+  // A solid, near-opaque fill read as too heavy against the grid — a
+  // light tinted wash with a soft border (the same look CANCELLED/
+  // COMPLETED already had) keeps it readable without dominating the page.
+  CONFIRMED: "bg-primary/15 text-accent-foreground border-primary/30 dark:bg-primary/25 dark:border-primary/40",
   CANCELLED: "bg-muted text-muted-foreground border-border line-through opacity-60",
   COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
 };
