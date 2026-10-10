@@ -1,5 +1,70 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+
+const WEEKDAY_IDS: Record<string, number> = {
+  Lunes: 1,
+  Martes: 2,
+  Miércoles: 3,
+  Jueves: 4,
+  Viernes: 5,
+  Sábado: 6,
+  Domingo: 0,
+};
+
+type DaySnapshot =
+  | { isOpen: false }
+  | {
+      isOpen: true;
+      openTime1: string;
+      closeTime1: string;
+      hasSecondShift: boolean;
+      openTime2?: string;
+      closeTime2?: string;
+    };
+
+async function readDay(page: Page, label: string): Promise<DaySnapshot> {
+  const isOpen = await page.locator(`#open-${WEEKDAY_IDS[label]}`).isChecked();
+  if (!isOpen) return { isOpen: false };
+  const openTime1 = await page.getByLabel(`Entrada ${label}`).inputValue();
+  const closeTime1 = await page.getByLabel(`Salida ${label}`).inputValue();
+  const hasSecondShift = (await page.getByLabel(`Entrada turno tarde ${label}`).count()) > 0;
+  if (!hasSecondShift) return { isOpen: true, openTime1, closeTime1, hasSecondShift: false };
+  const openTime2 = await page.getByLabel(`Entrada turno tarde ${label}`).inputValue();
+  const closeTime2 = await page.getByLabel(`Salida turno tarde ${label}`).inputValue();
+  return { isOpen: true, openTime1, closeTime1, hasSecondShift: true, openTime2, closeTime2 };
+}
+
+/** Drives the form to match `snapshot` exactly and saves — used both to
+ * set up a distinctive test schedule and to restore whatever was there
+ * before, since this touches the same shared dev DB a person may be
+ * clicking around in by hand. */
+async function writeDay(page: Page, label: string, snapshot: DaySnapshot) {
+  const toggle = page.locator(`#open-${WEEKDAY_IDS[label]}`);
+  if ((await toggle.isChecked()) !== snapshot.isOpen) {
+    await toggle.click();
+  }
+
+  if (snapshot.isOpen) {
+    await page.getByLabel(`Entrada ${label}`).fill(snapshot.openTime1);
+    await page.getByLabel(`Salida ${label}`).fill(snapshot.closeTime1);
+
+    const hasShiftNow = (await page.getByLabel(`Entrada turno tarde ${label}`).count()) > 0;
+    if (snapshot.hasSecondShift && !hasShiftNow) {
+      await page.getByRole("button", { name: `Agregar segundo turno ${label}` }).click();
+    }
+    if (!snapshot.hasSecondShift && hasShiftNow) {
+      await page.getByRole("button", { name: `Quitar segundo turno ${label}` }).click();
+    }
+    if (snapshot.hasSecondShift) {
+      await page.getByLabel(`Entrada turno tarde ${label}`).fill(snapshot.openTime2!);
+      await page.getByLabel(`Salida turno tarde ${label}`).fill(snapshot.closeTime2!);
+    }
+  }
+
+  const saveButton = page.getByRole("button", { name: `Guardar horario ${label}` });
+  await saveButton.click();
+  await expect(saveButton).toBeEnabled();
+}
 
 test("an insurance option can be added, renamed, and deleted from Configuración", async ({
   page,
@@ -104,4 +169,52 @@ test("business hours can be closed for a day and persist after reload", async ({
   await page.getByLabel("Entrada Martes").fill("09:00");
   await page.getByLabel("Salida Martes").fill("18:00");
   await saveAndWait();
+});
+
+test("Aplicar a todas copies one day's schedule onto the rest of the week", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Horario de atención" }).click();
+
+  const LABELS = Object.keys(WEEKDAY_IDS);
+
+  // Snapshot every day exactly as it is now — this runs against the same
+  // dev DB a person may have hand-configured (e.g. a custom split shift),
+  // so "restore" means "put back what was really there", not some
+  // assumed default.
+  const before: Record<string, DaySnapshot> = {};
+  for (const label of LABELS) before[label] = await readDay(page, label);
+
+  try {
+    // A schedule unlikely to already match any other day, so picking it
+    // up elsewhere can only be this button's doing.
+    await writeDay(page, "Jueves", {
+      isOpen: true,
+      openTime1: "08:15",
+      closeTime1: "13:45",
+      hasSecondShift: false,
+    });
+
+    const applyButton = page.getByRole("button", {
+      name: "Aplicar horario de Jueves a todos los días",
+    });
+    await applyButton.click();
+    await expect(applyButton).toBeEnabled();
+
+    await page.reload();
+    await page.getByRole("tab", { name: "Horario de atención" }).click();
+
+    for (const label of LABELS.filter((l) => l !== "Jueves")) {
+      await expect(page.locator(`#open-${WEEKDAY_IDS[label]}`)).toBeChecked();
+      await expect(page.getByLabel(`Entrada ${label}`)).toHaveValue("08:15");
+      await expect(page.getByLabel(`Salida ${label}`)).toHaveValue("13:45");
+    }
+  } finally {
+    // Always restore, even if an assertion above failed.
+    for (const label of LABELS) {
+      await writeDay(page, label, before[label]);
+    }
+  }
 });

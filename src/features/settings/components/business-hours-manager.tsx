@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { WEEKDAY_FULL_LABELS } from "@/features/appointments/lib/week";
 import { updateBusinessHoursAction } from "@/features/settings/actions";
+import type { BusinessHoursInput } from "@/features/clinic/data/business-hours";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
@@ -54,6 +55,7 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
   );
   const [savingDay, setSavingDay] = useState<number | null>(null);
   const [errorByDay, setErrorByDay] = useState<Record<number, string>>({});
+  const [applyingFrom, setApplyingFrom] = useState<number | null>(null);
 
   function patch(weekday: number, changes: Partial<Draft>) {
     setDrafts((prev) => ({ ...prev, [weekday]: { ...prev[weekday], ...changes } }));
@@ -79,6 +81,41 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
       }));
     } finally {
       setSavingDay(null);
+    }
+  }
+
+  /** Copies one day's schedule (open/closed, both shifts) onto every
+   * other day and saves all of them right away — a dentist with a
+   * uniform week otherwise has to re-enter the same hours six times. */
+  async function handleApplyToAll(sourceWeekday: number) {
+    const source = drafts[sourceWeekday];
+    const targets = WEEKDAYS.filter((weekday) => weekday !== sourceWeekday);
+    const input: BusinessHoursInput = {
+      isOpen: source.isOpen,
+      openTime1: source.isOpen ? source.openTime1 : null,
+      closeTime1: source.isOpen ? source.closeTime1 : null,
+      openTime2: source.isOpen && source.hasSecondShift ? source.openTime2 : null,
+      closeTime2: source.isOpen && source.hasSecondShift ? source.closeTime2 : null,
+    };
+
+    setApplyingFrom(sourceWeekday);
+    setErrorByDay((prev) => ({ ...prev, [sourceWeekday]: "" }));
+    try {
+      await Promise.all(targets.map((weekday) => updateBusinessHoursAction(weekday, input)));
+      setDrafts((prev) => {
+        const next = { ...prev };
+        for (const weekday of targets) next[weekday] = { ...source };
+        return next;
+      });
+      router.refresh();
+    } catch (error) {
+      setErrorByDay((prev) => ({
+        ...prev,
+        [sourceWeekday]:
+          error instanceof Error ? error.message : "No se pudo aplicar a todos los días",
+      }));
+    } finally {
+      setApplyingFrom(null);
     }
   }
 
@@ -185,17 +222,28 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
                   </>
                 )}
 
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="ml-auto"
-                  aria-label={`Guardar horario ${WEEKDAY_FULL_LABELS[weekday]}`}
-                  disabled={savingDay === weekday}
-                  onClick={() => handleSave(weekday)}
-                >
-                  Guardar
-                </Button>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Aplicar horario de ${WEEKDAY_FULL_LABELS[weekday]} a todos los días`}
+                    disabled={applyingFrom === weekday}
+                    onClick={() => handleApplyToAll(weekday)}
+                  >
+                    {applyingFrom === weekday ? "Aplicando..." : "Aplicar a todas"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Guardar horario ${WEEKDAY_FULL_LABELS[weekday]}`}
+                    disabled={savingDay === weekday}
+                    onClick={() => handleSave(weekday)}
+                  >
+                    Guardar
+                  </Button>
+                </div>
               </div>
               {errorByDay[weekday] && (
                 <p className="text-sm text-destructive">{errorByDay[weekday]}</p>
