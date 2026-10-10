@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
@@ -245,20 +246,28 @@ export function DailyAgenda({
                         style={{ left: (minutes / 60) * HOUR_WIDTH }}
                       />
                     ))}
-                    <button
-                      type="button"
-                      onClick={() => openView(appointment)}
-                      style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
-                      className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
-                    >
-                      <div className="truncate font-medium">
-                        {String(appointment.startsAt.getHours()).padStart(2, "0")}:
-                        {String(appointment.startsAt.getMinutes()).padStart(2, "0")}
-                      </div>
-                      {appointment.reason && (
-                        <div className="truncate opacity-90">{appointment.reason}</div>
-                      )}
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => openView(appointment)}
+                          style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
+                          className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
+                        >
+                          <div className="truncate font-medium">
+                            {String(appointment.startsAt.getHours()).padStart(2, "0")}:
+                            {String(appointment.startsAt.getMinutes()).padStart(2, "0")}
+                          </div>
+                          {appointment.reason && (
+                            <div className="truncate opacity-90">{appointment.reason}</div>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="flex-col items-start gap-0.5 text-left">
+                        <p className="font-medium">{patientName}</p>
+                        <p>{appointment.reason || "Sin motivo especificado"}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </Fragment>
               );
