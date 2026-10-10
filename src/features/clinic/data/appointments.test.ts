@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/clinic/data/patients";
 import {
@@ -228,5 +228,29 @@ describe("appointments data layer", () => {
 
     const patients = await prisma.patient.findMany({ where: { clinicId: clinicA.id } });
     expect(patients).toHaveLength(0);
+  });
+
+  // findConflict queried every non-cancelled appointment the clinic ever
+  // had (no lower bound on startsAt) to check a single new slot — fine
+  // with a handful of rows, but it means every create/update gets slower
+  // forever as the clinic's history grows. A candidate can only overlap
+  // the new slot if it starts after some bounded lookback window, so the
+  // query should never need to reach further back than that.
+  it("scopes the conflict-detection query to a bounded window instead of the clinic's full history", async () => {
+    const findManySpy = vi.spyOn(prisma.appointment, "findMany");
+
+    const startsAt = new Date("2026-02-02T10:00:00Z");
+    await createAppointment(clinicA.id, { startsAt, durationMinutes: 30 });
+
+    const conflictCall = findManySpy.mock.calls.find(
+      ([args]) => (args?.where as { clinicId?: string })?.clinicId === clinicA.id,
+    );
+    expect(conflictCall).toBeDefined();
+    const where = conflictCall![0]!.where as { startsAt?: { gte?: Date; lt?: Date } };
+
+    expect(where.startsAt?.gte).toBeInstanceOf(Date);
+    expect(where.startsAt!.gte!.getTime()).toBeLessThan(startsAt.getTime());
+
+    findManySpy.mockRestore();
   });
 });

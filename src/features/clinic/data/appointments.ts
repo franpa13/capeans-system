@@ -18,6 +18,13 @@ function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
 
+// Deliberately generous — no real appointment is ever this long — just
+// enough to turn "scan the clinic's entire history" into "scan roughly
+// the last day": a candidate starting before this can never reach into
+// [startsAt, endsAt) regardless of its own duration, so it can never
+// overlap and is safe to exclude from the query itself.
+const MAX_CONFLICT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
 async function findConflict(
   db: Db,
   clinicId: string,
@@ -31,7 +38,10 @@ async function findConflict(
     where: {
       clinicId,
       status: { not: "CANCELLED" },
-      startsAt: { lt: endsAt },
+      startsAt: {
+        gte: new Date(startsAt.getTime() - MAX_CONFLICT_LOOKBACK_MS),
+        lt: endsAt,
+      },
       ...(excludeId ? { id: { not: excludeId } } : {}),
     },
   });
