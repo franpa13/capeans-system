@@ -272,3 +272,61 @@ test("a turno can be booked for a brand-new patient without leaving the dialog",
   await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
   await expect(page.getByRole("link", { name: patientName })).toBeVisible();
 });
+
+test("marking a turno as completed offers to log the consulta for that patient", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Completado E2E ${Date.now()}`;
+
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 9999-9999");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+
+  await page.goto("/dashboard/turnos");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+
+  // The weekly grid opens the edit form directly on click.
+  await page.getByRole("button", { name: patientName }).click();
+  const editDialog = page.getByRole("dialog", { name: "Editar turno" });
+  await editDialog.getByRole("button", { name: "Marcar como completado" }).click();
+  await expect(editDialog).toHaveCount(0);
+
+  // Not forced — a prompt offers logging the consulta, with the
+  // patient's name, but it's dismissible.
+  const prompt = page.getByRole("alertdialog", { name: "Turno completado" });
+  await expect(prompt).toBeVisible();
+  await expect(prompt.getByText(patientName)).toBeVisible();
+  await prompt.getByRole("button", { name: "Registrar consulta" }).click();
+
+  // Opens the same Nueva consulta dialog used elsewhere, patient fixed.
+  const consultationDialog = page.getByRole("dialog", { name: "Nueva consulta" });
+  await expect(consultationDialog).toBeVisible();
+  await expect(consultationDialog.getByText(patientName)).toBeVisible();
+  // With a fixed patient (no Paciente select), combobox order is 0 =
+  // Piezas dentales, 1 = Tratamiento realizado.
+  await consultationDialog.getByRole("combobox").nth(1).click();
+  await page.getByRole("option", { name: "Limpieza" }).click();
+  await consultationDialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(consultationDialog).toHaveCount(0);
+
+  // The turno itself is now completed — gone from the default
+  // confirmed-only filter, visible under "Turnos completados".
+  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Turnos completados", exact: true }).click();
+  await expect(page).toHaveURL(/estado=COMPLETED/);
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+});

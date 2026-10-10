@@ -8,10 +8,21 @@ import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle } from "@/features/appointments/components/view-toggle";
+import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import { addDays, formatDayLabel, getWeekStart, toWeekParam } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 
@@ -81,6 +92,7 @@ export function DailyAgenda({
   semanalHref,
   diarioHref,
   insuranceOptions,
+  treatmentOptions,
 }: {
   day: Date;
   appointments: Appointment[];
@@ -91,6 +103,7 @@ export function DailyAgenda({
   semanalHref: string;
   diarioHref: string;
   insuranceOptions: string[];
+  treatmentOptions: string[];
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -109,6 +122,12 @@ export function DailyAgenda({
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
   const [newStart, setNewStart] = useState<Date | undefined>(undefined);
   const [viewing, setViewing] = useState<Appointment | null>(null);
+
+  // After marking a turno completed, offer to log the consulta for it —
+  // see appointments-calendar.tsx for why this is two separate pieces of
+  // state instead of one reused across both dialogs.
+  const [completedPatient, setCompletedPatient] = useState<PatientOption | null>(null);
+  const [consultationPatient, setConsultationPatient] = useState<PatientOption | null>(null);
 
   // Lands the view on the clinic's opening time instead of midnight — a
   // day with few/no turnos before "Hora inicio" would otherwise open on
@@ -302,7 +321,55 @@ export function DailyAgenda({
         initialStart={newStart}
         insuranceOptions={insuranceOptions}
         onSaved={() => router.refresh()}
+        onCompleted={(appointment) => {
+          if (!appointment.patientId) return;
+          setCompletedPatient({
+            id: appointment.patientId,
+            name: patientsById.get(appointment.patientId) ?? "Paciente",
+          });
+        }}
       />
+
+      <AlertDialog
+        open={!!completedPatient}
+        onOpenChange={(next) => !next && setCompletedPatient(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turno completado</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Querés registrar qué se hizo en la consulta de {completedPatient?.name}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCompletedPatient(null)}>
+              Ahora no
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConsultationPatient(completedPatient);
+                setCompletedPatient(null);
+              }}
+            >
+              Registrar consulta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {consultationPatient && (
+        <NewConsultationDialog
+          patients={patients}
+          fixedPatientId={consultationPatient.id}
+          fixedPatientName={consultationPatient.name}
+          treatmentOptions={treatmentOptions}
+          insuranceOptions={insuranceOptions}
+          open={!!consultationPatient}
+          onOpenChange={(next) => {
+            if (!next) setConsultationPatient(null);
+          }}
+        />
+      )}
     </div>
   );
 }

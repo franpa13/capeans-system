@@ -59,6 +59,8 @@ export function NewConsultationDialog({
   treatmentOptions,
   insuranceOptions = [],
   toothHistory = {},
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   patients?: PatientOption[];
   fixedPatientId?: string;
@@ -66,8 +68,16 @@ export function NewConsultationDialog({
   treatmentOptions: string[];
   insuranceOptions?: string[];
   toothHistory?: ToothHistory;
+  /** Controlled mode, for opening this programmatically (e.g. right
+   * after marking a turno completed) instead of from its own trigger
+   * button — omit both to keep the default self-contained behavior. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = isControlled ? onOpenChangeProp! : setInternalOpen;
   const [dentitionMode, setDentitionMode] = useState<DentitionMode>("adulto");
 
   const {
@@ -164,12 +174,14 @@ export function NewConsultationDialog({
         if (!next) reset();
       }}
     >
-      <DialogTrigger asChild>
-        <Button>
-          <Plus />
-          Nueva consulta
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus />
+            Nueva consulta
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>

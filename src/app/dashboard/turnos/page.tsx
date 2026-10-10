@@ -44,7 +44,7 @@ export default async function TurnosPage({
       : weekStart;
 
   const clinic = await getCurrentClinic();
-  const [appointments, patients, businessHours, insuranceOptionRows] = clinic
+  const [appointments, patients, businessHours, insuranceOptionRows, treatmentOptionRows] = clinic
     ? await Promise.all([
         isDayView
           ? getAppointments(
@@ -56,9 +56,11 @@ export default async function TurnosPage({
         getPatients(clinic.id),
         getBusinessHours(clinic.id),
         getClinicOptions(clinic.id, "insurance"),
+        getClinicOptions(clinic.id, "treatment"),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
   const insuranceOptions = insuranceOptionRows.map((o) => o.label);
+  const treatmentOptions = treatmentOptionRows.map((o) => o.label);
 
   const weekParam = toWeekParam(weekStart);
   const semanalHref = `/dashboard/turnos?week=${weekParam}&estado=${statusParam}`;
@@ -81,6 +83,7 @@ export default async function TurnosPage({
           semanalHref={semanalHref}
           diarioHref={diarioHref}
           insuranceOptions={insuranceOptions}
+          treatmentOptions={treatmentOptions}
         />
       ) : (
         <AppointmentsCalendar
@@ -93,6 +96,7 @@ export default async function TurnosPage({
           semanalHref={semanalHref}
           diarioHref={diarioHref}
           insuranceOptions={insuranceOptions}
+          treatmentOptions={treatmentOptions}
         />
       )}
     </div>

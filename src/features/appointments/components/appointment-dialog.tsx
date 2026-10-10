@@ -103,6 +103,7 @@ export function AppointmentDialog({
   initialStart,
   insuranceOptions = [],
   onSaved,
+  onCompleted,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -111,6 +112,9 @@ export function AppointmentDialog({
   initialStart?: Date;
   insuranceOptions?: string[];
   onSaved?: () => void;
+  /** Fired only when this turno is marked completed (not on a regular
+   * save or cancel) — lets the caller offer logging the consulta for it. */
+  onCompleted?: (appointment: Appointment) => void;
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditing = !!appointment;
@@ -189,6 +193,21 @@ export function AppointmentDialog({
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : "No se pudo cancelar el turno",
+      );
+    }
+  };
+
+  const onComplete = async () => {
+    if (!appointment) return;
+    setSubmitError(null);
+    try {
+      const updated = await updateAppointmentAction(appointment.id, { status: "COMPLETED" });
+      onOpenChange(false);
+      onSaved?.();
+      onCompleted?.(updated);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "No se pudo completar el turno",
       );
     }
   };
@@ -430,6 +449,14 @@ export function AppointmentDialog({
             <div className="flex gap-2">
               {isEditing && (
                 <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={onComplete}
+                  >
+                    Marcar como completado
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"

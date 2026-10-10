@@ -8,9 +8,20 @@ import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle } from "@/features/appointments/components/view-toggle";
+import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
   addDays,
   formatDayLabel,
@@ -76,6 +87,7 @@ export function AppointmentsCalendar({
   semanalHref,
   diarioHref,
   insuranceOptions,
+  treatmentOptions,
 }: {
   weekStart: Date;
   appointments: Appointment[];
@@ -86,6 +98,7 @@ export function AppointmentsCalendar({
   semanalHref: string;
   diarioHref: string;
   insuranceOptions: string[];
+  treatmentOptions: string[];
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -97,6 +110,15 @@ export function AppointmentsCalendar({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
   const [newStart, setNewStart] = useState<Date | undefined>(undefined);
+
+  // After marking a turno completed, offer to log the consulta for it —
+  // not forced. Two separate pieces of state (rather than one, reused)
+  // so accepting the offer can't race the AlertDialog's own close:
+  // accepting sets consultationPatient and clears completedPatient in
+  // the same click handler, instead of one dialog's close trying to
+  // infer whether the other is about to open.
+  const [completedPatient, setCompletedPatient] = useState<PatientOption | null>(null);
+  const [consultationPatient, setConsultationPatient] = useState<PatientOption | null>(null);
 
   function openCreateAt(day: Date, hour: number) {
     const start = new Date(day);
@@ -264,7 +286,55 @@ export function AppointmentsCalendar({
         initialStart={newStart}
         insuranceOptions={insuranceOptions}
         onSaved={() => router.refresh()}
+        onCompleted={(appointment) => {
+          if (!appointment.patientId) return;
+          setCompletedPatient({
+            id: appointment.patientId,
+            name: patientsById.get(appointment.patientId) ?? "Paciente",
+          });
+        }}
       />
+
+      <AlertDialog
+        open={!!completedPatient}
+        onOpenChange={(next) => !next && setCompletedPatient(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turno completado</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Querés registrar qué se hizo en la consulta de {completedPatient?.name}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCompletedPatient(null)}>
+              Ahora no
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConsultationPatient(completedPatient);
+                setCompletedPatient(null);
+              }}
+            >
+              Registrar consulta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {consultationPatient && (
+        <NewConsultationDialog
+          patients={patients}
+          fixedPatientId={consultationPatient.id}
+          fixedPatientName={consultationPatient.name}
+          treatmentOptions={treatmentOptions}
+          insuranceOptions={insuranceOptions}
+          open={!!consultationPatient}
+          onOpenChange={(next) => {
+            if (!next) setConsultationPatient(null);
+          }}
+        />
+      )}
     </div>
   );
 }
