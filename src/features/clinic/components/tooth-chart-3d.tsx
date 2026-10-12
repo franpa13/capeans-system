@@ -2,8 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { Loader2 } from "lucide-react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Bounds, Center, useBounds, useGLTF } from "@react-three/drei";
+import { OrbitControls, Bounds, Center, useBounds, useGLTF, useProgress } from "@react-three/drei";
 import { ALL_TEETH, LOWER_ARCH, UPPER_ARCH, cameraFocusFor } from "@/features/clinic/lib/odontogram";
 import { findMeshIslands } from "@/features/clinic/lib/mesh-islands";
 
@@ -178,6 +179,21 @@ function CameraFocus({ fdi }: { fdi: string | null }) {
   return null;
 }
 
+/** useProgress reads three.js's global DefaultLoadingManager, so it works
+ * as a plain hook outside the Canvas/R3F tree — the model loading blank
+ * with no feedback for a couple of seconds on a cold cache read as
+ * "broken" rather than "loading" for anyone not familiar with 3D viewers. */
+function LoadingOverlay() {
+  const { active } = useProgress();
+  if (!active) return null;
+  return (
+    <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+      <Loader2 className="size-4 animate-spin" />
+      Cargando modelo...
+    </div>
+  );
+}
+
 /**
  * A read-only view of the mouth: pieces are chosen elsewhere (the "Piezas
  * dentales" field), never by clicking here. Selecting teeth paints their
@@ -216,6 +232,7 @@ export function ToothChart3D({
     <div
       className={`relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-card to-accent/40 ${className}`}
     >
+      <LoadingOverlay />
       <Canvas camera={{ position: [0, 0.05, 1], fov: 35 }}>
         {/* High ambient relative to the directional lights so a tooth near
             the back of the arch — now that the camera can pull back behind
