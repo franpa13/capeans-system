@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Trash2, X, Check } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, X, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PaginationNavigation } from "@/components/pagination-navigation";
+import { usePagination } from "@/hooks/use-pagination";
 import type { OptionCategory } from "@/features/clinic/data/clinic-options";
 import {
   createClinicOptionAction,
   deleteClinicOptionAction,
   updateClinicOptionAction,
 } from "@/features/settings/actions";
+
+const PAGE_SIZE = 10;
 
 type Option = { id: string; label: string };
 
@@ -53,6 +57,13 @@ export function OptionListManager({
   const [editError, setEditError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Option | null>(null);
+
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+  }, [options, query]);
+  const { page, setPage, pageCount, pageItems } = usePagination(filtered, PAGE_SIZE);
 
   async function handleAdd() {
     if (!newLabel.trim()) return;
@@ -120,13 +131,29 @@ export function OptionListManager({
         </div>
         {addError && <p className="text-sm text-destructive">{addError}</p>}
 
+        {options.length > 0 && (
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              className="pl-8"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        )}
+
         {options.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Todavía no hay opciones cargadas.
           </p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Ninguna opción coincide con &quot;{query}&quot;.
+          </p>
         ) : (
           <ul className="divide-y rounded-md border">
-            {options.map((option) => (
+            {pageItems.map((option) => (
               <li
                 key={option.id}
                 className="flex items-center justify-between gap-2 px-3 py-2"
@@ -194,6 +221,7 @@ export function OptionListManager({
             ))}
           </ul>
         )}
+        <PaginationNavigation page={page} pageCount={pageCount} onPageChange={setPage} />
         {editError && <p className="text-sm text-destructive">{editError}</p>}
       </CardContent>
 

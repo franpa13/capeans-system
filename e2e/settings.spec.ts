@@ -84,6 +84,11 @@ test("an insurance option can be added, renamed, and deleted from Configuración
     .first()
     .fill(label);
   await page.getByRole("button", { name: "Agregar" }).first().click();
+  // Search by its own label, not just plain visibility — this list is
+  // paginated and a clinic's real obras sociales can already span more
+  // than one page, so a freshly added item isn't guaranteed to land on
+  // page 1 on its own.
+  await page.getByPlaceholder("Buscar...").fill(label);
   await expect(page.getByText(label, { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: `Editar ${label}` }).click();
@@ -99,6 +104,7 @@ test("an insurance option can be added, renamed, and deleted from Configuración
   const anotherLabel = `Obra Social E2E ${Date.now()}`;
   await page.getByPlaceholder("Agregar nuevo...").first().fill(anotherLabel);
   await page.getByRole("button", { name: "Agregar" }).first().click();
+  await page.getByPlaceholder("Buscar...").fill(anotherLabel);
   await expect(page.getByText(anotherLabel, { exact: true })).toBeVisible();
 
   await page.goto("/dashboard/pacientes");
@@ -215,6 +221,59 @@ test("Aplicar a todas copies one day's schedule onto the rest of the week", asyn
     // Always restore, even if an assertion above failed.
     for (const label of LABELS) {
       await writeDay(page, label, before[label]);
+    }
+  }
+});
+
+test("a long list of tratamientos gets pagination and a working search", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+
+  // A unique prefix so this test's own entries are unambiguous no matter
+  // how much other test data has accumulated in this shared dev DB.
+  const prefix = `Pag E2E ${Date.now()}`;
+  const labels = Array.from({ length: 11 }, (_, i) => `${prefix} ${String(i).padStart(2, "0")}`);
+
+  try {
+    for (const label of labels) {
+      await page.getByPlaceholder("Agregar nuevo...").fill(label);
+      await page.getByRole("button", { name: "Agregar" }).click();
+      // Confirm via its own unique label, not just list visibility — the
+      // clinic's pre-existing tratamientos can already be close to a full
+      // page, so a freshly added item can land on page 2 and never show
+      // up on page 1 at all.
+      await page.getByPlaceholder("Buscar...").fill(label);
+      await expect(page.getByText(label, { exact: true })).toBeVisible();
+    }
+
+    // Narrow to just this test's 11 entries — more than the page size (10),
+    // so pagination should now be offered where it wasn't before.
+    await page.getByPlaceholder("Buscar...").fill(prefix);
+    await expect(page.getByText("Página 1 de 2")).toBeVisible();
+    await expect(page.getByText(labels[0], { exact: true })).toBeVisible();
+    await expect(page.getByText(labels[10], { exact: true })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Siguiente" }).click();
+    await expect(page.getByText("Página 2 de 2")).toBeVisible();
+    await expect(page.getByText(labels[10], { exact: true })).toBeVisible();
+
+    // A search matching nothing says so instead of silently showing an
+    // empty list.
+    await page.getByPlaceholder("Buscar...").fill(`${prefix} zzz-no-match`);
+    await expect(page.getByText(/Ninguna opción coincide con/)).toBeVisible();
+  } finally {
+    // Ascending label order matches the list's own sort order, and the
+    // list resets to page 1 every time it shrinks (usePagination resets
+    // on any items-array change) — so each label in turn is always
+    // reachable on page 1 without separately paging to find it.
+    await page.getByPlaceholder("Buscar...").fill(prefix);
+    for (const label of labels) {
+      await page.getByRole("button", { name: `Eliminar ${label}` }).click();
+      await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+      await expect(page.getByText(label, { exact: true })).toHaveCount(0);
     }
   }
 });
