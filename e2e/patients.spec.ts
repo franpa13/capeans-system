@@ -86,3 +86,40 @@ test("filtering by obra social narrows the list via the backend", async ({ page 
   await page.getByRole("button", { name: "Limpiar filtros" }).click();
   await expect(page).not.toHaveURL(/obra=/);
 });
+
+test("a minimal patient's detail page explains the info card is empty instead of showing a blank box", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Minimo E2E ${Date.now()}`;
+
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 4444-0000");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+
+  await page.getByRole("link", { name: patientName }).click();
+  await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
+  await expect(
+    page.getByText("Todavía no se cargaron más datos de este paciente."),
+  ).toBeVisible();
+
+  // Filling in a field later (from the Pacientes list, the only place
+  // editing is offered today) replaces that message with the real data.
+  await page.goto("/dashboard/pacientes");
+  await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+  await page.getByRole("button", { name: `Acciones para ${patientName}` }).click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  await page.fill("#dni", "30.123.456");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await page.getByRole("link", { name: patientName }).click();
+  await expect(page.getByText("Todavía no se cargaron más datos de este paciente.")).toHaveCount(0);
+  await expect(page.getByText("30.123.456")).toBeVisible();
+});

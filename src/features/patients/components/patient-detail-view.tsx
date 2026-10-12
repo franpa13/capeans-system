@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, Info, User } from "lucide-react";
 import type { Consultation, Patient } from "@prisma/client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -62,6 +62,18 @@ export function PatientDetailView({
     );
   }
 
+  // Patients booked in a hurry (e.g. from "Agregar paciente nuevo" while
+  // scheduling a turno) only ever get a name and phone — without this,
+  // the card below renders as an empty white box with nothing in it,
+  // which reads as broken rather than as "nothing filled in yet".
+  const hasAdditionalInfo =
+    !!patient.email ||
+    !!patient.dni ||
+    !!patient.birthDate ||
+    !!patient.address ||
+    !!patient.insurance ||
+    !!patient.allergies;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
@@ -88,17 +100,24 @@ export function PatientDetailView({
       </div>
 
       <Card>
-        <CardContent className="grid gap-4 sm:grid-cols-3">
-          <InfoField label="Email" value={patient.email} />
-          <InfoField label="DNI" value={patient.dni} />
-          <InfoField
-            label="Fecha de nacimiento"
-            value={formatDate(patient.birthDate?.toISOString().slice(0, 10))}
-          />
-          <InfoField label="Dirección" value={patient.address} />
-          <InfoField label="Obra social" value={patient.insurance} />
-          <InfoField label="Alergias / antecedentes" value={patient.allergies} />
-        </CardContent>
+        {hasAdditionalInfo ? (
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            <InfoField label="Email" value={patient.email} />
+            <InfoField label="DNI" value={patient.dni} />
+            <InfoField
+              label="Fecha de nacimiento"
+              value={formatDate(patient.birthDate?.toISOString().slice(0, 10))}
+            />
+            <InfoField label="Dirección" value={patient.address} />
+            <InfoField label="Obra social" value={patient.insurance} />
+            <InfoField label="Alergias / antecedentes" value={patient.allergies} />
+          </CardContent>
+        ) : (
+          <CardContent className="flex flex-col items-center gap-2 py-4 text-center text-muted-foreground">
+            <Info className="size-5" />
+            Todavía no se cargaron más datos de este paciente.
+          </CardContent>
+        )}
       </Card>
 
       <Card>
