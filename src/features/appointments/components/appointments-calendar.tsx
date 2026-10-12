@@ -103,6 +103,14 @@ export function AppointmentsCalendar({
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
+  // Shown once, in the shared hour-axis column, instead of inside
+  // Monday's own day column — an appointment starting right at the
+  // boundary used to render on top of the label there and make it
+  // unreadable. Using Monday's hours as representative matches what the
+  // label already did (only dayIndex 0 carried it); if a later day's
+  // hours differ (e.g. Saturday closing earlier), its own dashed line
+  // still marks that boundary in its own column, just without text.
+  const axisBoundaries = boundaries(closedRanges(businessHoursForWeekday(businessHours, days[0].getDay())));
   const patientsById = useMemo(
     () => new Map(patients.map((p) => [p.id, p.name])),
     [patients],
@@ -194,7 +202,7 @@ export function AppointmentsCalendar({
             </div>
           ))}
 
-          <div className="border-r">
+          <div className="relative border-r">
             {HOURS.map((hour) => (
               <div
                 key={hour}
@@ -204,9 +212,19 @@ export function AppointmentsCalendar({
                 {String(hour).padStart(2, "0")}:00
               </div>
             ))}
+            {axisBoundaries.map(({ minutes, label }) => (
+              <span
+                key={minutes}
+                aria-hidden
+                className={`pointer-events-none absolute left-1 z-10 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap ${BOUNDARY_COLORS[label].text}`}
+                style={{ top: (minutes / 60) * HOUR_HEIGHT }}
+              >
+                {label}
+              </span>
+            ))}
           </div>
 
-          {days.map((day, dayIndex) => {
+          {days.map((day) => {
             const dayAppointments = appointments.filter((a) => isSameDay(a.startsAt, day));
             const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
             return (
@@ -221,18 +239,7 @@ export function AppointmentsCalendar({
                     aria-hidden
                     className={`pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                     style={{ top: (minutes / 60) * HOUR_HEIGHT }}
-                  >
-                    {/* Only the leftmost day's column carries the text —
-                        repeating it in all 7 columns was redundant, the
-                        dashed line alone marks the boundary elsewhere. */}
-                    {dayIndex === 0 && (
-                      <span
-                        className={`absolute left-1 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap ${BOUNDARY_COLORS[label].text}`}
-                      >
-                        {label}
-                      </span>
-                    )}
-                  </div>
+                  />
                 ))}
 
                 {HOURS.map((hour) => (
