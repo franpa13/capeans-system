@@ -118,6 +118,10 @@ export function AppointmentDialog({
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditing = !!appointment;
+  // Completar/cancelar are transitions out of CONFIRMED — offering them
+  // on a turno that's already cancelled or completed suggested you could
+  // still change its mind for it, which isn't true once it's settled.
+  const canChangeStatus = appointment?.status === "CONFIRMED";
 
   const {
     register,
@@ -228,7 +232,7 @@ export function AppointmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -449,22 +453,26 @@ export function AppointmentDialog({
             <div className="flex gap-2">
               {isEditing && (
                 <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={onComplete}
-                  >
-                    Marcar como completado
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={onCancel}
-                  >
-                    Cancelar turno
-                  </Button>
+                  {canChangeStatus && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitting}
+                        onClick={onComplete}
+                      >
+                        Marcar como completado
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitting}
+                        onClick={onCancel}
+                      >
+                        Cancelar turno
+                      </Button>
+                    </>
+                  )}
                   <Button
                     type="button"
                     variant="destructive"

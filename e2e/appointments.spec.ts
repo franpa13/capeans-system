@@ -349,3 +349,52 @@ test("Nuevo turno from the weekly header defaults to a date within the viewed we
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await expect(page.locator("#date")).toHaveValue(viewedWeekStart!);
 });
+
+test("a cancelled turno no longer offers to cancel or complete it, only delete", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Estados E2E ${Date.now()}`;
+
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 1010-1010");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+
+  await page.goto("/dashboard/turnos");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+
+  // While CONFIRMED, both status-change actions are offered.
+  await page.getByRole("button", { name: patientName }).click();
+  let dialog = page.getByRole("dialog", { name: "Editar turno" });
+  await expect(dialog.getByRole("button", { name: "Marcar como completado" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Cancelar turno" })).toBeVisible();
+
+  await dialog.getByRole("button", { name: "Cancelar turno" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // onSaved's router.refresh() is fire-and-forget — confirm the
+  // cancellation actually landed (the bar disappears from the default
+  // confirmed-only filter) before trusting the data is fresh.
+  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+
+  // Show cancelled turnos, then reopen it.
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Todos los turnos", exact: true }).click();
+  await page.getByRole("button", { name: patientName }).click();
+  dialog = page.getByRole("dialog", { name: "Editar turno" });
+  await expect(dialog.getByRole("button", { name: "Marcar como completado" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Cancelar turno" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Eliminar" })).toBeVisible();
+});
