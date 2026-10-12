@@ -182,7 +182,7 @@ export function NewConsultationDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
