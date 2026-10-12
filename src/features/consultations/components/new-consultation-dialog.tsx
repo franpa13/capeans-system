@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ClipboardList, Plus, UserPlus } from "lucide-react";
+import { ClipboardList, Plus, Save, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -458,7 +458,10 @@ export function NewConsultationDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit">Guardar</Button>
+            <Button type="submit">
+              <Save />
+              Guardar
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

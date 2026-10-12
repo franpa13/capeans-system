@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, Plus, X } from "lucide-react";
 import type { Appointment, BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -318,6 +318,7 @@ export function AppointmentsCalendar({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setCompletedPatient(null)}>
+              <X />
               Ahora no
             </AlertDialogCancel>
             <AlertDialogAction
@@ -326,6 +327,7 @@ export function AppointmentsCalendar({
                 setCompletedPatient(null);
               }}
             >
+              <ClipboardList />
               Registrar consulta
             </AlertDialogAction>
           </AlertDialogFooter>

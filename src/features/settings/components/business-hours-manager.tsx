@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Copy, Plus, Save, X } from "lucide-react";
 import type { BusinessHours } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -231,6 +231,7 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
                     disabled={applyingFrom === weekday}
                     onClick={() => handleApplyToAll(weekday)}
                   >
+                    <Copy />
                     {applyingFrom === weekday ? "Aplicando..." : "Aplicar a todas"}
                   </Button>
                   <Button
@@ -241,6 +242,7 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
                     disabled={savingDay === weekday}
                     onClick={() => handleSave(weekday)}
                   >
+                    <Save />
                     Guardar
                   </Button>
                 </div>

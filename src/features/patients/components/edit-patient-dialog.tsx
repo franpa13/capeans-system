@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User } from "lucide-react";
+import { Save, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -109,7 +109,10 @@ export function EditPatientDialog({
           />
 
           <DialogFooter>
-            <Button type="submit">Guardar cambios</Button>
+            <Button type="submit">
+              <Save />
+              Guardar cambios
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

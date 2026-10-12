@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Save } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -221,7 +221,10 @@ export function EditConsultationDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit">Guardar cambios</Button>
+            <Button type="submit">
+              <Save />
+              Guardar cambios
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

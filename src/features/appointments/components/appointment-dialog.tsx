@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, UserPlus } from "lucide-react";
+import { CalendarDays, CalendarX2, CheckCircle2, Save, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -449,8 +449,8 @@ export function AppointmentDialog({
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:justify-between">
-            <div className="flex gap-2">
+          <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+            <div className="flex flex-wrap gap-2">
               {isEditing && (
                 <>
                   {canChangeStatus && (
@@ -461,6 +461,7 @@ export function AppointmentDialog({
                         disabled={isSubmitting}
                         onClick={onComplete}
                       >
+                        <CheckCircle2 />
                         Marcar como completado
                       </Button>
                       <Button
@@ -469,6 +470,7 @@ export function AppointmentDialog({
                         disabled={isSubmitting}
                         onClick={onCancel}
                       >
+                        <CalendarX2 />
                         Cancelar turno
                       </Button>
                     </>
@@ -479,12 +481,14 @@ export function AppointmentDialog({
                     disabled={isSubmitting}
                     onClick={onDelete}
                   >
+                    <Trash2 />
                     Eliminar
                   </Button>
                 </>
               )}
             </div>
             <Button type="submit" disabled={isSubmitting}>
+              <Save />
               {isSubmitting ? "Guardando..." : "Guardar"}
             </Button>
           </DialogFooter>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus, Save, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -106,7 +106,10 @@ export function NewPatientDialog({
           />
 
           <DialogFooter>
-            <Button type="submit">Guardar</Button>
+            <Button type="submit">
+              <Save />
+              Guardar
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

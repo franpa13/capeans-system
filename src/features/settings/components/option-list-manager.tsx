@@ -241,11 +241,15 @@ export function OptionListManager({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>
+              <X />
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive! text-white! hover:bg-destructive/90!"
             >
+              <Trash2 />
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

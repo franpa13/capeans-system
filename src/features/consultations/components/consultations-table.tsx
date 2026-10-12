@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, FileText, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileText, Pencil, Trash2, X } from "lucide-react";
 
 import {
   AlertDialog,
@@ -199,11 +199,15 @@ export function ConsultationsTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>
+              <X />
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive! text-white! hover:bg-destructive/90!"
             >
+              <Trash2 />
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

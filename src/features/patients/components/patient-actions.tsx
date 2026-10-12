@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
 
 import {
   AlertDialog,
@@ -102,11 +102,15 @@ export function PatientActions({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>
+              <X />
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletePatientAction(patient.id)}
               className="bg-destructive! text-white! hover:bg-destructive/90!"
             >
+              <Trash2 />
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
