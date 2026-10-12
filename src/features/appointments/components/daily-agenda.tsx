@@ -173,12 +173,12 @@ export function DailyAgenda({
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" asChild>
-              <Link href={hrefForDay(addDays(day, -1))}>
+              <Link href={hrefForDay(addDays(day, -1))} aria-label="Día anterior">
                 <ChevronLeft />
               </Link>
             </Button>
             <Button variant="outline" size="icon" asChild>
-              <Link href={hrefForDay(addDays(day, 1))}>
+              <Link href={hrefForDay(addDays(day, 1))} aria-label="Día siguiente">
                 <ChevronRight />
               </Link>
             </Button>

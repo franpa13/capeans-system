@@ -26,6 +26,7 @@ import {
   addDays,
   formatDayLabel,
   getWeekDays,
+  getWeekStart,
   isSameDay,
   toWeekParam,
 } from "@/features/appointments/lib/week";
@@ -146,7 +147,7 @@ export function AppointmentsCalendar({
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" asChild>
-              <Link href={`/dashboard/turnos?week=${prevWeek}&estado=${estado}`}>
+              <Link href={`/dashboard/turnos?week=${prevWeek}&estado=${estado}`} aria-label="Semana anterior">
                 <ChevronLeft />
               </Link>
             </Button>
@@ -154,7 +155,7 @@ export function AppointmentsCalendar({
               Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
             </span>
             <Button variant="outline" size="icon" asChild>
-              <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`}>
+              <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`} aria-label="Semana siguiente">
                 <ChevronRight />
               </Link>
             </Button>
@@ -163,7 +164,16 @@ export function AppointmentsCalendar({
         <Button
           onClick={() => {
             setEditing(undefined);
-            setNewStart(new Date());
+            // Today only if it actually falls inside the week being
+            // viewed — otherwise this used to silently default to
+            // "right now", which could land outside the visible week
+            // entirely (and at whatever time happened to be on the
+            // clock) if you'd navigated away from the current week.
+            const today = new Date();
+            const base = getWeekStart(today).getTime() === weekStart.getTime() ? today : weekStart;
+            const start = new Date(base);
+            start.setHours(9, 0, 0, 0);
+            setNewStart(start);
             setDialogOpen(true);
           }}
         >

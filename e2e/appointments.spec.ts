@@ -330,3 +330,22 @@ test("marking a turno as completed offers to log the consulta for that patient",
   await expect(page).toHaveURL(/estado=COMPLETED/);
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 });
+
+test("Nuevo turno from the weekly header defaults to a date within the viewed week", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/turnos");
+  // Jump two weeks ahead so "today" is never the default by coincidence.
+  await page.getByRole("link", { name: "Semana siguiente" }).click();
+  await page.getByRole("link", { name: "Semana siguiente" }).click();
+  await page.waitForTimeout(300);
+
+  const viewedWeekStart = new URL(page.url()).searchParams.get("week");
+  expect(viewedWeekStart).toBeTruthy();
+
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await expect(page.locator("#date")).toHaveValue(viewedWeekStart!);
+});
