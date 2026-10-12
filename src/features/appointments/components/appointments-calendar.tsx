@@ -103,14 +103,6 @@ export function AppointmentsCalendar({
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
-  // Shown once, in the shared hour-axis column, instead of inside
-  // Monday's own day column — an appointment starting right at the
-  // boundary used to render on top of the label there and make it
-  // unreadable. Using Monday's hours as representative matches what the
-  // label already did (only dayIndex 0 carried it); if a later day's
-  // hours differ (e.g. Saturday closing earlier), its own dashed line
-  // still marks that boundary in its own column, just without text.
-  const axisBoundaries = boundaries(closedRanges(businessHoursForWeekday(businessHours, days[0].getDay())));
   const patientsById = useMemo(
     () => new Map(patients.map((p) => [p.id, p.name])),
     [patients],
@@ -190,6 +182,23 @@ export function AppointmentsCalendar({
         </Button>
       </div>
 
+      {/* A text label inside the grid risked sitting right under an
+          appointment that happens to start at that exact time — a legend
+          here explains the two dashed lines once, so the grid itself only
+          needs the color, never the words. */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
+          />
+          Hora inicio
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
+          Hora fin
+        </span>
+      </div>
+
       <div className="min-h-0 flex-1 overflow-auto rounded-md border">
         <div className="grid grid-cols-[64px_repeat(7,minmax(140px,1fr))]">
           <div className="sticky top-0 z-10 border-b bg-card" />
@@ -202,7 +211,7 @@ export function AppointmentsCalendar({
             </div>
           ))}
 
-          <div className="relative border-r">
+          <div className="border-r">
             {HOURS.map((hour) => (
               <div
                 key={hour}
@@ -211,16 +220,6 @@ export function AppointmentsCalendar({
               >
                 {String(hour).padStart(2, "0")}:00
               </div>
-            ))}
-            {axisBoundaries.map(({ minutes, label }) => (
-              <span
-                key={minutes}
-                aria-hidden
-                className={`pointer-events-none absolute left-1 z-10 -translate-y-1/2 rounded-sm bg-background px-1 text-[10px] leading-tight font-medium whitespace-nowrap ${BOUNDARY_COLORS[label].text}`}
-                style={{ top: (minutes / 60) * HOUR_HEIGHT }}
-              >
-                {label}
-              </span>
             ))}
           </div>
 

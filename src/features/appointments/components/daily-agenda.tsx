@@ -194,6 +194,23 @@ export function DailyAgenda({
         </Button>
       </div>
 
+      {/* A text label inside the grid risked sitting right under an
+          appointment that happens to start at that exact time — a legend
+          here explains the two dashed lines once, so the grid itself only
+          needs the color, never the words. */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
+          />
+          Hora inicio
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
+          Hora fin
+        </span>
+      </div>
+
       <div ref={scrollContainerRef} className="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border">
         <div
           className="grid"
@@ -219,14 +236,7 @@ export function DailyAgenda({
                 aria-hidden
                 className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                 style={{ left: (minutes / 60) * HOUR_WIDTH }}
-              >
-                <span
-                  className={`absolute left-1 rounded-sm text-[10px] leading-tight font-medium whitespace-nowrap ${BOUNDARY_COLORS[label].text}`}
-                  style={{ top: 24 }}
-                >
-                  {label}
-                </span>
-              </div>
+              />
             ))}
           </div>
 
