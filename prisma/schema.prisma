@@ -52,6 +52,9 @@ model Consultation {
   teeth     String[] @default([])
   notes     String?
 
+  amountCharged Int?            // monto acordado para esta visita (snapshot, no referencia viva al precio de lista)
+  amountPaid    Int  @default(0) // cuánto se pagó hasta ahora
+
   @@index([clinicId])
   @@index([patientId])
 }
@@ -113,6 +116,7 @@ model ClinicOption {
   category String
   label    String
   order    Int    @default(0)
+  price    Int?   // precio de lista, pesos enteros. Solo aplica a category == "treatment".
 
   @@unique([clinicId, category, label])
   @@index([clinicId, category])
