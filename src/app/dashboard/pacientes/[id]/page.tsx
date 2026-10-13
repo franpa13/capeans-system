@@ -14,12 +14,16 @@ export default async function PacienteDetailPage({
   const patient = clinic ? await getPatient(clinic.id, id) : null;
   const consultations = clinic ? await getConsultationsForPatient(clinic.id, id) : [];
   const treatmentOptions = clinic ? await getClinicOptions(clinic.id, "treatment") : [];
+  const treatmentPrices = Object.fromEntries(
+    treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
+  );
 
   return (
     <PatientDetailView
       patient={patient}
       consultations={consultations}
       treatmentOptions={treatmentOptions.map((o) => o.label)}
+      treatmentPrices={treatmentPrices}
     />
   );
 }

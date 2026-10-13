@@ -32,10 +32,12 @@ export function ConsultationsView({
   consultations,
   patients,
   treatmentOptions,
+  treatmentPrices,
 }: {
   consultations: Consultation[];
   patients: Patient[];
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
 }) {
   const { values, setValue, setMany, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
   const treatment = values.tratamiento || ALL_TREATMENTS;
@@ -97,6 +99,7 @@ export function ConsultationsView({
         patients={patients}
         showPatient
         treatmentOptions={treatmentOptions}
+        treatmentPrices={treatmentPrices}
         emptyMessage={
           hasFilters
             ? "No hay consultas que coincidan con los filtros."

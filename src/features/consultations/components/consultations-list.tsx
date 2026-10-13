@@ -34,6 +34,7 @@ export function ConsultationsList({
   fixedPatientName,
   emptyMessage = "Todavía no hay consultas registradas.",
   treatmentOptions,
+  treatmentPrices,
 }: {
   consultations: Consultation[];
   patients?: Patient[];
@@ -41,6 +42,7 @@ export function ConsultationsList({
   fixedPatientName?: string;
   emptyMessage?: string;
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
 }) {
   const [treatment, setTreatment] = useState(ALL_TREATMENTS);
   const [from, setFrom] = useState("");
@@ -108,6 +110,7 @@ export function ConsultationsList({
         showPatient={showPatient}
         fixedPatientName={fixedPatientName}
         treatmentOptions={treatmentOptions}
+        treatmentPrices={treatmentPrices}
         emptyMessage={
           hasFilters
             ? "No hay consultas que coincidan con los filtros."

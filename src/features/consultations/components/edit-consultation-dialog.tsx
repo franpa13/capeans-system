@@ -22,7 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { TeethField, type DentitionMode } from "@/features/clinic/components/teeth-field";
 import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
-import { combineDateAndTime, splitDateAndTime } from "@/features/clinic/lib/format";
+import { combineDateAndTime, formatCurrency, splitDateAndTime } from "@/features/clinic/lib/format";
+import { paymentStatus, PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { updateConsultationAction } from "@/features/consultations/actions";
 import { editConsultationSchema, type EditConsultationValues } from "@/features/consultations/lib/schema";
@@ -30,12 +31,16 @@ import type { Consultation } from "@prisma/client";
 
 function toFormValues(consultation: Consultation, treatmentOptions: string[]): EditConsultationValues {
   const knownTreatment = treatmentOptions.includes(consultation.treatment);
+  const status = paymentStatus(consultation.amountCharged, consultation.amountPaid);
   return {
     ...splitDateAndTime(consultation.date),
     treatment: knownTreatment ? consultation.treatment : OTHER_TREATMENT,
     treatmentOther: knownTreatment ? "" : consultation.treatment,
     teeth: consultation.teeth,
     notes: consultation.notes ?? "",
+    amountCharged: consultation.amountCharged != null ? String(consultation.amountCharged) : "",
+    paymentChoice: status === "SIN_MONTO" ? "PENDIENTE" : status,
+    partialAmountPaid: status === "PARCIAL" ? String(consultation.amountPaid) : "",
   };
 }
 
@@ -43,16 +48,20 @@ export function EditConsultationDialog({
   consultation,
   patientName,
   treatmentOptions,
+  treatmentPrices,
   open,
   onOpenChange,
 }: {
   consultation: Consultation;
   patientName: string;
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [dentitionMode, setDentitionMode] = useState<DentitionMode>("adulto");
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [amountTouched, setAmountTouched] = useState(consultation.amountCharged != null);
 
   const {
     register,
@@ -60,6 +69,7 @@ export function EditConsultationDialog({
     reset,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<EditConsultationValues>({
     resolver: zodResolver(editConsultationSchema),
@@ -70,18 +80,39 @@ export function EditConsultationDialog({
     if (open) {
       reset(toFormValues(consultation, treatmentOptions));
       setDentitionMode("adulto");
+      setDiscountPercent("");
+      setAmountTouched(consultation.amountCharged != null);
     }
   }, [open, consultation, treatmentOptions, reset]);
 
   const treatment = watch("treatment");
   const teeth = watch("teeth") ?? [];
+  const paymentChoice = watch("paymentChoice");
+  const listPrice = treatmentPrices[treatment];
+
+  useEffect(() => {
+    if (amountTouched || listPrice == null) return;
+    const pct = Number(discountPercent) || 0;
+    setValue("amountCharged", String(Math.round(listPrice * (1 - pct / 100))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treatment]);
 
   const onSubmit = async (values: EditConsultationValues) => {
+    const chargedNum = values.amountCharged ? Number(values.amountCharged) : undefined;
+    const paidNum =
+      values.paymentChoice === "COBRADO"
+        ? chargedNum
+        : values.paymentChoice === "PARCIAL"
+          ? Number(values.partialAmountPaid)
+          : undefined;
+
     await updateConsultationAction(consultation.id, {
       date: combineDateAndTime(values.date, values.time),
       treatment: values.treatment === OTHER_TREATMENT ? values.treatmentOther!.trim() : values.treatment,
       teeth: values.teeth?.length ? values.teeth : undefined,
       notes: values.notes || undefined,
+      amountCharged: chargedNum,
+      amountPaid: paidNum,
     });
     onOpenChange(false);
   };
@@ -205,6 +236,83 @@ export function EditConsultationDialog({
                 />
                 {errors.treatmentOther && (
                   <p className="text-sm text-destructive">{errors.treatmentOther.message}</p>
+                )}
+              </div>
+            )}
+
+            {listPrice != null && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Precio de lista</Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium">
+                    {formatCurrency(listPrice)}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-discountPercent">Descuento %</Label>
+                  <Input
+                    id="edit-discountPercent"
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="0"
+                    value={discountPercent}
+                    onChange={(e) => {
+                      const pct = e.target.value;
+                      setDiscountPercent(pct);
+                      setAmountTouched(true);
+                      const pctNum = Number(pct) || 0;
+                      setValue("amountCharged", String(Math.round(listPrice * (1 - pctNum / 100))));
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-amountCharged">Monto a cobrar (opcional)</Label>
+              <Input
+                id="edit-amountCharged"
+                type="number"
+                min={0}
+                placeholder="0"
+                aria-invalid={!!errors.amountCharged}
+                {...register("amountCharged", { onChange: () => setAmountTouched(true) })}
+              />
+              {errors.amountCharged && (
+                <p className="text-sm text-destructive">{errors.amountCharged.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Estado del cobro</Label>
+              <div className="flex w-fit gap-1 rounded-md border p-1">
+                {(["PENDIENTE", "PARCIAL", "COBRADO"] as const).map((choice) => (
+                  <Button
+                    key={choice}
+                    type="button"
+                    size="sm"
+                    variant={paymentChoice === choice ? "secondary" : "ghost"}
+                    onClick={() => setValue("paymentChoice", choice)}
+                  >
+                    {PAYMENT_STATUS_LABELS[choice]}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {paymentChoice === "PARCIAL" && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-partialAmountPaid">Pagado hasta ahora</Label>
+                <Input
+                  id="edit-partialAmountPaid"
+                  type="number"
+                  min={0}
+                  aria-invalid={!!errors.partialAmountPaid}
+                  {...register("partialAmountPaid")}
+                />
+                {errors.partialAmountPaid && (
+                  <p className="text-sm text-destructive">{errors.partialAmountPaid.message}</p>
                 )}
               </div>
             )}

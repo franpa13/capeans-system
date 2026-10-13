@@ -35,6 +35,7 @@ export function ConsultationsTable({
   consultations,
   patients,
   treatmentOptions,
+  treatmentPrices,
   showPatient = true,
   fixedPatientName,
   emptyMessage = "Todavía no hay consultas registradas.",
@@ -42,6 +43,7 @@ export function ConsultationsTable({
   consultations: Consultation[];
   patients?: Patient[];
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
   showPatient?: boolean;
   fixedPatientName?: string;
   emptyMessage?: string;
@@ -226,6 +228,7 @@ export function ConsultationsTable({
           consultation={editing}
           patientName={nameFor(editing)}
           treatmentOptions={treatmentOptions}
+          treatmentPrices={treatmentPrices}
           open
           onOpenChange={(next) => {
             if (!next) setEditing(null);

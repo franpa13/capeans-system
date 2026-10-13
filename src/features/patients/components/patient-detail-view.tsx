@@ -27,10 +27,12 @@ export function PatientDetailView({
   patient,
   consultations,
   treatmentOptions,
+  treatmentPrices,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
 }) {
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
@@ -93,6 +95,7 @@ export function PatientDetailView({
               fixedPatientId={patient.id}
               fixedPatientName={patient.name}
               treatmentOptions={treatmentOptions}
+              treatmentPrices={treatmentPrices}
               toothHistory={toothHistory}
             />
           }
@@ -141,6 +144,7 @@ export function PatientDetailView({
           fixedPatientName={patient.name}
           emptyMessage="Todavía no hay consultas registradas para este paciente."
           treatmentOptions={treatmentOptions}
+          treatmentPrices={treatmentPrices}
         />
       </div>
     </div>

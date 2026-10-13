@@ -33,6 +33,9 @@ export default async function ConsultasPage({
     : [[], [], []];
   const treatmentLabels = treatmentOptions.map((o) => o.label);
   const insuranceLabels = insuranceOptions.map((o) => o.label);
+  const treatmentPrices = Object.fromEntries(
+    treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
+  );
   const consultations = clinic
     ? await getConsultations(clinic.id, filters, treatmentLabels)
     : [];
@@ -47,6 +50,7 @@ export default async function ConsultasPage({
           <NewConsultationDialog
             patients={patients}
             treatmentOptions={treatmentLabels}
+            treatmentPrices={treatmentPrices}
             insuranceOptions={insuranceLabels}
           />
         }
@@ -56,6 +60,7 @@ export default async function ConsultasPage({
         consultations={consultations}
         patients={patients}
         treatmentOptions={treatmentLabels}
+        treatmentPrices={treatmentPrices}
       />
     </div>
   );
