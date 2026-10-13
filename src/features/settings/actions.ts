@@ -19,16 +19,20 @@ async function requireClinicId(): Promise<string> {
   return clinic.id;
 }
 
-export async function createClinicOptionAction(category: OptionCategory, label: string) {
+export async function createClinicOptionAction(
+  category: OptionCategory,
+  label: string,
+  price?: number,
+) {
   const clinicId = await requireClinicId();
-  const option = await createClinicOption(clinicId, category, label);
+  const option = await createClinicOption(clinicId, category, label, price);
   revalidatePath("/dashboard/configuracion");
   return option;
 }
 
-export async function updateClinicOptionAction(id: string, label: string) {
+export async function updateClinicOptionAction(id: string, label: string, price?: number) {
   const clinicId = await requireClinicId();
-  const option = await updateClinicOption(clinicId, id, label);
+  const option = await updateClinicOption(clinicId, id, label, price);
   revalidatePath("/dashboard/configuracion");
   return option;
 }

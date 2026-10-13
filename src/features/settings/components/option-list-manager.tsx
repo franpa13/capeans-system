@@ -26,6 +26,7 @@ import {
 import { PaginationNavigation } from "@/components/pagination-navigation";
 import { usePagination } from "@/hooks/use-pagination";
 import type { OptionCategory } from "@/features/clinic/data/clinic-options";
+import { formatCurrency } from "@/features/clinic/lib/format";
 import {
   createClinicOptionAction,
   deleteClinicOptionAction,
@@ -34,7 +35,7 @@ import {
 
 const PAGE_SIZE = 10;
 
-type Option = { id: string; label: string };
+type Option = { id: string; label: string; price?: number | null };
 
 export function OptionListManager({
   category,
@@ -48,12 +49,15 @@ export function OptionListManager({
   options: Option[];
 }) {
   const router = useRouter();
+  const showPrice = category === "treatment";
   const [newLabel, setNewLabel] = useState("");
+  const [newPrice, setNewPrice] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
+  const [editPrice, setEditPrice] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Option | null>(null);
@@ -70,8 +74,13 @@ export function OptionListManager({
     setAdding(true);
     setAddError(null);
     try {
-      await createClinicOptionAction(category, newLabel);
+      await createClinicOptionAction(
+        category,
+        newLabel,
+        showPrice && newPrice ? Number(newPrice) : undefined,
+      );
       setNewLabel("");
+      setNewPrice("");
       router.refresh();
     } catch (error) {
       setAddError(error instanceof Error ? error.message : "No se pudo agregar");
@@ -83,6 +92,7 @@ export function OptionListManager({
   function startEdit(option: Option) {
     setEditingId(option.id);
     setEditLabel(option.label);
+    setEditPrice(option.price != null ? String(option.price) : "");
     setEditError(null);
   }
 
@@ -90,7 +100,11 @@ export function OptionListManager({
     if (!editLabel.trim()) return;
     setEditError(null);
     try {
-      await updateClinicOptionAction(id, editLabel);
+      await updateClinicOptionAction(
+        id,
+        editLabel,
+        showPrice && editPrice ? Number(editPrice) : undefined,
+      );
       setEditingId(null);
       router.refresh();
     } catch (error) {
@@ -124,6 +138,22 @@ export function OptionListManager({
               }
             }}
           />
+          {showPrice && (
+            <Input
+              type="number"
+              min={0}
+              placeholder="Precio (opcional)"
+              className="sm:w-40"
+              value={newPrice}
+              onChange={(e) => setNewPrice(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
+            />
+          )}
           <Button type="button" onClick={handleAdd} disabled={adding}>
             <Plus />
             Agregar
@@ -173,6 +203,23 @@ export function OptionListManager({
                         if (e.key === "Escape") setEditingId(null);
                       }}
                     />
+                    {showPrice && (
+                      <Input
+                        type="number"
+                        min={0}
+                        aria-label={`Precio de ${option.label}`}
+                        className="w-32"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSaveEdit(option.id);
+                          }
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                      />
+                    )}
                     <Button
                       type="button"
                       size="icon"
@@ -194,7 +241,14 @@ export function OptionListManager({
                   </div>
                 ) : (
                   <>
-                    <span className="text-sm">{option.label}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm">{option.label}</span>
+                      {showPrice && (
+                        <span className="text-sm text-muted-foreground">
+                          {option.price != null ? formatCurrency(option.price) : "Sin precio"}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1">
                       <Button
                         type="button"
