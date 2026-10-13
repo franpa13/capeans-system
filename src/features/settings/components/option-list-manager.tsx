@@ -35,6 +35,22 @@ import {
 
 const PAGE_SIZE = 10;
 
+const PRICE_ERROR = "El precio tiene que ser un número entero, sin puntos ni comas (ej: 15000)";
+
+/** Whole-pesos prices only (see formatCurrency) — a bare numeric parse of
+ * the typed string isn't enough: formatCurrency renders "12000" as
+ * "$ 12.000", so a user re-typing what they just saw would type "12.000"
+ * and Number("12.000") silently parses to 12, not twelve thousand. "." and
+ * "," are therefore rejected outright rather than just non-integers. */
+function parsePrice(raw: string): { value: number | undefined } | { error: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: undefined };
+  if (trimmed.includes(".") || trimmed.includes(",")) return { error: PRICE_ERROR };
+  const value = Number(trimmed);
+  if (!Number.isFinite(value) || value < 0) return { error: PRICE_ERROR };
+  return { value };
+}
+
 type Option = { id: string; label: string; price?: number | null };
 
 export function OptionListManager({
@@ -71,14 +87,15 @@ export function OptionListManager({
 
   async function handleAdd() {
     if (!newLabel.trim()) return;
+    const parsedPrice = showPrice ? parsePrice(newPrice) : { value: undefined };
+    if ("error" in parsedPrice) {
+      setAddError(parsedPrice.error);
+      return;
+    }
     setAdding(true);
     setAddError(null);
     try {
-      await createClinicOptionAction(
-        category,
-        newLabel,
-        showPrice && newPrice ? Number(newPrice) : undefined,
-      );
+      await createClinicOptionAction(category, newLabel, parsedPrice.value);
       setNewLabel("");
       setNewPrice("");
       router.refresh();
@@ -98,13 +115,14 @@ export function OptionListManager({
 
   async function handleSaveEdit(id: string) {
     if (!editLabel.trim()) return;
+    const parsedPrice = showPrice ? parsePrice(editPrice) : { value: undefined };
+    if ("error" in parsedPrice) {
+      setEditError(parsedPrice.error);
+      return;
+    }
     setEditError(null);
     try {
-      await updateClinicOptionAction(
-        id,
-        editLabel,
-        showPrice && editPrice ? Number(editPrice) : undefined,
-      );
+      await updateClinicOptionAction(id, editLabel, parsedPrice.value);
       setEditingId(null);
       router.refresh();
     } catch (error) {
