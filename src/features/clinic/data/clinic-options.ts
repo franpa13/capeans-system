@@ -41,10 +41,14 @@ export async function createClinicOption(
   clinicId: string,
   category: OptionCategory,
   label: string,
+  price?: number,
 ): Promise<ClinicOption> {
   const trimmed = label.trim();
   if (!trimmed) {
     throw new Error("El nombre no puede estar vacío");
+  }
+  if (price != null && price < 0) {
+    throw new Error("El precio no puede ser negativo");
   }
 
   const existing = await prisma.clinicOption.findFirst({
@@ -60,7 +64,13 @@ export async function createClinicOption(
   });
 
   return prisma.clinicOption.create({
-    data: { clinicId, category, label: trimmed, order: (last?.order ?? -1) + 1 },
+    data: {
+      clinicId,
+      category,
+      label: trimmed,
+      order: (last?.order ?? -1) + 1,
+      price: price ?? null,
+    },
   });
 }
 
@@ -68,10 +78,14 @@ export async function updateClinicOption(
   clinicId: string,
   id: string,
   label: string,
+  price?: number,
 ): Promise<ClinicOption> {
   const trimmed = label.trim();
   if (!trimmed) {
     throw new Error("El nombre no puede estar vacío");
+  }
+  if (price != null && price < 0) {
+    throw new Error("El precio no puede ser negativo");
   }
 
   const option = await prisma.clinicOption.findFirst({ where: { id, clinicId } });
@@ -93,7 +107,7 @@ export async function updateClinicOption(
 
   return prisma.clinicOption.update({
     where: { id },
-    data: { label: trimmed },
+    data: { label: trimmed, price: price ?? null },
   });
 }
 

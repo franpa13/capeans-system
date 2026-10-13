@@ -53,6 +53,41 @@ describe("clinic options data layer", () => {
     expect(option.label).toBe("Nueva Obra Social");
   });
 
+  it("creates a treatment option with a price", async () => {
+    const option = await createClinicOption(clinicA.id, "treatment", "Limpieza", 15000);
+    expect(option.price).toBe(15000);
+  });
+
+  it("creates an option with no price when none is given", async () => {
+    const option = await createClinicOption(clinicA.id, "treatment", "Consulta");
+    expect(option.price).toBeNull();
+  });
+
+  it("refuses a negative price on create", async () => {
+    await expect(
+      createClinicOption(clinicA.id, "treatment", "Inválido", -100),
+    ).rejects.toThrow("El precio no puede ser negativo");
+  });
+
+  it("updates an option's price", async () => {
+    const option = await createClinicOption(clinicA.id, "treatment", "Endodoncia", 20000);
+    const updated = await updateClinicOption(clinicA.id, option.id, "Endodoncia", 25000);
+    expect(updated.price).toBe(25000);
+  });
+
+  it("clears a price back to null when updated with none", async () => {
+    const option = await createClinicOption(clinicA.id, "treatment", "Ortodoncia", 30000);
+    const updated = await updateClinicOption(clinicA.id, option.id, "Ortodoncia");
+    expect(updated.price).toBeNull();
+  });
+
+  it("refuses a negative price on update", async () => {
+    const option = await createClinicOption(clinicA.id, "treatment", "Corona", 10000);
+    await expect(
+      updateClinicOption(clinicA.id, option.id, "Corona", -5),
+    ).rejects.toThrow("El precio no puede ser negativo");
+  });
+
   it("does not return a clinic A option when queried with clinic B's id", async () => {
     await createClinicOption(clinicA.id, "insurance", "Solo A");
     const result = await getClinicOptions(clinicB.id, "insurance");
