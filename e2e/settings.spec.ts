@@ -287,3 +287,37 @@ test("a long list of tratamientos gets pagination and a working search", async (
     }
   }
 });
+
+test("a treatment's price can be set, edited, and cleared", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+
+  const label = `Tratamiento Precio E2E ${Date.now()}`;
+
+  await page.getByPlaceholder("Agregar nuevo...").fill(label);
+  await page.getByPlaceholder("Precio (opcional)").fill("15000");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByPlaceholder("Buscar...").fill(label);
+  await expect(page.getByText(label, { exact: true })).toBeVisible();
+  // formatCurrency renders a non-breaking space after "$" on this Node
+  // version — matching on the digits alone avoids depending on that.
+  await expect(page.getByText("15.000", { exact: false })).toBeVisible();
+
+  await page.getByRole("button", { name: `Editar ${label}` }).click();
+  await page.getByRole("spinbutton", { name: `Precio de ${label}` }).fill("20000");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("20.000", { exact: false })).toBeVisible();
+
+  await page.getByRole("button", { name: `Editar ${label}` }).click();
+  await page.getByRole("spinbutton", { name: `Precio de ${label}` }).fill("");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("Sin precio")).toBeVisible();
+
+  // Cleanup.
+  await page.getByRole("button", { name: `Eliminar ${label}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.getByText(label, { exact: true })).toHaveCount(0);
+});
