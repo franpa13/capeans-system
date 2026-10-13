@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search, Users, X } from "lucide-react";
 import type { Patient } from "@prisma/client";
 
@@ -44,6 +45,7 @@ export function PatientsView({
   patients: Patient[];
   insuranceOptions: string[];
 }) {
+  const router = useRouter();
   const { values, setValue, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
   const insurance = values.obra || ALL_INSURANCES;
   const query = values.q;
@@ -131,7 +133,11 @@ export function PatientsView({
               </TableRow>
             ) : (
               pageItems.map((patient) => (
-                <TableRow key={patient.id}>
+                <TableRow
+                  key={patient.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/dashboard/pacientes/${patient.id}`)}
+                >
                   <TableCell className="p-0">
                     <Link
                       href={`/dashboard/pacientes/${patient.id}`}

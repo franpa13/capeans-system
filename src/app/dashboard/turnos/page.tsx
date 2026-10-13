@@ -71,7 +71,11 @@ export default async function TurnosPage({
     // 24px top/bottom padding dashboard/layout.tsx's <main> applies) so
     // the calendar grid below is the thing that scrolls, not the page.
     <div className="flex h-[calc(100svh-105px)] min-w-0 flex-col gap-6">
-      <PageHeader title="Turnos" description="Agenda semanal del consultorio." icon={CalendarDays} />
+      <PageHeader
+        title="Turnos"
+        description={isDayView ? "Agenda diaria del consultorio." : "Agenda semanal del consultorio."}
+        icon={CalendarDays}
+      />
       {isDayView ? (
         <DailyAgenda
           day={selectedDay}
