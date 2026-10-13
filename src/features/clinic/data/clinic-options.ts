@@ -37,6 +37,16 @@ export async function seedDefaultClinicOptions(clinicId: string): Promise<void> 
   await prisma.clinicOption.createMany({ data: rows });
 }
 
+function assertValidPrice(price: number | undefined) {
+  if (price == null) return;
+  if (!Number.isInteger(price)) {
+    throw new Error("El precio tiene que ser un número entero");
+  }
+  if (price < 0) {
+    throw new Error("El precio no puede ser negativo");
+  }
+}
+
 export async function createClinicOption(
   clinicId: string,
   category: OptionCategory,
@@ -47,9 +57,7 @@ export async function createClinicOption(
   if (!trimmed) {
     throw new Error("El nombre no puede estar vacío");
   }
-  if (price != null && price < 0) {
-    throw new Error("El precio no puede ser negativo");
-  }
+  assertValidPrice(price);
 
   const existing = await prisma.clinicOption.findFirst({
     where: { clinicId, category, label: trimmed },
@@ -84,9 +92,7 @@ export async function updateClinicOption(
   if (!trimmed) {
     throw new Error("El nombre no puede estar vacío");
   }
-  if (price != null && price < 0) {
-    throw new Error("El precio no puede ser negativo");
-  }
+  assertValidPrice(price);
 
   const option = await prisma.clinicOption.findFirst({ where: { id, clinicId } });
   if (!option) {

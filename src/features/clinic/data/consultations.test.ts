@@ -237,6 +237,30 @@ describe("consultations data layer", () => {
     ).rejects.toThrow("El monto no puede ser negativo");
   });
 
+  it("refuses a non-integer amountCharged on create", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await expect(
+      createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Limpieza",
+        amountCharged: 1.5,
+      }),
+    ).rejects.toThrow("El monto tiene que ser un número entero");
+  });
+
+  it("refuses a NaN amountCharged on create", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await expect(
+      createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Limpieza",
+        amountCharged: NaN,
+      }),
+    ).rejects.toThrow("El monto tiene que ser un número entero");
+  });
+
   it("refuses amountPaid greater than amountCharged on create", async () => {
     const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
     await expect(

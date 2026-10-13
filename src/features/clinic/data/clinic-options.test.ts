@@ -69,6 +69,18 @@ describe("clinic options data layer", () => {
     ).rejects.toThrow("El precio no puede ser negativo");
   });
 
+  it("refuses a non-integer price on create", async () => {
+    await expect(
+      createClinicOption(clinicA.id, "treatment", "Inválido2", 15.5),
+    ).rejects.toThrow("El precio tiene que ser un número entero");
+  });
+
+  it("refuses a NaN price on create", async () => {
+    await expect(
+      createClinicOption(clinicA.id, "treatment", "Inválido3", NaN),
+    ).rejects.toThrow("El precio tiene que ser un número entero");
+  });
+
   it("updates an option's price", async () => {
     const option = await createClinicOption(clinicA.id, "treatment", "Endodoncia", 20000);
     const updated = await updateClinicOption(clinicA.id, option.id, "Endodoncia", 25000);

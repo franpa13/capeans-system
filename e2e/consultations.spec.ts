@@ -284,8 +284,18 @@ test("a consultation's amount, discount, and payment status work end to end", as
   await expect(page.getByText("Editar consulta")).toHaveCount(0);
   await expect(editRow.getByText("Cobrado", { exact: false })).toBeVisible();
 
-  // The Estado de cobro filter narrows to just this consultation.
+  await editRow.getByRole("link", { name: patientName }).click();
+  await expect(page.getByText("Debe: ", { exact: false })).toHaveCount(0);
+  await page.goto("/dashboard/consultas");
+
+  // The Estado de cobro filter actually narrows, not just the patient
+  // filter that was already applied: Pendiente must hide this now-Cobrado
+  // row, and Cobrado must show it.
   await page.locator("#filter-patient").fill(patientName);
+  await page.locator('div:has(> label:text("Estado de cobro")) button').click();
+  await page.getByRole("option", { name: "Pendiente", exact: true }).click();
+  await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
+
   await page.locator('div:has(> label:text("Estado de cobro")) button').click();
   await page.getByRole("option", { name: "Cobrado", exact: true }).click();
   await expect(page.locator("tbody").getByText(patientName)).toBeVisible();
@@ -298,6 +308,74 @@ test("a consultation's amount, discount, and payment status work end to end", as
   await page.getByRole("button", { name: "Eliminar", exact: true }).last().click();
   await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
 
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await page.getByRole("button", { name: `Eliminar ${treatmentLabel}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+});
+
+test("opening Editar on an unpriced consultation does not bill it at the treatment's current price", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  // The treatment starts with NO price, so the consultation saves with no
+  // amount (the auto-fill effect never fires — there's no listPrice yet).
+  const treatmentLabel = `SinPrecio E2E ${Date.now()}`;
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+  await page.getByPlaceholder("Agregar nuevo...").fill(treatmentLabel);
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await expect(page.getByText(treatmentLabel, { exact: true })).toBeVisible();
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  const patientName = `Paciente SinPrecio E2E ${Date.now()}`;
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 9999-9999");
+  await page.getByRole("combobox").nth(3).click();
+  await page.getByRole("option", { name: treatmentLabel }).click();
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await createConsultationAndFindIt(page, patientName);
+
+  const row = page.locator("tbody tr", { hasText: patientName });
+  await expect(row.getByText("$", { exact: false })).toHaveCount(0);
+
+  // Now price the treatment retroactively — the spec requires this to never
+  // affect a consultation that already happened without a price.
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await page.getByRole("button", { name: `Editar ${treatmentLabel}` }).click();
+  await page.getByRole("spinbutton", { name: `Precio de ${treatmentLabel}` }).fill("30000");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("30.000", { exact: false })).toBeVisible();
+
+  // Open Editar on the old consultation and save without touching anything.
+  await page.goto("/dashboard/consultas");
+  await page.locator("#filter-patient").fill(patientName);
+  await row.getByRole("button", { name: "Editar consulta" }).click();
+  // Confirms listPrice really is truthy at mount (the dialog's own "Precio
+  // de lista" block is a plain conditional render, no effect involved) —
+  // otherwise the scenario below would prove nothing.
+  await expect(page.getByText("Precio de lista")).toBeVisible();
+  // Forces a wait for the dialog's effects to settle before saving — a
+  // buggy auto-prefill effect would turn this into "30000".
+  await expect(page.locator("#edit-amountCharged")).toHaveValue("");
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText("Editar consulta")).toHaveCount(0);
+
+  // Still no amount/badge — the retroactive price must not have billed it.
+  await expect(row.getByText("$", { exact: false })).toHaveCount(0);
+
+  // Cleanup.
+  await row.getByRole("button", { name: "Eliminar consulta" }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).last().click();
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
   await page.getByPlaceholder("Buscar...").fill(treatmentLabel);

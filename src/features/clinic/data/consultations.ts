@@ -92,6 +92,12 @@ export async function getConsultationsForPatient(
 }
 
 function assertValidAmounts(amountCharged: number | undefined, amountPaid: number | undefined) {
+  if (amountCharged != null && !Number.isInteger(amountCharged)) {
+    throw new Error("El monto tiene que ser un número entero");
+  }
+  if (amountPaid != null && !Number.isInteger(amountPaid)) {
+    throw new Error("El monto tiene que ser un número entero");
+  }
   if (amountCharged != null && amountCharged < 0) {
     throw new Error("El monto no puede ser negativo");
   }
