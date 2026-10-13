@@ -7,6 +7,7 @@ import { getPatients } from "@/features/clinic/data/patients";
 import { getConsultations } from "@/features/clinic/data/consultations";
 import { getAppointments } from "@/features/clinic/data/appointments";
 import { addDays, getWeekStart } from "@/features/appointments/lib/week";
+import { outstandingBalance } from "@/features/clinic/lib/billing";
 
 export default async function DashboardPage() {
   const user = await currentUser();
@@ -19,6 +20,7 @@ export default async function DashboardPage() {
         getAppointments(clinic.id, { from: weekStart, to: addDays(weekStart, 7) }),
       ])
     : [[], [], []];
+  const pendingAmount = outstandingBalance(consultations);
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,6 +34,7 @@ export default async function DashboardPage() {
         patientCount={patients.length}
         consultationCount={consultations.length}
         upcomingAppointmentCount={appointments.length}
+        pendingAmount={pendingAmount}
       />
     </div>
   );
