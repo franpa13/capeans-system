@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/clinic/data/patients";
+import { createClinicOption, updateClinicOption } from "@/features/clinic/data/clinic-options";
 import {
   createConsultation,
   deleteConsultation,
@@ -198,5 +199,192 @@ describe("consultations data layer", () => {
     await deleteConsultation(clinicA.id, consultation.id);
 
     expect(await getConsultation(clinicB.id, consultation.id)).not.toBeNull();
+  });
+
+  it("creates a consultation with an amount charged and paid", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: 15000,
+      amountPaid: 15000,
+    });
+    expect(consultation.amountCharged).toBe(15000);
+    expect(consultation.amountPaid).toBe(15000);
+  });
+
+  it("defaults amountCharged to null and amountPaid to 0 when neither is given", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+    });
+    expect(consultation.amountCharged).toBeNull();
+    expect(consultation.amountPaid).toBe(0);
+  });
+
+  it("refuses a negative amountCharged on create", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await expect(
+      createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Limpieza",
+        amountCharged: -100,
+      }),
+    ).rejects.toThrow("El monto no puede ser negativo");
+  });
+
+  it("refuses amountPaid greater than amountCharged on create", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await expect(
+      createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Limpieza",
+        amountCharged: 10000,
+        amountPaid: 15000,
+      }),
+    ).rejects.toThrow("Lo pagado no puede superar el monto a cobrar");
+  });
+
+  it("updates a consultation's amount and payment", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: 15000,
+      amountPaid: 0,
+    });
+
+    const updated = await updateConsultation(clinicA.id, consultation.id, {
+      date: consultation.date,
+      treatment: consultation.treatment,
+      amountCharged: 15000,
+      amountPaid: 15000,
+    });
+
+    expect(updated.amountPaid).toBe(15000);
+  });
+
+  it("refuses amountPaid greater than amountCharged on update", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: 10000,
+    });
+
+    await expect(
+      updateConsultation(clinicA.id, consultation.id, {
+        date: consultation.date,
+        treatment: consultation.treatment,
+        amountCharged: 10000,
+        amountPaid: 50000,
+      }),
+    ).rejects.toThrow("Lo pagado no puede superar el monto a cobrar");
+  });
+
+  it("changing a treatment's list price later does not change a past consultation's amountCharged", async () => {
+    // amountCharged is a snapshot taken at save time, not a live lookup —
+    // there's no FK to ClinicOption at all. This test proves it by
+    // actually moving the price after the fact, not just by construction:
+    // a weaker version of this test that never touches the option's price
+    // again would pass even if a bug introduced a live join somewhere.
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const treatmentOption = await createClinicOption(clinicA.id, "treatment", "Limpieza", 15000);
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: treatmentOption.price!,
+    });
+
+    await updateClinicOption(clinicA.id, treatmentOption.id, "Limpieza", 25000);
+
+    const reloaded = await getConsultation(clinicA.id, consultation.id);
+    expect(reloaded?.amountCharged).toBe(15000);
+  });
+
+  it("filters consultations by a single payment status", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: 15000,
+      amountPaid: 15000,
+    });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-02"),
+      treatment: "Extracción",
+      amountCharged: 20000,
+      amountPaid: 0,
+    });
+
+    const paid = await getConsultations(clinicA.id, { paymentStatus: "COBRADO" });
+    expect(paid).toHaveLength(1);
+    expect(paid[0].treatment).toBe("Limpieza");
+  });
+
+  it("filters consultations by multiple payment statuses at once", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: 15000,
+      amountPaid: 0,
+    });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-02"),
+      treatment: "Extracción",
+      amountCharged: 20000,
+      amountPaid: 10000,
+    });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-03"),
+      treatment: "Endodoncia",
+      amountCharged: 25000,
+      amountPaid: 25000,
+    });
+
+    const owed = await getConsultations(clinicA.id, {
+      paymentStatus: ["PENDIENTE", "PARCIAL"],
+    });
+    expect(owed).toHaveLength(2);
+    expect(owed.map((c) => c.treatment).sort()).toEqual(["Extracción", "Limpieza"]);
+  });
+
+  it("combines the payment-status filter with an existing filter (treatment) instead of replacing it", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-01"),
+      treatment: "Limpieza",
+      amountCharged: 15000,
+      amountPaid: 0,
+    });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date("2026-01-02"),
+      treatment: "Extracción",
+      amountCharged: 20000,
+      amountPaid: 0,
+    });
+
+    const result = await getConsultations(clinicA.id, {
+      treatment: "Limpieza",
+      paymentStatus: "PENDIENTE",
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].treatment).toBe("Limpieza");
   });
 });

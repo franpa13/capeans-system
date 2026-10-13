@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Consultation, Prisma } from "@prisma/client";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
+import { paymentStatus, type PaymentStatus } from "@/features/clinic/lib/billing";
 
 export type NewConsultationInput = {
   patientId: string;
@@ -8,6 +9,8 @@ export type NewConsultationInput = {
   treatment: string;
   teeth?: string[];
   notes?: string;
+  amountCharged?: number;
+  amountPaid?: number;
 };
 
 export type ConsultationListFilters = {
@@ -21,6 +24,14 @@ export type ConsultationListFilters = {
   patientQuery?: string;
   /** A tooth number, matched exactly against entries in `teeth`. */
   tooth?: string;
+  /** One status, or several (e.g. the dashboard's "Por cobrar" link wants
+   * PENDIENTE and PARCIAL together) — undefined means no filter at all.
+   * Applied in memory after the Prisma query: amountPaid vs amountCharged
+   * is a per-row comparison between two columns, which Prisma's filter
+   * DSL can't express directly, and a raw SQL expression isn't worth it
+   * at this app's scale (a single clinic's consultations, not millions
+   * of rows). */
+  paymentStatus?: PaymentStatus | PaymentStatus[];
 };
 
 export async function getConsultations(
@@ -51,10 +62,16 @@ export async function getConsultations(
     where.teeth = { has: filters.tooth };
   }
 
-  return prisma.consultation.findMany({
+  const results = await prisma.consultation.findMany({
     where,
     orderBy: { date: "desc" },
   });
+
+  if (!filters.paymentStatus) return results;
+  const wanted = Array.isArray(filters.paymentStatus)
+    ? filters.paymentStatus
+    : [filters.paymentStatus];
+  return results.filter((c) => wanted.includes(paymentStatus(c.amountCharged, c.amountPaid)));
 }
 
 export async function getConsultation(
@@ -74,6 +91,18 @@ export async function getConsultationsForPatient(
   });
 }
 
+function assertValidAmounts(amountCharged: number | undefined, amountPaid: number | undefined) {
+  if (amountCharged != null && amountCharged < 0) {
+    throw new Error("El monto no puede ser negativo");
+  }
+  if (amountPaid != null && amountPaid < 0) {
+    throw new Error("El monto no puede ser negativo");
+  }
+  if (amountPaid != null && amountCharged != null && amountPaid > amountCharged) {
+    throw new Error("Lo pagado no puede superar el monto a cobrar");
+  }
+}
+
 export async function createConsultation(
   clinicId: string,
   input: NewConsultationInput,
@@ -84,6 +113,7 @@ export async function createConsultation(
   if (!patient) {
     throw new Error("Patient not found for this clinic");
   }
+  assertValidAmounts(input.amountCharged, input.amountPaid);
 
   return prisma.consultation.create({
     data: {
@@ -92,6 +122,8 @@ export async function createConsultation(
       treatment: input.treatment,
       teeth: input.teeth ?? [],
       notes: input.notes ?? null,
+      amountCharged: input.amountCharged ?? null,
+      amountPaid: input.amountPaid ?? 0,
       clinicId,
     },
   });
@@ -102,6 +134,8 @@ export type UpdateConsultationInput = {
   treatment: string;
   teeth?: string[];
   notes?: string;
+  amountCharged?: number;
+  amountPaid?: number;
 };
 
 export async function updateConsultation(
@@ -109,6 +143,8 @@ export async function updateConsultation(
   id: string,
   input: UpdateConsultationInput,
 ): Promise<Consultation> {
+  assertValidAmounts(input.amountCharged, input.amountPaid);
+
   const result = await prisma.consultation.updateMany({
     where: { id, clinicId },
     data: {
@@ -116,6 +152,8 @@ export async function updateConsultation(
       treatment: input.treatment,
       teeth: input.teeth ?? [],
       notes: input.notes ?? null,
+      amountCharged: input.amountCharged ?? null,
+      amountPaid: input.amountPaid ?? 0,
     },
   });
   if (result.count === 0) {
