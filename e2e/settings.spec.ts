@@ -34,7 +34,8 @@ async function readDay(page: Page, label: string): Promise<DaySnapshot> {
   return { isOpen: true, openTime1, closeTime1, hasSecondShift: true, openTime2, closeTime2 };
 }
 
-/** Drives the form to match `snapshot` exactly and saves — used both to
+/** Drives the form to match `snapshot` exactly — local only, same as any
+ * other edit in this form; a separate saveAll() persists it. Used both to
  * set up a distinctive test schedule and to restore whatever was there
  * before, since this touches the same shared dev DB a person may be
  * clicking around in by hand. */
@@ -60,10 +61,29 @@ async function writeDay(page: Page, label: string, snapshot: DaySnapshot) {
       await page.getByLabel(`Salida turno tarde ${label}`).fill(snapshot.closeTime2!);
     }
   }
+}
 
-  const saveButton = page.getByRole("button", { name: `Guardar horario ${label}` });
-  await saveButton.click();
-  await expect(saveButton).toBeEnabled();
+/** One save for the whole week's drafts, via the single "Guardar cambios"
+ * button — mirrors how a person would use the form, instead of a per-day
+ * save that no longer exists. Counts the 7 parallel per-weekday save
+ * requests directly rather than polling "enabled" (races React's
+ * re-render — a disabled state too brief to observe lets that check pass
+ * before anything actually saved) or networkidle (the dev server's own
+ * background traffic, e.g. HMR, means the page may never truly go idle). */
+async function saveAll(page: Page) {
+  let settled = 0;
+  const onResponse = (res: import("@playwright/test").Response) => {
+    if (res.request().method() === "POST" && res.url().includes("/dashboard/configuracion")) {
+      settled++;
+    }
+  };
+  page.on("response", onResponse);
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  // Generous timeout: under the full suite's parallel workers all hitting
+  // one dev server, 7 concurrent writes can take a while longer than they
+  // would in isolation.
+  await expect.poll(() => settled, { timeout: 20000 }).toBeGreaterThanOrEqual(7);
+  page.off("response", onResponse);
 }
 
 test("an insurance option can be added, renamed, and deleted from Configuración", async ({
@@ -120,18 +140,6 @@ test("business hours can be closed for a day and persist after reload", async ({
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Horario de atención" }).click();
 
-  // The save button is only disabled while its request is in flight (see
-  // BusinessHoursManager's savingDay state) - wait for it to re-enable
-  // before the next action. Two saves fired close together race: whichever
-  // request's response lands last wins, regardless of click order, so a
-  // "reset to a known state" save immediately followed by the test's own
-  // save can silently undo it.
-  const saveButton = page.getByRole("button", { name: "Guardar horario Martes" });
-  async function saveAndWait() {
-    await saveButton.click();
-    await expect(saveButton).toBeEnabled();
-  }
-
   // Tuesday (weekday 2) starts open with default hours seeded — but don't
   // assume that's still true (a previous run's cleanup step may not have
   // run if it failed partway through); force a known starting state.
@@ -140,12 +148,12 @@ test("business hours can be closed for a day and persist after reload", async ({
     await page.getByLabel("Entrada Martes").fill("09:00");
     await page.getByLabel("Salida Martes").fill("18:00");
   }
-  await saveAndWait();
+  await saveAll(page);
 
   // Now close it.
   await page.locator("#open-2").click();
   await expect(page.getByLabel("Entrada Martes")).toHaveCount(0);
-  await saveAndWait();
+  await saveAll(page);
 
   await page.reload();
   await page.getByRole("tab", { name: "Horario de atención" }).click();
@@ -159,7 +167,7 @@ test("business hours can be closed for a day and persist after reload", async ({
   await page.getByRole("button", { name: "Agregar segundo turno Martes" }).click();
   await page.getByLabel("Entrada turno tarde Martes").fill("14:00");
   await page.getByLabel("Salida turno tarde Martes").fill("20:00");
-  await saveAndWait();
+  await saveAll(page);
 
   await page.reload();
   await page.getByRole("tab", { name: "Horario de atención" }).click();
@@ -174,7 +182,7 @@ test("business hours can be closed for a day and persist after reload", async ({
   await page.getByRole("button", { name: "Quitar segundo turno Martes" }).click();
   await page.getByLabel("Entrada Martes").fill("09:00");
   await page.getByLabel("Salida Martes").fill("18:00");
-  await saveAndWait();
+  await saveAll(page);
 });
 
 test("Aplicar a todas copies one day's schedule onto the rest of the week", async ({ page }) => {
@@ -203,11 +211,12 @@ test("Aplicar a todas copies one day's schedule onto the rest of the week", asyn
       hasSecondShift: false,
     });
 
-    const applyButton = page.getByRole("button", {
-      name: "Aplicar horario de Jueves a todos los días",
-    });
-    await applyButton.click();
-    await expect(applyButton).toBeEnabled();
+    // Aplicar a todas only updates the in-form drafts (same as typing into
+    // any other field here) — it takes a real Guardar cambios to persist.
+    await page
+      .getByRole("button", { name: "Aplicar horario de Jueves a todos los días" })
+      .click();
+    await saveAll(page);
 
     await page.reload();
     await page.getByRole("tab", { name: "Horario de atención" }).click();
@@ -222,6 +231,7 @@ test("Aplicar a todas copies one day's schedule onto the rest of the week", asyn
     for (const label of LABELS) {
       await writeDay(page, label, before[label]);
     }
+    await saveAll(page);
   }
 });
 

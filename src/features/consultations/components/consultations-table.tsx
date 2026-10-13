@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
 import { deleteConsultationAction } from "@/features/consultations/actions";
@@ -61,100 +62,147 @@ export function ConsultationsTable({
     setDeleting(null);
   };
 
+  const actions = (c: Consultation) => (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Ver consulta"
+        onClick={() => setViewing(c)}
+      >
+        <Eye />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Editar consulta"
+        onClick={() => setEditing(c)}
+      >
+        <Pencil />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Eliminar consulta"
+        className="text-destructive hover:text-destructive"
+        onClick={() => setDeleting(c)}
+      >
+        <Trash2 />
+      </Button>
+    </>
+  );
+
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Fecha</TableHead>
-            {showPatient && <TableHead>Paciente</TableHead>}
-            <TableHead>Tratamiento</TableHead>
-            <TableHead>Pieza</TableHead>
-            <TableHead>Observaciones</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {consultations.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={showPatient ? 6 : 5}
-                className="h-32 text-center text-muted-foreground"
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <FileText className="size-5" />
-                  {emptyMessage}
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : (
-            consultations.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="whitespace-nowrap">
-                  {formatDate(toLocalDateString(c.date))} {formatTime(c.date)}
-                </TableCell>
-                {showPatient && (
-                  <TableCell className="font-medium">
-                    {c.patientId ? (
-                      <Link
-                        href={`/dashboard/pacientes/${c.patientId}`}
-                        className="hover:underline"
-                      >
-                        {patientName(c.patientId)}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">Paciente eliminado</span>
+    <div className="flex flex-col gap-4">
+      {consultations.length === 0 ? (
+        <div className="rounded-lg border p-8">
+          <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
+            <FileText className="size-5" />
+            {emptyMessage}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Below sm, a table forces side-scrolling to reach Acciones —
+          cards stack every field instead, each full width and readable
+          without scrolling sideways. */}
+          <div className="hidden rounded-lg border sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  {showPatient && <TableHead>Paciente</TableHead>}
+                  <TableHead>Tratamiento</TableHead>
+                  <TableHead>Pieza</TableHead>
+                  <TableHead>Observaciones</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {consultations.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(toLocalDateString(c.date))} {formatTime(c.date)}
+                    </TableCell>
+                    {showPatient && (
+                      <TableCell className="font-medium">
+                        {c.patientId ? (
+                          <Link
+                            href={`/dashboard/pacientes/${c.patientId}`}
+                            className="hover:underline"
+                          >
+                            {patientName(c.patientId)}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">Paciente eliminado</span>
+                        )}
+                      </TableCell>
                     )}
-                  </TableCell>
-                )}
-                <TableCell>
-                  <Badge variant="secondary" className="font-normal">
-                    {c.treatment}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
-                </TableCell>
-                <TableCell className="max-w-xs truncate text-muted-foreground">
-                  {c.notes ?? "—"}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Ver consulta"
-                      onClick={() => setViewing(c)}
-                    >
-                      <Eye />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Editar consulta"
-                      onClick={() => setEditing(c)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Eliminar consulta"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleting(c)}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-normal">
+                        {c.treatment}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate text-muted-foreground">
+                      {c.notes ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">{actions(c)}</div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:hidden">
+            {consultations.map((c) => (
+              <Card key={c.id}>
+                <CardContent className="flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm text-muted-foreground">
+                        {formatDate(toLocalDateString(c.date))} {formatTime(c.date)}
+                      </span>
+                      {showPatient &&
+                        (c.patientId ? (
+                          <Link
+                            href={`/dashboard/pacientes/${c.patientId}`}
+                            className="font-medium hover:underline"
+                          >
+                            {patientName(c.patientId)}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-muted-foreground">
+                            Paciente eliminado
+                          </span>
+                        ))}
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 font-normal">
+                      {c.treatment}
+                    </Badge>
                   </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+
+                  <div className="flex flex-col gap-1 text-sm">
+                    <p className="text-muted-foreground">
+                      Pieza: {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
+                    </p>
+                    <p className="text-muted-foreground">Observaciones: {c.notes ?? "—"}</p>
+                  </div>
+
+                  <div className="flex justify-end gap-1 border-t pt-2">{actions(c)}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
       {viewing && (
         <ViewConsultationDialog

@@ -53,69 +53,52 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
       ]),
     ),
   );
-  const [savingDay, setSavingDay] = useState<number | null>(null);
-  const [errorByDay, setErrorByDay] = useState<Record<number, string>>({});
-  const [applyingFrom, setApplyingFrom] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   function patch(weekday: number, changes: Partial<Draft>) {
     setDrafts((prev) => ({ ...prev, [weekday]: { ...prev[weekday], ...changes } }));
   }
 
-  async function handleSave(weekday: number) {
-    const draft = drafts[weekday];
-    setSavingDay(weekday);
-    setErrorByDay((prev) => ({ ...prev, [weekday]: "" }));
-    try {
-      await updateBusinessHoursAction(weekday, {
-        isOpen: draft.isOpen,
-        openTime1: draft.isOpen ? draft.openTime1 : null,
-        closeTime1: draft.isOpen ? draft.closeTime1 : null,
-        openTime2: draft.isOpen && draft.hasSecondShift ? draft.openTime2 : null,
-        closeTime2: draft.isOpen && draft.hasSecondShift ? draft.closeTime2 : null,
-      });
-      router.refresh();
-    } catch (error) {
-      setErrorByDay((prev) => ({
-        ...prev,
-        [weekday]: error instanceof Error ? error.message : "No se pudo guardar",
-      }));
-    } finally {
-      setSavingDay(null);
-    }
+  function toInput(draft: Draft): BusinessHoursInput {
+    return {
+      isOpen: draft.isOpen,
+      openTime1: draft.isOpen ? draft.openTime1 : null,
+      closeTime1: draft.isOpen ? draft.closeTime1 : null,
+      openTime2: draft.isOpen && draft.hasSecondShift ? draft.openTime2 : null,
+      closeTime2: draft.isOpen && draft.hasSecondShift ? draft.closeTime2 : null,
+    };
   }
 
   /** Copies one day's schedule (open/closed, both shifts) onto every
-   * other day and saves all of them right away — a dentist with a
-   * uniform week otherwise has to re-enter the same hours six times. */
-  async function handleApplyToAll(sourceWeekday: number) {
+   * other day's draft — a dentist with a uniform week otherwise has to
+   * re-enter the same hours six times. Stays local until "Guardar
+   * cambios", same as any other edit here. */
+  function handleApplyToAll(sourceWeekday: number) {
     const source = drafts[sourceWeekday];
-    const targets = WEEKDAYS.filter((weekday) => weekday !== sourceWeekday);
-    const input: BusinessHoursInput = {
-      isOpen: source.isOpen,
-      openTime1: source.isOpen ? source.openTime1 : null,
-      closeTime1: source.isOpen ? source.closeTime1 : null,
-      openTime2: source.isOpen && source.hasSecondShift ? source.openTime2 : null,
-      closeTime2: source.isOpen && source.hasSecondShift ? source.closeTime2 : null,
-    };
+    setDrafts((prev) => {
+      const next = { ...prev };
+      for (const weekday of WEEKDAYS) {
+        if (weekday !== sourceWeekday) next[weekday] = { ...source };
+      }
+      return next;
+    });
+  }
 
-    setApplyingFrom(sourceWeekday);
-    setErrorByDay((prev) => ({ ...prev, [sourceWeekday]: "" }));
+  /** One save for the whole week instead of seven, so editing several
+   * days doesn't mean hunting down a Guardar button per row. */
+  async function handleSaveAll() {
+    setSaving(true);
+    setError("");
     try {
-      await Promise.all(targets.map((weekday) => updateBusinessHoursAction(weekday, input)));
-      setDrafts((prev) => {
-        const next = { ...prev };
-        for (const weekday of targets) next[weekday] = { ...source };
-        return next;
-      });
+      await Promise.all(
+        WEEKDAYS.map((weekday) => updateBusinessHoursAction(weekday, toInput(drafts[weekday]))),
+      );
       router.refresh();
-    } catch (error) {
-      setErrorByDay((prev) => ({
-        ...prev,
-        [sourceWeekday]:
-          error instanceof Error ? error.message : "No se pudo aplicar a todos los días",
-      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
-      setApplyingFrom(null);
+      setSaving(false);
     }
   }
 
@@ -228,31 +211,24 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
                     size="sm"
                     variant="ghost"
                     aria-label={`Aplicar horario de ${WEEKDAY_FULL_LABELS[weekday]} a todos los días`}
-                    disabled={applyingFrom === weekday}
                     onClick={() => handleApplyToAll(weekday)}
                   >
                     <Copy />
-                    {applyingFrom === weekday ? "Aplicando..." : "Aplicar a todas"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    aria-label={`Guardar horario ${WEEKDAY_FULL_LABELS[weekday]}`}
-                    disabled={savingDay === weekday}
-                    onClick={() => handleSave(weekday)}
-                  >
-                    <Save />
-                    Guardar
+                    Aplicar a todas
                   </Button>
                 </div>
               </div>
-              {errorByDay[weekday] && (
-                <p className="text-sm text-destructive">{errorByDay[weekday]}</p>
-              )}
             </div>
           );
         })}
+
+        <div className="flex flex-col items-end gap-2 border-t pt-4">
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="button" disabled={saving} onClick={handleSaveAll}>
+            <Save />
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Search, Users, X } from "lucide-react";
 import type { Patient } from "@prisma/client";
 
@@ -22,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 import { PaginationNavigation } from "@/components/pagination-navigation";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
 import { usePagination } from "@/hooks/use-pagination";
@@ -45,7 +45,6 @@ export function PatientsView({
   patients: Patient[];
   insuranceOptions: string[];
 }) {
-  const router = useRouter();
   const { values, setValue, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
   const insurance = values.obra || ALL_INSURANCES;
   const query = values.q;
@@ -109,59 +108,77 @@ export function PatientsView({
 
       <ActiveFilterChips chips={chips} />
 
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Teléfono</TableHead>
-              <TableHead>Obra social</TableHead>
-              <TableHead className="w-px">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {patients.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                  <div className="flex flex-col items-center gap-2">
-                    <Users className="size-5" />
-                    {hasFilters
-                      ? "No se encontraron pacientes con esos filtros."
-                      : "Todavía no hay pacientes cargados."}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              pageItems.map((patient) => (
-                <TableRow
-                  key={patient.id}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/dashboard/pacientes/${patient.id}`)}
-                >
-                  <TableCell className="p-0">
-                    <Link
-                      href={`/dashboard/pacientes/${patient.id}`}
-                      className="block px-4 py-2.5 font-medium"
-                    >
-                      {patient.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{patient.phone}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {patient.insurance ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <PatientActions
-                      patient={patient}
-                      insuranceOptions={insuranceOptions}
-                    />
-                  </TableCell>
+      {patients.length === 0 ? (
+        <div className="rounded-lg border p-8">
+          <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
+            <Users className="size-5" />
+            {hasFilters
+              ? "No se encontraron pacientes con esos filtros."
+              : "Todavía no hay pacientes cargados."}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Below sm, a table forces side-scrolling to reach Acciones —
+          cards stack every field instead, each full width and readable
+          without scrolling sideways. */}
+          <div className="hidden rounded-lg border sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Obra social</TableHead>
+                  <TableHead className="w-px">Acciones</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {pageItems.map((patient) => (
+                  <TableRow key={patient.id}>
+                    <TableCell className="p-0">
+                      <Link
+                        href={`/dashboard/pacientes/${patient.id}`}
+                        className="block px-4 py-2.5 font-medium"
+                      >
+                        {patient.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{patient.phone}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {patient.insurance ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <PatientActions patient={patient} insuranceOptions={insuranceOptions} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:hidden">
+            {pageItems.map((patient) => (
+              <Card key={patient.id}>
+                <CardContent className="flex items-start justify-between gap-2">
+                  <Link
+                    href={`/dashboard/pacientes/${patient.id}`}
+                    className="flex flex-1 flex-col gap-0.5"
+                  >
+                    <span className="font-medium">{patient.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Teléfono: {patient.phone}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Obra social: {patient.insurance ?? "—"}
+                    </span>
+                  </Link>
+                  <PatientActions patient={patient} insuranceOptions={insuranceOptions} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
       <PaginationNavigation page={page} pageCount={pageCount} onPageChange={setPage} />
     </div>
