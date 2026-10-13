@@ -6,6 +6,7 @@ import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getConsultations } from "@/features/clinic/data/consultations";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
+import type { PaymentStatus } from "@/features/clinic/lib/billing";
 
 export default async function ConsultasPage({
   searchParams,
@@ -15,12 +16,14 @@ export default async function ConsultasPage({
   const params = await searchParams;
   const asString = (v: string | string[] | undefined) =>
     typeof v === "string" ? v : undefined;
+  const cobroParam = asString(params.cobro);
   const filters = {
     treatment: asString(params.tratamiento),
     from: asString(params.desde),
     to: asString(params.hasta),
     patientQuery: asString(params.paciente),
     tooth: asString(params.pieza),
+    paymentStatus: cobroParam ? (cobroParam.split(",") as PaymentStatus[]) : undefined,
   };
 
   const clinic = await getCurrentClinic();

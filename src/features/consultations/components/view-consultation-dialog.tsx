@@ -14,7 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
-import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
+import { formatCurrency, formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
+import { PaymentStatusBadge } from "@/features/consultations/components/payment-status-badge";
 import type { Consultation } from "@prisma/client";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -70,6 +71,22 @@ export function ViewConsultationDialog({
             <Badge variant="secondary" className="font-normal">
               {consultation.treatment}
             </Badge>
+          </Field>
+
+          <Field label="Cobro">
+            {consultation.amountCharged != null ? (
+              <div className="flex items-center gap-2">
+                <PaymentStatusBadge
+                  amountCharged={consultation.amountCharged}
+                  amountPaid={consultation.amountPaid}
+                />
+                <span className="text-muted-foreground">
+                  {formatCurrency(consultation.amountPaid)} / {formatCurrency(consultation.amountCharged)}
+                </span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground">Sin monto registrado</span>
+            )}
           </Field>
 
           <Field label="Piezas dentales">

@@ -29,6 +29,7 @@ import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib
 import { deleteConsultationAction } from "@/features/consultations/actions";
 import { EditConsultationDialog } from "@/features/consultations/components/edit-consultation-dialog";
 import { ViewConsultationDialog } from "@/features/consultations/components/view-consultation-dialog";
+import { PaymentStatusBadge } from "@/features/consultations/components/payment-status-badge";
 import type { Consultation, Patient } from "@prisma/client";
 
 export function ConsultationsTable({
@@ -144,9 +145,12 @@ export function ConsultationsTable({
                       </TableCell>
                     )}
                     <TableCell>
-                      <Badge variant="secondary" className="font-normal">
-                        {c.treatment}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant="secondary" className="font-normal">
+                          {c.treatment}
+                        </Badge>
+                        <PaymentStatusBadge amountCharged={c.amountCharged} amountPaid={c.amountPaid} />
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
@@ -186,9 +190,12 @@ export function ConsultationsTable({
                           </span>
                         ))}
                     </div>
-                    <Badge variant="secondary" className="shrink-0 font-normal">
-                      {c.treatment}
-                    </Badge>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <Badge variant="secondary" className="font-normal">
+                        {c.treatment}
+                      </Badge>
+                      <PaymentStatusBadge amountCharged={c.amountCharged} amountPaid={c.amountPaid} />
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-1 text-sm">

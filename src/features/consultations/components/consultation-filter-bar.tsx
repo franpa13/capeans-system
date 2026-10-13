@@ -13,9 +13,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
+import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { DateRangeFilter } from "@/features/consultations/components/date-range-filter";
 
 export const ALL_TREATMENTS = "__all__";
+export const ALL_PAYMENT_STATUSES = "__all__";
+
+// Built from PAYMENT_STATUS_LABELS (billing.ts) rather than its own
+// hardcoded strings, so this dropdown's wording can never drift from the
+// badge's (payment-status-badge.tsx, Step 1) — SIN_MONTO deliberately
+// included here even though the badge never renders for it: filtering by
+// "Sin monto" is exactly how a dentist finds consultations to go price.
+const PAYMENT_STATUS_OPTIONS = (
+  ["COBRADO", "PENDIENTE", "PARCIAL", "SIN_MONTO"] as const
+).map((value) => ({ value, label: PAYMENT_STATUS_LABELS[value] }));
 
 /** The Tratamiento/Paciente/Pieza/Desde/Hasta filter row shared by the main
  * Consultas list (filtered server-side, via URL search params) and the
@@ -26,6 +37,8 @@ export function ConsultationFilterBar({
   treatment,
   onTreatmentChange,
   treatmentOptions,
+  paymentStatus,
+  onPaymentStatusChange,
   showPatient,
   patientQuery,
   onPatientQueryChange,
@@ -40,6 +53,8 @@ export function ConsultationFilterBar({
   treatment: string;
   onTreatmentChange: (value: string) => void;
   treatmentOptions: string[];
+  paymentStatus: string;
+  onPaymentStatusChange: (value: string) => void;
   showPatient: boolean;
   patientQuery: string;
   onPatientQueryChange: (value: string) => void;
@@ -67,6 +82,23 @@ export function ConsultationFilterBar({
               </SelectItem>
             ))}
             <SelectItem value={OTHER_TREATMENT}>{OTHER_TREATMENT}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Estado de cobro</Label>
+        <Select value={paymentStatus} onValueChange={onPaymentStatusChange}>
+          <SelectTrigger className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_PAYMENT_STATUSES}>Todos</SelectItem>
+            {PAYMENT_STATUS_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

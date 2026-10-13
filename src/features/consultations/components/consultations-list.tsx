@@ -6,10 +6,12 @@ import { PaginationNavigation } from "@/components/pagination-navigation";
 import { usePagination } from "@/hooks/use-pagination";
 import { ConsultationsTable } from "@/features/consultations/components/consultations-table";
 import {
+  ALL_PAYMENT_STATUSES,
   ALL_TREATMENTS,
   ConsultationFilterBar,
 } from "@/features/consultations/components/consultation-filter-bar";
 import { toLocalDateString } from "@/features/clinic/lib/format";
+import { paymentStatus } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import type { Consultation, Patient } from "@prisma/client";
 
@@ -45,6 +47,7 @@ export function ConsultationsList({
   treatmentPrices: Record<string, number>;
 }) {
   const [treatment, setTreatment] = useState(ALL_TREATMENTS);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState(ALL_PAYMENT_STATUSES);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [patientQuery, setPatientQuery] = useState("");
@@ -58,6 +61,12 @@ export function ConsultationsList({
     const tooth = toothQuery.trim();
     return consultations.filter((c) => {
       if (!matchesTreatment(c.treatment, treatment, treatmentOptions)) return false;
+      if (
+        paymentStatusFilter !== ALL_PAYMENT_STATUSES &&
+        paymentStatus(c.amountCharged, c.amountPaid) !== paymentStatusFilter
+      ) {
+        return false;
+      }
       // Not toISOString().slice(0, 10): that reads the UTC day, which can
       // already be tomorrow for a late-evening local time (see format.ts).
       const dateStr = toLocalDateString(c.date);
@@ -68,13 +77,19 @@ export function ConsultationsList({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [consultations, treatment, from, to, treatmentOptions, patientQuery, toothQuery, patients]);
+  }, [consultations, treatment, paymentStatusFilter, from, to, treatmentOptions, patientQuery, toothQuery, patients]);
 
   const hasFilters =
-    treatment !== ALL_TREATMENTS || !!from || !!to || !!patientQuery || !!toothQuery;
+    treatment !== ALL_TREATMENTS ||
+    paymentStatusFilter !== ALL_PAYMENT_STATUSES ||
+    !!from ||
+    !!to ||
+    !!patientQuery ||
+    !!toothQuery;
 
   const clearFilters = () => {
     setTreatment(ALL_TREATMENTS);
+    setPaymentStatusFilter(ALL_PAYMENT_STATUSES);
     setFrom("");
     setTo("");
     setPatientQuery("");
@@ -89,6 +104,8 @@ export function ConsultationsList({
         treatment={treatment}
         onTreatmentChange={setTreatment}
         treatmentOptions={treatmentOptions}
+        paymentStatus={paymentStatusFilter}
+        onPaymentStatusChange={setPaymentStatusFilter}
         showPatient={showPatient}
         patientQuery={patientQuery}
         onPatientQueryChange={setPatientQuery}

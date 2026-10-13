@@ -9,12 +9,14 @@ import { useUrlFilters } from "@/hooks/use-url-filters";
 import { formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsTable } from "@/features/consultations/components/consultations-table";
 import {
+  ALL_PAYMENT_STATUSES,
   ALL_TREATMENTS,
   ConsultationFilterBar,
 } from "@/features/consultations/components/consultation-filter-bar";
+import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 
 const PAGE_SIZE = 10;
-const PARAM_KEYS = ["tratamiento", "desde", "hasta", "paciente", "pieza"] as const;
+const PARAM_KEYS = ["tratamiento", "cobro", "desde", "hasta", "paciente", "pieza"] as const;
 const DEBOUNCED_KEYS = ["paciente", "pieza"] as const;
 
 function dateRangeLabel(from: string, to: string) {
@@ -41,9 +43,11 @@ export function ConsultationsView({
 }) {
   const { values, setValue, setMany, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
   const treatment = values.tratamiento || ALL_TREATMENTS;
+  const paymentStatusFilter = values.cobro || ALL_PAYMENT_STATUSES;
 
   const hasFilters =
     treatment !== ALL_TREATMENTS ||
+    paymentStatusFilter !== ALL_PAYMENT_STATUSES ||
     !!values.desde ||
     !!values.hasta ||
     !!values.paciente ||
@@ -54,6 +58,13 @@ export function ConsultationsView({
       key: "tratamiento",
       label: `Tratamiento: ${treatment}`,
       onRemove: () => setValue("tratamiento", ""),
+    },
+    paymentStatusFilter !== ALL_PAYMENT_STATUSES && {
+      key: "cobro",
+      label: `Estado de cobro: ${
+        values.cobro.includes(",") ? "Pendiente o parcial" : PAYMENT_STATUS_LABELS[values.cobro as keyof typeof PAYMENT_STATUS_LABELS]
+      }`,
+      onRemove: () => setValue("cobro", ""),
     },
     !!values.paciente && {
       key: "paciente",
@@ -80,6 +91,8 @@ export function ConsultationsView({
         treatment={treatment}
         onTreatmentChange={(v) => setValue("tratamiento", v === ALL_TREATMENTS ? "" : v)}
         treatmentOptions={treatmentOptions}
+        paymentStatus={paymentStatusFilter}
+        onPaymentStatusChange={(v) => setValue("cobro", v === ALL_PAYMENT_STATUSES ? "" : v)}
         showPatient
         patientQuery={values.paciente}
         onPatientQueryChange={(v) => setValue("paciente", v)}
