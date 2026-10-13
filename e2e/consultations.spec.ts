@@ -231,3 +231,76 @@ test("a consultation records the time it was logged, not just the date", async (
   const row = page.locator("tbody tr", { hasText: patientName });
   await expect(row.getByText("15:45")).toBeVisible();
 });
+
+test("a consultation's amount, discount, and payment status work end to end", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const treatmentLabel = `Cobro E2E ${Date.now()}`;
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+  await page.getByPlaceholder("Agregar nuevo...").fill(treatmentLabel);
+  await page.getByPlaceholder("Precio (opcional)").fill("10000");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await expect(page.getByText(treatmentLabel, { exact: true })).toBeVisible();
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  const patientName = `Paciente Cobro E2E ${Date.now()}`;
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 8888-8888");
+  await page.getByRole("combobox").nth(3).click();
+  await page.getByRole("option", { name: treatmentLabel }).click();
+
+  // Precio de lista prefilled, discount recalculates it.
+  await expect(page.getByText("10.000", { exact: false })).toBeVisible();
+  await page.fill("#discountPercent", "20");
+  await expect(page.locator("#amountCharged")).toHaveValue("8000");
+
+  await page.getByRole("button", { name: "Parcial" }).click();
+  await page.fill("#partialAmountPaid", "3000");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await createConsultationAndFindIt(page, patientName);
+
+  const row = page.locator("tbody tr", { hasText: patientName });
+  await expect(row.getByText("Parcial", { exact: false })).toBeVisible();
+  await expect(row.getByText("8.000", { exact: false })).toBeVisible();
+
+  // Patient balance reflects the $5.000 still owed.
+  await row.getByRole("link", { name: patientName }).click();
+  await expect(page.getByText("Debe: ", { exact: false })).toBeVisible();
+  await expect(page.getByText("5.000", { exact: false })).toBeVisible();
+
+  // Mark it fully paid from the Editar dialog and confirm the balance clears.
+  await page.goto("/dashboard/consultas");
+  await page.locator("#filter-patient").fill(patientName);
+  const editRow = page.locator("tbody tr", { hasText: patientName });
+  await editRow.getByRole("button", { name: "Editar consulta" }).click();
+  await page.getByRole("button", { name: "Cobrado", exact: true }).click();
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByText("Editar consulta")).toHaveCount(0);
+  await expect(editRow.getByText("Cobrado", { exact: false })).toBeVisible();
+
+  // The Estado de cobro filter narrows to just this consultation.
+  await page.locator("#filter-patient").fill(patientName);
+  await page.locator('div:has(> label:text("Estado de cobro")) button').click();
+  await page.getByRole("option", { name: "Cobrado", exact: true }).click();
+  await expect(page.locator("tbody").getByText(patientName)).toBeVisible();
+  await page.getByRole("button", { name: "Limpiar filtros" }).click();
+
+  // Cleanup: delete the consultation and the treatment option.
+  await page.locator("#filter-patient").fill(patientName);
+  await editRow.getByRole("button", { name: "Eliminar consulta" }).click();
+  await page.getByText("¿Eliminar esta consulta?").waitFor();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).last().click();
+  await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
+
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await page.getByRole("button", { name: `Eliminar ${treatmentLabel}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+});
