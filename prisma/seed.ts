@@ -38,14 +38,14 @@ const DEFAULT_INSURANCE_OPTIONS = [
   "Prevención Salud",
 ];
 
-const DEFAULT_TREATMENT_OPTIONS = [
-  "Consulta / diagnóstico",
-  "Limpieza",
-  "Obturación (caries)",
-  "Extracción",
-  "Endodoncia",
-  "Corona / prótesis",
-  "Ortodoncia",
+const DEFAULT_TREATMENTS = [
+  { label: "Consulta / diagnóstico", price: 8000 },
+  { label: "Limpieza", price: 15000 },
+  { label: "Obturación (caries)", price: 20000 },
+  { label: "Extracción", price: 25000 },
+  { label: "Endodoncia", price: 45000 },
+  { label: "Corona / prótesis", price: 60000 },
+  { label: "Ortodoncia", price: 35000 },
 ];
 
 function startOfDay(date: Date): Date {
@@ -128,11 +128,12 @@ async function ensureClinicOptions(clinicId: string) {
         label,
         order,
       })),
-      ...DEFAULT_TREATMENT_OPTIONS.map((label, order) => ({
+      ...DEFAULT_TREATMENTS.map(({ label, price }, order) => ({
         clinicId,
         category: "treatment",
         label,
         order,
+        price,
       })),
     ],
   });
@@ -210,18 +211,18 @@ async function seedConsultations(clinicId: string, patients: Awaited<ReturnType<
   const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
 
   const rows = [
-    { patient: 0, daysAgo: 45, treatment: "Consulta / diagnóstico", teeth: [], notes: "Primera consulta, sin urgencias." },
-    { patient: 0, daysAgo: 10, treatment: "Limpieza", teeth: [] },
-    { patient: 1, daysAgo: 30, treatment: "Obturación (caries)", teeth: ["16"] },
-    { patient: 3, daysAgo: 20, treatment: "Extracción", teeth: ["38"], notes: "Muela del juicio, extracción sin complicaciones." },
-    { patient: 4, daysAgo: 15, treatment: "Endodoncia", teeth: ["21"] },
+    { patient: 0, daysAgo: 45, treatment: "Consulta / diagnóstico", teeth: [], notes: "Primera consulta, sin urgencias.", amountCharged: 8000, amountPaid: 8000 },
+    { patient: 0, daysAgo: 10, treatment: "Limpieza", teeth: [], amountCharged: 15000, amountPaid: 0 },
+    { patient: 1, daysAgo: 30, treatment: "Obturación (caries)", teeth: ["16"], amountCharged: 20000, amountPaid: 20000 },
+    { patient: 3, daysAgo: 20, treatment: "Extracción", teeth: ["38"], notes: "Muela del juicio, extracción sin complicaciones.", amountCharged: 25000, amountPaid: 10000 },
+    { patient: 4, daysAgo: 15, treatment: "Endodoncia", teeth: ["21"], amountCharged: 45000, amountPaid: 45000 },
     { patient: 4, daysAgo: 60, treatment: "Consulta / diagnóstico", teeth: [] },
-    { patient: 6, daysAgo: 5, treatment: "Corona / prótesis", teeth: ["46"] },
-    { patient: 8, daysAgo: 25, treatment: "Limpieza", teeth: [] },
-    { patient: 8, daysAgo: 3, treatment: "Obturación (caries)", teeth: ["24", "25"] },
-    { patient: 10, daysAgo: 12, treatment: "Ortodoncia", teeth: [], notes: "Control mensual de brackets." },
+    { patient: 6, daysAgo: 5, treatment: "Corona / prótesis", teeth: ["46"], amountCharged: 60000, amountPaid: 0 },
+    { patient: 8, daysAgo: 25, treatment: "Limpieza", teeth: [], amountCharged: 15000, amountPaid: 15000 },
+    { patient: 8, daysAgo: 3, treatment: "Obturación (caries)", teeth: ["24", "25"], amountCharged: 20000, amountPaid: 8000 },
+    { patient: 10, daysAgo: 12, treatment: "Ortodoncia", teeth: [], notes: "Control mensual de brackets.", amountCharged: 35000, amountPaid: 35000 },
     { patient: 11, daysAgo: 40, treatment: "Consulta / diagnóstico", teeth: [] },
-    { patient: 11, daysAgo: 7, treatment: "Obturación (caries)", teeth: ["36"] },
+    { patient: 11, daysAgo: 7, treatment: "Obturación (caries)", teeth: ["36"], amountCharged: 20000, amountPaid: 0 },
   ];
 
   for (const row of rows) {
@@ -233,6 +234,8 @@ async function seedConsultations(clinicId: string, patients: Awaited<ReturnType<
         treatment: row.treatment,
         teeth: row.teeth,
         notes: row.notes ?? null,
+        amountCharged: row.amountCharged ?? null,
+        amountPaid: row.amountPaid ?? 0,
       },
     });
   }
