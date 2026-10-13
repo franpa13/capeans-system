@@ -7,7 +7,7 @@ import type { Consultation, Patient } from "@prisma/client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import { formatDate } from "@/features/clinic/lib/format";
+import { formatCurrency, formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
@@ -28,11 +28,13 @@ export function PatientDetailView({
   consultations,
   treatmentOptions,
   treatmentPrices,
+  balance,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  balance: number;
 }) {
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
@@ -100,6 +102,9 @@ export function PatientDetailView({
             />
           }
         />
+        {balance > 0 && (
+          <p className="text-sm font-medium text-destructive">Debe: {formatCurrency(balance)}</p>
+        )}
       </div>
 
       <Card>

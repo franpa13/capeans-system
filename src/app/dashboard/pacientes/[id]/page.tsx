@@ -3,6 +3,7 @@ import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getPatient } from "@/features/clinic/data/patients";
 import { getConsultationsForPatient } from "@/features/clinic/data/consultations";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
+import { outstandingBalance } from "@/features/clinic/lib/billing";
 
 export default async function PacienteDetailPage({
   params,
@@ -17,6 +18,7 @@ export default async function PacienteDetailPage({
   const treatmentPrices = Object.fromEntries(
     treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
   );
+  const balance = outstandingBalance(consultations);
 
   return (
     <PatientDetailView
@@ -24,6 +26,7 @@ export default async function PacienteDetailPage({
       consultations={consultations}
       treatmentOptions={treatmentOptions.map((o) => o.label)}
       treatmentPrices={treatmentPrices}
+      balance={balance}
     />
   );
 }
