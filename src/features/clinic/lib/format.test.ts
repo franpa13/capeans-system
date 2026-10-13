@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   combineDateAndTime,
+  formatCurrency,
   formatTime,
   splitDateAndTime,
   toLocalDateString,
@@ -40,5 +41,22 @@ describe("formatTime", () => {
   it("formats a time as HH:mm", () => {
     const date = new Date(2026, 9, 6, 14, 5);
     expect(formatTime(date)).toMatch(/14:05/);
+  });
+});
+
+describe("formatCurrency", () => {
+  // Node's es-AR ICU data puts a non-breaking space ( ) between the
+  // peso sign and the number — still reads correctly as Argentine pesos,
+  // so the test matches that real output instead of chasing "$500".
+  it("formats a whole-peso amount with thousands separators and no decimals", () => {
+    expect(formatCurrency(1500000)).toBe("$ 1.500.000");
+  });
+
+  it("formats a small amount", () => {
+    expect(formatCurrency(500)).toBe("$ 500");
+  });
+
+  it("formats zero", () => {
+    expect(formatCurrency(0)).toBe("$ 0");
   });
 });

@@ -42,3 +42,13 @@ export function formatTime(date: Date): string {
     hour12: false,
   });
 }
+
+/** Whole pesos only (no centavos — see the Global Constraints in the
+ * Precios y Cobros plan) in Argentine thousands-separator notation. */
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
