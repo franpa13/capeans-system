@@ -32,6 +32,7 @@ En la misma conversación surgió además una necesidad de **stock de insumos** 
 | Default de estado al crear | Pendiente (`amountPaid = 0`) | No asumir que se cobró si no se marcó explícitamente — más seguro para el registro contable |
 | Tarjeta "Por cobrar" en Inicio | Sí, se agrega como 4ª tarjeta | Vistazo inmediato del saldo pendiente total sin tener que ir a Consultas a filtrar |
 | Consultas existentes | Quedan con `amountCharged = null`, sin migración retroactiva | No hay con qué inferir el monto real de consultas pasadas; se completan a mano si hace falta |
+| Descuento por obra social | Campo "Descuento %" manual en el formulario de consulta, calcula el monto pero no se guarda | El descuento real depende del tratamiento tanto como de la obra social (no es un % fijo por obra social) — cargarlo a mano en cada consulta es más simple que mantener una tabla de descuentos por obra social o una grilla de precios por combinación tratamiento×obra social |
 
 ## Modelo de datos (Prisma)
 
@@ -78,13 +79,21 @@ function paymentStatus(amountCharged: number | null, amountPaid: number): Paymen
 
 ### Nueva consulta / Editar consulta
 
-Al elegir un Tratamiento con precio de lista, el campo **"Monto a cobrar"** se precarga con ese valor — pero solo si el campo está vacío; si el dentista ya escribió un monto a mano (por ejemplo, descuento ya aplicado) y después cambia el Tratamiento elegido, ese monto no se pisa. Al lado, un selector de 3 opciones (mismo patrón visual que el `ViewToggle` de Turnos):
+Al elegir un Tratamiento con precio de lista, aparecen tres campos encadenados:
+
+1. **Precio de lista** — solo lectura, el del tratamiento elegido.
+2. **Descuento %** — input manual, vacío/0 por default. No se guarda en la base; es una calculadora para llegar más rápido al monto final (la obra social cambia el descuento según el tratamiento, no hay un % fijo que valga para todo, así que no tiene sentido pre-configurarlo en otro lado).
+3. **Monto a cobrar** (`amountCharged`) — se recalcula solo cada vez que cambia el Descuento % (`precio de lista × (1 - %)`), pero se puede escribir directamente a mano en cualquier momento para pisar ese cálculo (por ejemplo, un monto ya negociado que no sale de aplicar un % redondo).
+
+Si el tratamiento no tiene precio de lista, los campos 1 y 2 no aparecen y se carga el monto final directo (o se deja vacío).
+
+Al lado, un selector de 3 opciones (mismo patrón visual que el `ViewToggle` de Turnos):
 
 - **Pendiente** (default al crear) → `amountPaid = 0`
 - **Cobrado** → `amountPaid = amountCharged`, un click
 - **Parcial** → aparece un input "Pagado hasta ahora", acotado entre 0 y el monto a cobrar
 
-Si el tratamiento no tiene precio de lista o el dentista borra el monto, la consulta queda sin datos de cobro (igual que hoy).
+Si el dentista borra el monto a cobrar, la consulta queda sin datos de cobro (igual que hoy).
 
 ### Consultas/Tratamientos (tabla y cards mobile)
 
