@@ -313,11 +313,45 @@ function buildAppointmentRows(weekStart: Date, patients: { id: string }[]): Appo
   return rows;
 }
 
+function rangesOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+/** Mirrors the real app's own conflict check (findConflict in
+ * clinic/data/appointments.ts) — duplicated here rather than imported,
+ * same reason as getWeekStart above. Without this, re-running the seed
+ * writes straight to the table with prisma.appointment.create and skips
+ * the conflict check entirely, so a slot this run picks can land right
+ * on top of one an earlier run already placed (different patient, same
+ * clinicId, deterministic hour pool) — a genuine double-booking in the
+ * data that the app itself would never allow you to create by hand. */
+async function hasConflict(
+  clinicId: string,
+  startsAt: Date,
+  durationMinutes: number,
+): Promise<boolean> {
+  const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+  const dayStart = new Date(startsAt.getTime() - 24 * 60 * 60 * 1000);
+  const candidates = await prisma.appointment.findMany({
+    where: { clinicId, status: { not: "CANCELLED" }, startsAt: { gte: dayStart, lt: endsAt } },
+  });
+  return candidates.some((c) => {
+    const cEnd = new Date(c.startsAt.getTime() + c.durationMinutes * 60_000);
+    return rangesOverlap(startsAt, endsAt, c.startsAt, cEnd);
+  });
+}
+
 async function seedAppointments(clinicId: string, patients: Awaited<ReturnType<typeof seedPatients>>) {
   const weekStart = getWeekStart(new Date());
   const rows = buildAppointmentRows(weekStart, patients);
 
+  let created = 0;
+  let skipped = 0;
   for (const row of rows) {
+    if (row.status !== "CANCELLED" && (await hasConflict(clinicId, row.startsAt, row.durationMinutes))) {
+      skipped++;
+      continue;
+    }
     await prisma.appointment.create({
       data: {
         clinicId,
@@ -328,8 +362,10 @@ async function seedAppointments(clinicId: string, patients: Awaited<ReturnType<t
         reason: row.reason ?? null,
       },
     });
+    created++;
   }
-  return rows.length;
+  if (skipped) console.log(`  (${skipped} turnos omitidos por chocar con uno ya existente)`);
+  return created;
 }
 
 function assertNotProduction() {

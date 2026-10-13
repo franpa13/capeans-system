@@ -160,6 +160,23 @@ export function AppointmentsCalendar({
               </Link>
             </Button>
           </div>
+
+          {/* A text label inside the grid risked sitting right under an
+          appointment that happens to start at that exact time — a legend
+          here explains the two dashed lines once, so the grid itself only
+          needs the color, never the words. */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span
+                className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
+              />
+              Hora inicio
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
+              Hora fin
+            </span>
+          </div>
         </div>
         <Button
           onClick={() => {
@@ -182,22 +199,6 @@ export function AppointmentsCalendar({
         </Button>
       </div>
 
-      {/* A text label inside the grid risked sitting right under an
-          appointment that happens to start at that exact time — a legend
-          here explains the two dashed lines once, so the grid itself only
-          needs the color, never the words. */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span
-            className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
-          />
-          Hora inicio
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
-          Hora fin
-        </span>
-      </div>
 
       <div className="min-h-0 flex-1 overflow-auto rounded-md border">
         <div className="grid grid-cols-[64px_repeat(7,minmax(140px,1fr))]">
