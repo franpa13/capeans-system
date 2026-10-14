@@ -6,8 +6,10 @@ import {
   deleteAppointment,
   getAppointment,
   getAppointments,
+  getLinkableAppointments,
   updateAppointment,
 } from "@/features/clinic/data/appointments";
+import { createConsultation } from "@/features/clinic/data/consultations";
 
 let clinicA: { id: string };
 let clinicB: { id: string };
@@ -252,5 +254,85 @@ describe("appointments data layer", () => {
     expect(where.startsAt!.gte!.getTime()).toBeLessThan(startsAt.getTime());
 
     findManySpy.mockRestore();
+  });
+});
+
+describe("linking turnos to consultas", () => {
+  // Local-time constructors on purpose: the "day" a dentist picks in the
+  // consultation form is a local calendar date, not a UTC one.
+  const dayAt = (hour: number, day = 2) => new Date(2026, 1, day, hour, 0);
+
+  it("lists a patient's turnos on the given day, earliest first", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const late = await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(15) });
+    const early = await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(9) });
+
+    const result = await getLinkableAppointments(clinicA.id, patient.id, "2026-02-02");
+    expect(result.map((a) => a.id)).toEqual([early.id, late.id]);
+  });
+
+  it("excludes turnos on other days, of other patients, and cancelled ones", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const other = await createPatient(clinicA.id, { name: "Paciente B", phone: "222" });
+    const match = await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(9) });
+    await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(9, 3) });
+    await createAppointment(clinicA.id, { patientId: other.id, startsAt: dayAt(11) });
+    await createAppointment(clinicA.id, {
+      patientId: patient.id,
+      startsAt: dayAt(13),
+      status: "CANCELLED",
+    });
+
+    const result = await getLinkableAppointments(clinicA.id, patient.id, "2026-02-02");
+    expect(result.map((a) => a.id)).toEqual([match.id]);
+  });
+
+  it("excludes a turno already linked to another consulta, but keeps the excluded consulta's own", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const linked = await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(9) });
+    const free = await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(15) });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: dayAt(9),
+      treatment: "Limpieza",
+      appointmentId: linked.id,
+    });
+
+    const forNew = await getLinkableAppointments(clinicA.id, patient.id, "2026-02-02");
+    expect(forNew.map((a) => a.id)).toEqual([free.id]);
+
+    const forEditingThatConsulta = await getLinkableAppointments(
+      clinicA.id,
+      patient.id,
+      "2026-02-02",
+      consultation.id,
+    );
+    expect(forEditingThatConsulta.map((a) => a.id)).toEqual([linked.id, free.id]);
+  });
+
+  it("does not leak another clinic's turnos", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(9) });
+
+    expect(await getLinkableAppointments(clinicB.id, patient.id, "2026-02-02")).toHaveLength(0);
+  });
+
+  it("getAppointments tells which turnos already have a consulta", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+    const withConsulta = await createAppointment(clinicA.id, {
+      patientId: patient.id,
+      startsAt: dayAt(9),
+    });
+    const without = await createAppointment(clinicA.id, { patientId: patient.id, startsAt: dayAt(15) });
+    const consultation = await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: dayAt(9),
+      treatment: "Limpieza",
+      appointmentId: withConsulta.id,
+    });
+
+    const list = await getAppointments(clinicA.id);
+    expect(list.find((a) => a.id === withConsulta.id)?.consultation?.id).toBe(consultation.id);
+    expect(list.find((a) => a.id === without.id)?.consultation).toBeNull();
   });
 });

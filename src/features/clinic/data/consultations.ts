@@ -11,7 +11,40 @@ export type NewConsultationInput = {
   notes?: string;
   amountCharged?: number;
   amountPaid?: number;
+  appointmentId?: string;
 };
+
+/** Checks a consulta may be linked to this turno and, if the turno was
+ * still CONFIRMED, marks it COMPLETED — registering what was done at a
+ * turno means the turno happened. `ownConsultationId` is the consulta
+ * being edited, so re-saving it with its own turno isn't a "duplicate". */
+async function linkAppointment(
+  tx: Prisma.TransactionClient,
+  clinicId: string,
+  appointmentId: string,
+  patientId: string | null,
+  ownConsultationId?: string,
+) {
+  const appointment = await tx.appointment.findFirst({
+    where: { id: appointmentId, clinicId },
+    include: { consultation: { select: { id: true } } },
+  });
+  if (!appointment) {
+    throw new Error("Turno no encontrado");
+  }
+  if (appointment.status === "CANCELLED") {
+    throw new Error("No se puede vincular un turno cancelado");
+  }
+  if (appointment.patientId !== patientId) {
+    throw new Error("El turno es de otro paciente");
+  }
+  if (appointment.consultation && appointment.consultation.id !== ownConsultationId) {
+    throw new Error("Ese turno ya tiene una consulta registrada");
+  }
+  if (appointment.status === "CONFIRMED") {
+    await tx.appointment.update({ where: { id: appointmentId }, data: { status: "COMPLETED" } });
+  }
+}
 
 export type ConsultationListFilters = {
   /** An exact treatment label, or the OTHER_TREATMENT sentinel — undefined
@@ -121,17 +154,23 @@ export async function createConsultation(
   }
   assertValidAmounts(input.amountCharged, input.amountPaid);
 
-  return prisma.consultation.create({
-    data: {
-      patientId: input.patientId,
-      date: input.date,
-      treatment: input.treatment,
-      teeth: input.teeth ?? [],
-      notes: input.notes ?? null,
-      amountCharged: input.amountCharged ?? null,
-      amountPaid: input.amountPaid ?? 0,
-      clinicId,
-    },
+  return prisma.$transaction(async (tx) => {
+    if (input.appointmentId) {
+      await linkAppointment(tx, clinicId, input.appointmentId, input.patientId);
+    }
+    return tx.consultation.create({
+      data: {
+        patientId: input.patientId,
+        date: input.date,
+        treatment: input.treatment,
+        teeth: input.teeth ?? [],
+        notes: input.notes ?? null,
+        amountCharged: input.amountCharged ?? null,
+        amountPaid: input.amountPaid ?? 0,
+        appointmentId: input.appointmentId ?? null,
+        clinicId,
+      },
+    });
   });
 }
 
@@ -142,6 +181,9 @@ export type UpdateConsultationInput = {
   notes?: string;
   amountCharged?: number;
   amountPaid?: number;
+  /** Like every other field here, the full new value — omitting it (or
+   * null) clears the link, the same way omitting notes clears them. */
+  appointmentId?: string | null;
 };
 
 export async function updateConsultation(
@@ -151,21 +193,27 @@ export async function updateConsultation(
 ): Promise<Consultation> {
   assertValidAmounts(input.amountCharged, input.amountPaid);
 
-  const result = await prisma.consultation.updateMany({
-    where: { id, clinicId },
-    data: {
-      date: input.date,
-      treatment: input.treatment,
-      teeth: input.teeth ?? [],
-      notes: input.notes ?? null,
-      amountCharged: input.amountCharged ?? null,
-      amountPaid: input.amountPaid ?? 0,
-    },
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.consultation.findFirst({ where: { id, clinicId } });
+    if (!existing) {
+      throw new Error("Consultation not found for this clinic");
+    }
+    if (input.appointmentId) {
+      await linkAppointment(tx, clinicId, input.appointmentId, existing.patientId, id);
+    }
+    return tx.consultation.update({
+      where: { id },
+      data: {
+        date: input.date,
+        treatment: input.treatment,
+        teeth: input.teeth ?? [],
+        notes: input.notes ?? null,
+        amountCharged: input.amountCharged ?? null,
+        amountPaid: input.amountPaid ?? 0,
+        appointmentId: input.appointmentId ?? null,
+      },
+    });
   });
-  if (result.count === 0) {
-    throw new Error("Consultation not found for this clinic");
-  }
-  return (await getConsultation(clinicId, id))!;
 }
 
 export async function deleteConsultation(clinicId: string, id: string): Promise<void> {

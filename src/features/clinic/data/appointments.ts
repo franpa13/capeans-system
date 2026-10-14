@@ -56,16 +56,52 @@ async function findConflict(
   );
 }
 
+/** The agenda needs to know which completed turnos still lack their
+ * consulta — just the id, not the whole consultation row. */
+export type AppointmentWithConsultation = Appointment & { consultation: { id: string } | null };
+
 export async function getAppointments(
   clinicId: string,
   range?: { from: Date; to: Date },
   status?: AppointmentStatus,
-): Promise<Appointment[]> {
+): Promise<AppointmentWithConsultation[]> {
   return prisma.appointment.findMany({
     where: {
       clinicId,
       ...(range ? { startsAt: { gte: range.from, lt: range.to } } : {}),
       ...(status ? { status } : {}),
+    },
+    include: { consultation: { select: { id: true } } },
+    orderBy: { startsAt: "asc" },
+  });
+}
+
+/** A patient's turnos on one local calendar day ("YYYY-MM-DD") that a
+ * consulta can be linked to: not cancelled, and not already linked to some
+ * other consulta. `excludeConsultationId` is the consulta being edited —
+ * its own turno has to stay in the list or it would vanish from its own
+ * edit form. */
+export async function getLinkableAppointments(
+  clinicId: string,
+  patientId: string,
+  day: string,
+  excludeConsultationId?: string,
+): Promise<Appointment[]> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return [];
+  const from = new Date(`${day}T00:00:00`);
+  const to = new Date(from);
+  to.setDate(to.getDate() + 1);
+
+  return prisma.appointment.findMany({
+    where: {
+      clinicId,
+      patientId,
+      status: { not: "CANCELLED" },
+      startsAt: { gte: from, lt: to },
+      OR: [
+        { consultation: { is: null } },
+        ...(excludeConsultationId ? [{ consultation: { is: { id: excludeConsultationId } } }] : []),
+      ],
     },
     orderBy: { startsAt: "asc" },
   });

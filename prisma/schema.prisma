@@ -55,6 +55,12 @@ model Consultation {
   amountCharged Int?            // monto acordado para esta visita (snapshot, no referencia viva al precio de lista)
   amountPaid    Int  @default(0) // cuánto se pagó hasta ahora
 
+  // Turno del que viene esta consulta (opcional — una consulta sin turno,
+  // ej. una urgencia, sigue siendo válida). Único: un turno se vincula a
+  // una sola consulta. Borrar el turno no borra la consulta.
+  appointmentId String?      @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
   @@index([clinicId])
   @@index([patientId])
 }
@@ -78,6 +84,8 @@ model Appointment {
   status          AppointmentStatus @default(CONFIRMED)
   notes           String?
   createdAt       DateTime          @default(now())
+
+  consultation    Consultation?
 
   @@index([clinicId])
   @@index([patientId])

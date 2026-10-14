@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/clinic/data/patients";
 import { createClinicOption, updateClinicOption } from "@/features/clinic/data/clinic-options";
+import { createAppointment, getAppointment } from "@/features/clinic/data/appointments";
 import {
   createConsultation,
   deleteConsultation,
@@ -410,5 +411,166 @@ describe("consultations data layer", () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0].treatment).toBe("Limpieza");
+  });
+
+  describe("linking to a turno", () => {
+    const at = (hour: number) => new Date(2026, 1, 2, hour, 0);
+
+    it("stores the link and marks a confirmed turno as completed", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: at(9),
+      });
+
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: at(9),
+        treatment: "Limpieza",
+        appointmentId: appointment.id,
+      });
+
+      expect(consultation.appointmentId).toBe(appointment.id);
+      expect((await getAppointment(clinicA.id, appointment.id))?.status).toBe("COMPLETED");
+    });
+
+    it("does not touch a turno when no link is given", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: at(9),
+      });
+
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: at(9),
+        treatment: "Limpieza",
+      });
+
+      expect(consultation.appointmentId).toBeNull();
+      expect((await getAppointment(clinicA.id, appointment.id))?.status).toBe("CONFIRMED");
+    });
+
+    it("refuses linking to a cancelled turno", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: at(9),
+        status: "CANCELLED",
+      });
+
+      await expect(
+        createConsultation(clinicA.id, {
+          patientId: patient.id,
+          date: at(9),
+          treatment: "Limpieza",
+          appointmentId: appointment.id,
+        }),
+      ).rejects.toThrow("No se puede vincular un turno cancelado");
+    });
+
+    it("refuses linking to another patient's turno", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const other = await createPatient(clinicA.id, { name: "Paciente B", phone: "222" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: other.id,
+        startsAt: at(9),
+      });
+
+      await expect(
+        createConsultation(clinicA.id, {
+          patientId: patient.id,
+          date: at(9),
+          treatment: "Limpieza",
+          appointmentId: appointment.id,
+        }),
+      ).rejects.toThrow("El turno es de otro paciente");
+    });
+
+    it("refuses linking to another clinic's turno", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const foreign = await createAppointment(clinicB.id, { startsAt: at(9) });
+
+      await expect(
+        createConsultation(clinicA.id, {
+          patientId: patient.id,
+          date: at(9),
+          treatment: "Limpieza",
+          appointmentId: foreign.id,
+        }),
+      ).rejects.toThrow("Turno no encontrado");
+    });
+
+    it("refuses linking a turno that already has another consulta", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: at(9),
+      });
+      await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: at(9),
+        treatment: "Limpieza",
+        appointmentId: appointment.id,
+      });
+
+      await expect(
+        createConsultation(clinicA.id, {
+          patientId: patient.id,
+          date: at(9),
+          treatment: "Extracción",
+          appointmentId: appointment.id,
+        }),
+      ).rejects.toThrow("Ese turno ya tiene una consulta registrada");
+    });
+
+    it("re-saving a consulta with its own turno is allowed, and the link can be cleared", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: at(9),
+      });
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: at(9),
+        treatment: "Limpieza",
+        appointmentId: appointment.id,
+      });
+
+      const resaved = await updateConsultation(clinicA.id, consultation.id, {
+        date: at(9),
+        treatment: "Limpieza profunda",
+        appointmentId: appointment.id,
+      });
+      expect(resaved.appointmentId).toBe(appointment.id);
+
+      const cleared = await updateConsultation(clinicA.id, consultation.id, {
+        date: at(9),
+        treatment: "Limpieza profunda",
+        appointmentId: null,
+      });
+      expect(cleared.appointmentId).toBeNull();
+    });
+
+    it("linking via update also marks a confirmed turno as completed", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const appointment = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: at(9),
+      });
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: at(9),
+        treatment: "Limpieza",
+      });
+
+      await updateConsultation(clinicA.id, consultation.id, {
+        date: at(9),
+        treatment: "Limpieza",
+        appointmentId: appointment.id,
+      });
+
+      expect((await getAppointment(clinicA.id, appointment.id))?.status).toBe("COMPLETED");
+    });
   });
 });
