@@ -152,6 +152,7 @@ export function NewConsultationDialog({
   const [discountPercent, setDiscountPercent] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
   const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[]>([]);
+  const [supplyPending, setSupplyPending] = useState(false);
 
   /** Recalculates "Monto a cobrar" from the treatment's list price (minus
    * whatever discount % is already typed) every time the treatment
@@ -238,6 +239,7 @@ export function NewConsultationDialog({
     setDiscountPercent("");
     setAmountTouched(false);
     setSupplyUsages([]);
+    setSupplyPending(false);
     setOpen(false);
   };
 
@@ -249,6 +251,7 @@ export function NewConsultationDialog({
         if (!next) {
           reset();
           setSupplyUsages([]);
+          setSupplyPending(false);
         }
       }}
     >
@@ -625,12 +628,13 @@ export function NewConsultationDialog({
                 supplies={supplyOptions}
                 value={supplyUsages}
                 onChange={setSupplyUsages}
+                onPendingChange={setSupplyPending}
               />
             )}
           </div>
 
           <DialogFooter>
-            <Button type="submit">
+            <Button type="submit" disabled={supplyPending}>
               <Save />
               Guardar
             </Button>

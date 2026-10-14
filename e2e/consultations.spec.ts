@@ -515,3 +515,24 @@ test("adding, editing, and removing insumos on a consultation reconciles stock c
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await expect(page.getByText(supplyName, { exact: true })).toHaveCount(0);
 });
+
+test("an insumo picked but not added to the list blocks saving instead of being silently dropped", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  const save = page.getByRole("button", { name: "Guardar", exact: true });
+
+  await page.locator("#supplySelect").click();
+  await page.getByRole("option").first().click();
+  await page.fill("#supplyQuantity", "3");
+  await expect(page.getByText("Tocá «Agregar insumo» para sumarlo a la lista")).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await expect(page.getByText("Tocá «Agregar insumo» para sumarlo a la lista")).toHaveCount(0);
+  await expect(save).toBeEnabled();
+});

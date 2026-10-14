@@ -20,15 +20,30 @@ export function SuppliesUsedField({
   supplies,
   value,
   onChange,
+  onPendingChange,
 }: {
   idPrefix?: string;
   supplies: SupplyOption[];
   value: SupplyUsageInput[];
   onChange: (next: SupplyUsageInput[]) => void;
+  /** True while an insumo or quantity is typed but not yet added to the
+   * list — the parent blocks saving so a pick isn't silently dropped. */
+  onPendingChange?: (pending: boolean) => void;
 }) {
-  const [selectedSupplyId, setSelectedSupplyId] = useState("");
-  const [quantity, setQuantity] = useState("");
+  const [selectedSupplyId, setSelectedSupplyIdState] = useState("");
+  const [quantity, setQuantityState] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const pending = selectedSupplyId !== "" || quantity.trim() !== "";
+
+  function setSelectedSupplyId(next: string) {
+    setSelectedSupplyIdState(next);
+    onPendingChange?.(next !== "" || quantity.trim() !== "");
+  }
+
+  function setQuantity(next: string) {
+    setQuantityState(next);
+    onPendingChange?.(selectedSupplyId !== "" || next.trim() !== "");
+  }
 
   function supplyFor(id: string) {
     return supplies.find((s) => s.id === id);
@@ -65,8 +80,9 @@ export function SuppliesUsedField({
     } else {
       onChange([...value, { supplyId: selectedSupplyId, quantityUsed: qty }]);
     }
-    setSelectedSupplyId("");
-    setQuantity("");
+    setSelectedSupplyIdState("");
+    setQuantityState("");
+    onPendingChange?.(false);
   }
 
   function handleRemove(supplyId: string) {
@@ -110,7 +126,15 @@ export function SuppliesUsedField({
           Agregar insumo
         </Button>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error ? (
+        <p className="text-sm text-destructive">{error}</p>
+      ) : (
+        pending && (
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            Tocá «Agregar insumo» para sumarlo a la lista
+          </p>
+        )
+      )}
 
       {value.length > 0 && (
         <ul className="divide-y rounded-md border">

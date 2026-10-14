@@ -74,6 +74,7 @@ export function EditConsultationDialog({
   // null until the consulta's existing usages arrive — saving before then
   // would send "no supplies" and put them all back into stock.
   const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[] | null>(null);
+  const [supplyPending, setSupplyPending] = useState(false);
 
   const {
     register,
@@ -380,12 +381,13 @@ export function EditConsultationDialog({
                   supplies={supplyOptions}
                   value={supplyUsages}
                   onChange={setSupplyUsages}
+                  onPendingChange={setSupplyPending}
                 />
               ))}
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={supplyUsages === null}>
+            <Button type="submit" disabled={supplyUsages === null || supplyPending}>
               <Save />
               Guardar cambios
             </Button>
