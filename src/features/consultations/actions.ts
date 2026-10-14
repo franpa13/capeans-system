@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
+  assertValidAmounts,
   createConsultation,
   deleteConsultation,
   getConsultation,
@@ -24,6 +25,11 @@ export async function createConsultationAction(
   const clinicId = await requireClinicId();
 
   const { newPatient, ...consultationInput } = input;
+  // Validated before createPatient runs, not after: createConsultation
+  // would reject the same input, but by then a new patient with no
+  // consultation to show for it would already be sitting in the DB.
+  assertValidAmounts(consultationInput.amountCharged, consultationInput.amountPaid);
+
   let patientId = consultationInput.patientId;
   if (newPatient) {
     const patient = await createPatient(clinicId, newPatient);

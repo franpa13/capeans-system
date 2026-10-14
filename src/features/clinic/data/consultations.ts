@@ -91,7 +91,7 @@ export async function getConsultationsForPatient(
   });
 }
 
-function assertValidAmounts(amountCharged: number | undefined, amountPaid: number | undefined) {
+export function assertValidAmounts(amountCharged: number | undefined, amountPaid: number | undefined) {
   if (amountCharged != null && !Number.isInteger(amountCharged)) {
     throw new Error("El monto tiene que ser un número entero");
   }
