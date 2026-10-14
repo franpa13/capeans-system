@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
   assertValidAmounts,
+  assertValidSupplyUsages,
   createConsultation,
   deleteConsultation,
   getConsultation,
@@ -30,6 +31,7 @@ export async function createConsultationAction(
   // would reject the same input, but by then a new patient with no
   // consultation to show for it would already be sitting in the DB.
   assertValidAmounts(consultationInput.amountCharged, consultationInput.amountPaid);
+  assertValidSupplyUsages(consultationInput.supplies);
 
   let patientId = consultationInput.patientId;
   if (newPatient) {

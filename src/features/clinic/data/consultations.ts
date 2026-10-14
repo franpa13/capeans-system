@@ -49,7 +49,7 @@ async function linkAppointment(
 
 export type SupplyUsageInput = { supplyId: string; quantityUsed: number };
 
-function assertValidSupplyUsages(supplies: SupplyUsageInput[] | undefined) {
+export function assertValidSupplyUsages(supplies: SupplyUsageInput[] | undefined) {
   for (const usage of supplies ?? []) {
     if (!Number.isInteger(usage.quantityUsed) || usage.quantityUsed <= 0) {
       throw new Error("La cantidad usada tiene que ser un número entero mayor a 0");
