@@ -443,3 +443,75 @@ test("the discount recalculates when switching treatments, clamps to 0-100, and 
     await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   }
 });
+
+test("adding, editing, and removing insumos on a consultation reconciles stock correctly", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const supplyName = `Insumo Reconcile E2E ${Date.now()}`;
+  const stockRow = page.locator("li", { hasText: supplyName });
+  const expectStock = async (text: string) => {
+    await page.goto("/dashboard/stock");
+    await page.getByPlaceholder("Buscar...").fill(supplyName);
+    await expect(stockRow.getByText(text, { exact: true })).toBeVisible();
+  };
+
+  await page.goto("/dashboard/stock");
+  await page.getByPlaceholder("Agregar nuevo...").fill(supplyName);
+  await page.getByPlaceholder("Unidad (ej: unidad, caja, ml)").fill("unidad");
+  await page.getByPlaceholder("Stock inicial").fill("100");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await expectStock("100 unidad");
+
+  const patientName = `Paciente Stock E2E ${Date.now()}`;
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 2222-3333");
+  await page.getByText("Elegí un tratamiento").click();
+  await page.getByRole("option", { name: "Limpieza" }).click();
+  await page.locator("#supplySelect").click();
+  await page.getByRole("option", { name: new RegExp(supplyName) }).click();
+  await page.fill("#supplyQuantity", "10");
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await expect(page.getByText(`${supplyName} × 10 unidad`)).toBeVisible();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await createConsultationAndFindIt(page, patientName);
+
+  await expectStock("90 unidad");
+
+  // Edit: the form comes back with 10 used; change it to 5.
+  await page.goto("/dashboard/consultas");
+  await createConsultationAndFindIt(page, patientName);
+  const row = page.locator("tbody tr", { hasText: patientName });
+  await row.getByRole("button", { name: "Editar consulta" }).click();
+  await expect(page.getByText(`${supplyName} × 10 unidad`)).toBeVisible();
+  await page.getByRole("button", { name: `Quitar ${supplyName}` }).click();
+  await page.locator("#edit-supplySelect").click();
+  await page.getByRole("option", { name: new RegExp(supplyName) }).click();
+  await page.fill("#edit-supplyQuantity", "5");
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await page.getByRole("button", { name: "Guardar cambios" }).click();
+  await expect(page.getByRole("dialog", { name: "Editar consulta" })).toHaveCount(0);
+
+  // 100 - 5, not 100 - 10 - 5: the old usage went back before the new one applied.
+  await expectStock("95 unidad");
+
+  // Deleting the consulta puts its insumos back.
+  await page.goto("/dashboard/consultas");
+  await createConsultationAndFindIt(page, patientName);
+  await row.getByRole("button", { name: "Eliminar consulta" }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).last().click();
+  await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
+
+  await expectStock("100 unidad");
+
+  // Cleanup the insumo (no longer in use, so deletable).
+  await page.getByRole("button", { name: `Eliminar ${supplyName}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.getByText(supplyName, { exact: true })).toHaveCount(0);
+});
