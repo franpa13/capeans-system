@@ -38,6 +38,14 @@ const DEFAULT_INSURANCE_OPTIONS = [
   "Prevención Salud",
 ];
 
+const DEFAULT_SUPPLIES = [
+  { name: "Gomillas de ortodoncia", unit: "unidad", price: 50, quantity: 300, lowStockAt: 50 },
+  { name: "Anestesia", unit: "ampolla", price: 800, quantity: 40, lowStockAt: 10 },
+  { name: "Guantes de nitrilo", unit: "caja", price: 4500, quantity: 8, lowStockAt: 3 },
+  { name: "Composite (resina)", unit: "ml", price: 1200, quantity: 150, lowStockAt: 30 },
+  { name: "Gutapercha", unit: "unidad", price: 300, quantity: 60, lowStockAt: 15 },
+];
+
 const DEFAULT_TREATMENTS = [
   { label: "Consulta / diagnóstico", price: 8000 },
   { label: "Limpieza", price: 15000 },
@@ -139,6 +147,14 @@ async function ensureClinicOptions(clinicId: string) {
   });
 }
 
+async function ensureSupplies(clinicId: string) {
+  const existing = await prisma.supply.findFirst({ where: { clinicId } });
+  if (existing) return;
+  await prisma.supply.createMany({
+    data: DEFAULT_SUPPLIES.map((s) => ({ clinicId, ...s })),
+  });
+}
+
 async function seedPatients(clinicId: string) {
   const rows = [
     {
@@ -206,27 +222,52 @@ async function seedPatients(clinicId: string) {
   return patients;
 }
 
-async function seedConsultations(clinicId: string, patients: Awaited<ReturnType<typeof seedPatients>>) {
+async function seedConsultations(
+  clinicId: string,
+  patients: Awaited<ReturnType<typeof seedPatients>>,
+  supplies: { id: string; name: string }[],
+) {
   const now = new Date();
   const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+  const supplyId = (name: string) => supplies.find((s) => s.name === name)?.id;
 
   const rows = [
     { patient: 0, daysAgo: 45, treatment: "Consulta / diagnóstico", teeth: [], notes: "Primera consulta, sin urgencias.", amountCharged: 8000, amountPaid: 8000 },
     { patient: 0, daysAgo: 10, treatment: "Limpieza", teeth: [], amountCharged: 15000, amountPaid: 0 },
     { patient: 1, daysAgo: 30, treatment: "Obturación (caries)", teeth: ["16"], amountCharged: 20000, amountPaid: 20000 },
     { patient: 3, daysAgo: 20, treatment: "Extracción", teeth: ["38"], notes: "Muela del juicio, extracción sin complicaciones.", amountCharged: 25000, amountPaid: 10000 },
-    { patient: 4, daysAgo: 15, treatment: "Endodoncia", teeth: ["21"], amountCharged: 45000, amountPaid: 45000 },
+    {
+      patient: 4,
+      daysAgo: 15,
+      treatment: "Endodoncia",
+      teeth: ["21"],
+      amountCharged: 45000,
+      amountPaid: 45000,
+      supplies: [
+        { name: "Anestesia", quantityUsed: 2 },
+        { name: "Gutapercha", quantityUsed: 4 },
+      ],
+    },
     { patient: 4, daysAgo: 60, treatment: "Consulta / diagnóstico", teeth: [] },
     { patient: 6, daysAgo: 5, treatment: "Corona / prótesis", teeth: ["46"], amountCharged: 60000, amountPaid: 0 },
     { patient: 8, daysAgo: 25, treatment: "Limpieza", teeth: [], amountCharged: 15000, amountPaid: 15000 },
     { patient: 8, daysAgo: 3, treatment: "Obturación (caries)", teeth: ["24", "25"], amountCharged: 20000, amountPaid: 8000 },
-    { patient: 10, daysAgo: 12, treatment: "Ortodoncia", teeth: [], notes: "Control mensual de brackets.", amountCharged: 35000, amountPaid: 35000 },
+    {
+      patient: 10,
+      daysAgo: 12,
+      treatment: "Ortodoncia",
+      teeth: [],
+      notes: "Control mensual de brackets.",
+      amountCharged: 35000,
+      amountPaid: 35000,
+      supplies: [{ name: "Gomillas de ortodoncia", quantityUsed: 12 }],
+    },
     { patient: 11, daysAgo: 40, treatment: "Consulta / diagnóstico", teeth: [] },
     { patient: 11, daysAgo: 7, treatment: "Obturación (caries)", teeth: ["36"], amountCharged: 20000, amountPaid: 0 },
   ];
 
   for (const row of rows) {
-    await prisma.consultation.create({
+    const consultation = await prisma.consultation.create({
       data: {
         clinicId,
         patientId: patients[row.patient].id,
@@ -238,6 +279,20 @@ async function seedConsultations(clinicId: string, patients: Awaited<ReturnType<
         amountPaid: row.amountPaid ?? 0,
       },
     });
+    // Mirrors applySupplyUsages in clinic/data/consultations.ts (duplicated
+    // here for the same no-"@/"-imports reason as getWeekStart): every
+    // usage row comes with its stock decrement, so seeded stock adds up.
+    for (const usage of row.supplies ?? []) {
+      const id = supplyId(usage.name);
+      if (!id) continue;
+      await prisma.supply.update({
+        where: { id },
+        data: { quantity: { decrement: usage.quantityUsed } },
+      });
+      await prisma.consultationSupply.create({
+        data: { consultationId: consultation.id, supplyId: id, quantityUsed: usage.quantityUsed },
+      });
+    }
   }
 }
 
@@ -388,11 +443,13 @@ async function main() {
 
   await ensureBusinessHours(clinic.id);
   await ensureClinicOptions(clinic.id);
+  await ensureSupplies(clinic.id);
+  const supplies = await prisma.supply.findMany({ where: { clinicId: clinic.id } });
 
   const patients = await seedPatients(clinic.id);
   console.log(`  ${patients.length} pacientes creados`);
 
-  await seedConsultations(clinic.id, patients);
+  await seedConsultations(clinic.id, patients, supplies);
   console.log(`  consultas creadas`);
 
   const appointmentCount = await seedAppointments(clinic.id, patients);
