@@ -125,13 +125,18 @@ export function NewConsultationDialog({
   const [discountPercent, setDiscountPercent] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
 
-  /** Prefills "Monto a cobrar" from the treatment's list price (minus
-   * whatever discount % is already typed) the first time a priced
-   * treatment is picked — but only while the dentist hasn't touched the
-   * amount or the discount themselves, so switching treatments later
-   * never clobbers a monto they already set by hand. */
+  /** Recalculates "Monto a cobrar" from the treatment's list price (minus
+   * whatever discount % is already typed) every time the treatment
+   * changes — but only while the dentist hasn't typed into the amount
+   * field itself, so switching treatments never clobbers a monto they
+   * set by hand. Switching to a treatment with no list price clears the
+   * amount instead of leaving the previous treatment's figure behind. */
   useEffect(() => {
-    if (amountTouched || listPrice == null) return;
+    if (amountTouched) return;
+    if (listPrice == null) {
+      setValue("amountCharged", "");
+      return;
+    }
     const pct = Number(discountPercent) || 0;
     setValue("amountCharged", String(Math.round(listPrice * (1 - pct / 100))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -504,8 +509,10 @@ export function NewConsultationDialog({
                     onChange={(e) => {
                       const pct = e.target.value;
                       setDiscountPercent(pct);
-                      setAmountTouched(true);
-                      const pctNum = Number(pct) || 0;
+                      // Not a manual amount override — the discount stays
+                      // a calculator, so switching treatments afterward
+                      // still recalculates from the new list price.
+                      const pctNum = Math.min(100, Math.max(0, Number(pct) || 0));
                       setValue("amountCharged", String(Math.round(listPrice * (1 - pctNum / 100))));
                     }}
                   />

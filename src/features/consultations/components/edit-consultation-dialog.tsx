@@ -91,7 +91,11 @@ export function EditConsultationDialog({
   const listPrice = treatmentPrices[treatment];
 
   useEffect(() => {
-    if (amountTouched || listPrice == null) return;
+    if (amountTouched) return;
+    if (listPrice == null) {
+      setValue("amountCharged", "");
+      return;
+    }
     const pct = Number(discountPercent) || 0;
     setValue("amountCharged", String(Math.round(listPrice * (1 - pct / 100))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,8 +264,10 @@ export function EditConsultationDialog({
                     onChange={(e) => {
                       const pct = e.target.value;
                       setDiscountPercent(pct);
-                      setAmountTouched(true);
-                      const pctNum = Number(pct) || 0;
+                      // Not a manual amount override — the discount stays
+                      // a calculator, so switching treatments afterward
+                      // still recalculates from the new list price.
+                      const pctNum = Math.min(100, Math.max(0, Number(pct) || 0));
                       setValue("amountCharged", String(Math.round(listPrice * (1 - pctNum / 100))));
                     }}
                   />

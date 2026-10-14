@@ -382,3 +382,64 @@ test("opening Editar on an unpriced consultation does not bill it at the treatme
   await page.getByRole("button", { name: `Eliminar ${treatmentLabel}` }).click();
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
 });
+
+test("the discount recalculates when switching treatments, clamps to 0-100, and clears for an unpriced treatment", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const labelA = `Discount A E2E ${Date.now()}`;
+  const labelB = `Discount B E2E ${Date.now()}`;
+  await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Tratamientos" }).click();
+  for (const [label, price] of [
+    [labelA, "10000"],
+    [labelB, "20000"],
+  ]) {
+    await page.getByPlaceholder("Agregar nuevo...").fill(label);
+    await page.getByPlaceholder("Precio (opcional)").fill(price);
+    await page.getByRole("button", { name: "Agregar" }).click();
+    await page.getByPlaceholder("Buscar...").fill(label);
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+  }
+  await page.getByPlaceholder("Buscar...").fill("");
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option").first().click();
+  await page.getByText("Elegí un tratamiento").click();
+  await page.getByRole("option", { name: labelA, exact: true }).click();
+
+  // Discount 20% on A ($10.000) -> $8.000.
+  await page.fill("#discountPercent", "20");
+  await expect(page.locator("#amountCharged")).toHaveValue("8000");
+
+  // Switch to B ($20.000) — the SAME 20% discount must apply to B's
+  // price, not leave A's stale $8.000 behind.
+  await page.getByRole("combobox").filter({ hasText: labelA }).click();
+  await page.getByRole("option", { name: labelB, exact: true }).click();
+  await expect(page.locator("#amountCharged")).toHaveValue("16000");
+
+  // A discount over 100 must not produce a negative amount.
+  await page.fill("#discountPercent", "150");
+  await expect(page.locator("#amountCharged")).toHaveValue("0");
+
+  // Switching to an unpriced treatment clears the amount instead of
+  // leaving a stale figure that doesn't correspond to anything priced.
+  await page.getByRole("combobox").filter({ hasText: labelB }).click();
+  await page.getByRole("option", { name: "Otro", exact: true }).click();
+  await expect(page.locator("#amountCharged")).toHaveValue("");
+
+  await page.keyboard.press("Escape");
+
+  // Cleanup.
+  for (const label of [labelA, labelB]) {
+    await page.goto("/dashboard/configuracion");
+    await page.getByRole("tab", { name: "Tratamientos" }).click();
+    await page.getByPlaceholder("Buscar...").fill(label);
+    await page.getByRole("button", { name: `Eliminar ${label}` }).click();
+    await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  }
+});
