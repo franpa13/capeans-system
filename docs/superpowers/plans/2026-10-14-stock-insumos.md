@@ -789,23 +789,11 @@ Expected: FAIL — `supplies` isn't a recognized field on `NewConsultationInput`
 
 - [ ] **Step 3: Implement**
 
-In `src/features/clinic/data/consultations.ts`, add the import:
+> **Revised 2026-10-14** — written against `consultations.ts` *after* the turno-link change (commit `4cc4413`): `createConsultation` and `updateConsultation` already run inside `prisma.$transaction` (to validate/link the turno via `linkAppointment`), so supply usage slots into those same transactions rather than introducing new ones.
+
+In `src/features/clinic/data/consultations.ts`, add the supply-usage type and helpers right after the existing `linkAppointment` function:
 
 ```ts
-import { prisma } from "@/lib/prisma";
-import type { Consultation, Prisma } from "@prisma/client";
-import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
-import { paymentStatus, type PaymentStatus } from "@/features/clinic/lib/billing";
-```
-
-becomes:
-
-```ts
-import { prisma } from "@/lib/prisma";
-import type { Consultation, Prisma } from "@prisma/client";
-import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
-import { paymentStatus, type PaymentStatus } from "@/features/clinic/lib/billing";
-
 export type SupplyUsageInput = { supplyId: string; quantityUsed: number };
 
 function assertValidSupplyUsages(supplies: SupplyUsageInput[] | undefined) {
@@ -816,20 +804,23 @@ function assertValidSupplyUsages(supplies: SupplyUsageInput[] | undefined) {
   }
 }
 
-/** Decrements each used supply's stock and records the usage row — shared
- * by create (against a brand-new consultation) and update (against the
- * freshly-cleared list, see applySupplyUsages's caller in updateConsultation).
- * Runs inside the caller's transaction, never on its own. */
+/** Decrements each used supply's stock and records the usage row. Runs
+ * inside the caller's transaction, never on its own, so stock and usage
+ * rows can't drift apart. */
 async function applySupplyUsages(
   tx: Prisma.TransactionClient,
+  clinicId: string,
   consultationId: string,
   supplies: SupplyUsageInput[] | undefined,
 ) {
   for (const usage of supplies ?? []) {
-    await tx.supply.update({
-      where: { id: usage.supplyId },
+    const updated = await tx.supply.updateMany({
+      where: { id: usage.supplyId, clinicId },
       data: { quantity: { decrement: usage.quantityUsed } },
     });
+    if (updated.count === 0) {
+      throw new Error("Insumo no encontrado");
+    }
     await tx.consultationSupply.create({
       data: { consultationId, supplyId: usage.supplyId, quantityUsed: usage.quantityUsed },
     });
@@ -837,8 +828,8 @@ async function applySupplyUsages(
 }
 
 /** Restores stock for every supply usage currently attached to a
- * consultation, then removes those usage rows — the first half of
- * "reconcile": undo the old state before applying the new one. */
+ * consultation, then removes those rows — the first half of "reconcile":
+ * undo the old state before applying the new one. */
 async function reverseSupplyUsages(tx: Prisma.TransactionClient, consultationId: string) {
   const existing = await tx.consultationSupply.findMany({ where: { consultationId } });
   for (const usage of existing) {
@@ -851,190 +842,47 @@ async function reverseSupplyUsages(tx: Prisma.TransactionClient, consultationId:
 }
 ```
 
-Add `supplies?: SupplyUsageInput[];` to `NewConsultationInput` — it currently is:
+(`applySupplyUsages` scopes the decrement by `clinicId` with `updateMany` so a supply id from another clinic can never be decremented — same tenant guard every other data-layer write here has.)
+
+Add `supplies?: SupplyUsageInput[];` as the last field of both `NewConsultationInput` and `UpdateConsultationInput`.
+
+In `createConsultation`, call `assertValidSupplyUsages(input.supplies);` right after the existing `assertValidAmounts(...)` line, and change the transaction body so the created row is kept and usages applied before returning. The transaction currently reads:
 
 ```ts
-export type NewConsultationInput = {
-  patientId: string;
-  date: Date;
-  treatment: string;
-  teeth?: string[];
-  notes?: string;
-  amountCharged?: number;
-  amountPaid?: number;
-};
-```
-
-Replace it with:
-
-```ts
-export type NewConsultationInput = {
-  patientId: string;
-  date: Date;
-  treatment: string;
-  teeth?: string[];
-  notes?: string;
-  amountCharged?: number;
-  amountPaid?: number;
-  supplies?: SupplyUsageInput[];
-};
-```
-
-Replace `createConsultation` — it currently is:
-
-```ts
-export async function createConsultation(
-  clinicId: string,
-  input: NewConsultationInput,
-): Promise<Consultation> {
-  const patient = await prisma.patient.findFirst({
-    where: { id: input.patientId, clinicId },
-  });
-  if (!patient) {
-    throw new Error("Patient not found for this clinic");
-  }
-  assertValidAmounts(input.amountCharged, input.amountPaid);
-
-  return prisma.consultation.create({
-    data: {
-      patientId: input.patientId,
-      date: input.date,
-      treatment: input.treatment,
-      teeth: input.teeth ?? [],
-      notes: input.notes ?? null,
-      amountCharged: input.amountCharged ?? null,
-      amountPaid: input.amountPaid ?? 0,
-      clinicId,
-    },
-  });
-}
-```
-
-Replace it with:
-
-```ts
-export async function createConsultation(
-  clinicId: string,
-  input: NewConsultationInput,
-): Promise<Consultation> {
-  const patient = await prisma.patient.findFirst({
-    where: { id: input.patientId, clinicId },
-  });
-  if (!patient) {
-    throw new Error("Patient not found for this clinic");
-  }
-  assertValidAmounts(input.amountCharged, input.amountPaid);
-  assertValidSupplyUsages(input.supplies);
-
   return prisma.$transaction(async (tx) => {
+    if (input.appointmentId) {
+      await linkAppointment(tx, clinicId, input.appointmentId, input.patientId);
+    }
+    return tx.consultation.create({
+      data: {
+```
+
+…and ends with `    });\n  });`. Change it to:
+
+```ts
+  return prisma.$transaction(async (tx) => {
+    if (input.appointmentId) {
+      await linkAppointment(tx, clinicId, input.appointmentId, input.patientId);
+    }
     const consultation = await tx.consultation.create({
       data: {
-        patientId: input.patientId,
-        date: input.date,
-        treatment: input.treatment,
-        teeth: input.teeth ?? [],
-        notes: input.notes ?? null,
-        amountCharged: input.amountCharged ?? null,
-        amountPaid: input.amountPaid ?? 0,
-        clinicId,
+        // ...existing fields unchanged...
       },
     });
-    await applySupplyUsages(tx, consultation.id, input.supplies);
+    await applySupplyUsages(tx, clinicId, consultation.id, input.supplies);
     return consultation;
   });
-}
 ```
 
-Add `supplies?: SupplyUsageInput[];` to `UpdateConsultationInput` — it currently is:
+In `updateConsultation`, call `assertValidSupplyUsages(input.supplies);` right after `assertValidAmounts(...)`. Inside its transaction, after the existing `linkAppointment` block and before `tx.consultation.update`, add `await reverseSupplyUsages(tx, id);`; then keep the update's result and apply the new list:
 
 ```ts
-export type UpdateConsultationInput = {
-  date: Date;
-  treatment: string;
-  teeth?: string[];
-  notes?: string;
-  amountCharged?: number;
-  amountPaid?: number;
-};
-```
-
-Replace it with:
-
-```ts
-export type UpdateConsultationInput = {
-  date: Date;
-  treatment: string;
-  teeth?: string[];
-  notes?: string;
-  amountCharged?: number;
-  amountPaid?: number;
-  supplies?: SupplyUsageInput[];
-};
-```
-
-Replace `updateConsultation` — it currently is:
-
-```ts
-export async function updateConsultation(
-  clinicId: string,
-  id: string,
-  input: UpdateConsultationInput,
-): Promise<Consultation> {
-  assertValidAmounts(input.amountCharged, input.amountPaid);
-
-  const result = await prisma.consultation.updateMany({
-    where: { id, clinicId },
-    data: {
-      date: input.date,
-      treatment: input.treatment,
-      teeth: input.teeth ?? [],
-      notes: input.notes ?? null,
-      amountCharged: input.amountCharged ?? null,
-      amountPaid: input.amountPaid ?? 0,
-    },
-  });
-  if (result.count === 0) {
-    throw new Error("Consultation not found for this clinic");
-  }
-  return (await getConsultation(clinicId, id))!;
-}
-```
-
-Replace it with:
-
-```ts
-export async function updateConsultation(
-  clinicId: string,
-  id: string,
-  input: UpdateConsultationInput,
-): Promise<Consultation> {
-  assertValidAmounts(input.amountCharged, input.amountPaid);
-  assertValidSupplyUsages(input.supplies);
-
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.consultation.findFirst({ where: { id, clinicId } });
-    if (!existing) {
-      throw new Error("Consultation not found for this clinic");
-    }
-
     await reverseSupplyUsages(tx, id);
-
     const updated = await tx.consultation.update({
-      where: { id },
-      data: {
-        date: input.date,
-        treatment: input.treatment,
-        teeth: input.teeth ?? [],
-        notes: input.notes ?? null,
-        amountCharged: input.amountCharged ?? null,
-        amountPaid: input.amountPaid ?? 0,
-      },
+      // ...existing where/data unchanged...
     });
-
-    await applySupplyUsages(tx, id, input.supplies);
+    await applySupplyUsages(tx, clinicId, id, input.supplies);
     return updated;
-  });
-}
 ```
 
 Replace `deleteConsultation` — it currently is:
@@ -1045,7 +893,7 @@ export async function deleteConsultation(clinicId: string, id: string): Promise<
 }
 ```
 
-Replace it with:
+with:
 
 ```ts
 export async function deleteConsultation(clinicId: string, id: string): Promise<void> {
@@ -1924,6 +1772,12 @@ git commit -m "feat: add the shared Insumos utilizados field component"
 ---
 
 ## Task 9: Wire supplies into the consultation dialogs, pages, and data fetch
+
+> **Revised 2026-10-14** — the turno-link change (commits `4cc4413`, `0f49345`) touched the same dialogs after this plan was written. Deltas against the steps below:
+>
+> 1. **Step 6 (NewConsultationDialog):** the signature now also has `initialAppointment` (between `toothHistory` and `open`); add `supplyOptions = []` / `supplyOptions?: SupplyOption[]` alongside it rather than matching the old signature block literally. The `createConsultationAction({...})` call now already has `appointmentId: values.appointmentId || undefined,` before `newPatient` — add `supplies: supplyUsages.length ? supplyUsages : undefined,` right after that `appointmentId` line.
+> 2. **Step 7 (EditConsultationDialog):** the `updateConsultationAction` call already ends with `appointmentId: values.appointmentId || null,` — add the `supplies` line after it. Ignore the "Wait —" paragraph's first import suggestion: the dialog imports only `getConsultationUsagesAction`/`updateConsultationAction` from actions (never the data layer), plus `type SupplyUsageInput` from `@/features/clinic/data/consultations`.
+> 3. **New Step 7b — the agenda's "Registrar consulta" gets supplies too.** It now passes `treatmentPrices` and `initialAppointment` to `NewConsultationDialog`; it should pass `supplyOptions` as well, or the main "turno completed → log consulta" flow is the one place insumos can't be recorded. In `src/app/dashboard/turnos/page.tsx`, add `getSupplies(clinic.id)` to the existing `Promise.all` (and a matching `[]` to its fallback tuple), build `const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));`, and pass `supplyOptions={supplyOptions}` to both `<DailyAgenda>` and `<AppointmentsCalendar>`. In both `appointments-calendar.tsx` and `daily-agenda.tsx`, add `supplyOptions: SupplyOption[]` to the props (import the type from `@/features/consultations/components/supplies-used-field`) and pass `supplyOptions={supplyOptions}` to their `<NewConsultationDialog>`. Add `src/app/dashboard/turnos/page.tsx`, `src/features/appointments/components/appointments-calendar.tsx`, and `src/features/appointments/components/daily-agenda.tsx` to this task's commit.
 
 **Files:**
 - Modify: `src/features/consultations/components/new-consultation-dialog.tsx`
