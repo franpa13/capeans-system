@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createPatient } from "@/features/clinic/data/patients";
 import { createClinicOption, updateClinicOption } from "@/features/clinic/data/clinic-options";
 import { createAppointment, getAppointment } from "@/features/clinic/data/appointments";
+import { createSupply } from "@/features/clinic/data/supplies";
 import {
   createConsultation,
   deleteConsultation,
@@ -25,7 +26,9 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  await prisma.consultationSupply.deleteMany({});
   await prisma.consultation.deleteMany({});
+  await prisma.supply.deleteMany({});
   await prisma.patient.deleteMany({});
   await prisma.clinic.deleteMany({});
 });
@@ -411,6 +414,181 @@ describe("consultations data layer", () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0].treatment).toBe("Limpieza");
+  });
+
+  describe("supplies used", () => {
+    const stockOf = async (id: string) =>
+      (await prisma.supply.findUniqueOrThrow({ where: { id } })).quantity;
+
+    it("creating a consultation with supplies used decrements their stock and records the usage", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 12 }],
+      });
+
+      expect(await stockOf(supply.id)).toBe(88);
+      const usages = await prisma.consultationSupply.findMany({
+        where: { consultationId: consultation.id },
+      });
+      expect(usages).toHaveLength(1);
+      expect(usages[0].supplyId).toBe(supply.id);
+      expect(usages[0].quantityUsed).toBe(12);
+    });
+
+    it("allows stock to go negative when more is used than is available", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 5 });
+
+      await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 8 }],
+      });
+
+      expect(await stockOf(supply.id)).toBe(-3);
+    });
+
+    it("refuses a non-positive or non-integer quantityUsed", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const attempt = (quantityUsed: number) =>
+        createConsultation(clinicA.id, {
+          patientId: patient.id,
+          date: new Date("2026-01-01"),
+          treatment: "Ortodoncia",
+          supplies: [{ supplyId: supply.id, quantityUsed }],
+        });
+
+      await expect(attempt(0)).rejects.toThrow(
+        "La cantidad usada tiene que ser un número entero mayor a 0",
+      );
+      await expect(attempt(2.5)).rejects.toThrow(
+        "La cantidad usada tiene que ser un número entero mayor a 0",
+      );
+      expect(await stockOf(supply.id)).toBe(100);
+    });
+
+    it("refuses another clinic's supply and leaves no half-created consultation behind", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const foreign = await createSupply(clinicB.id, { name: "De B", unit: "unidad", quantity: 10 });
+
+      await expect(
+        createConsultation(clinicA.id, {
+          patientId: patient.id,
+          date: new Date("2026-01-01"),
+          treatment: "Ortodoncia",
+          supplies: [{ supplyId: foreign.id, quantityUsed: 1 }],
+        }),
+      ).rejects.toThrow("Insumo no encontrado");
+
+      expect(await stockOf(foreign.id)).toBe(10);
+      expect(await getConsultationsForPatient(clinicA.id, patient.id)).toHaveLength(0);
+    });
+
+    it("editing a consultation's supplies restores the old usage and applies the new one", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supplyA = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const supplyB = await createSupply(clinicA.id, { name: "Anestesia", unit: "ampolla", quantity: 50 });
+
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supplyA.id, quantityUsed: 10 }],
+      });
+
+      await updateConsultation(clinicA.id, consultation.id, {
+        date: consultation.date,
+        treatment: consultation.treatment,
+        supplies: [{ supplyId: supplyB.id, quantityUsed: 3 }],
+      });
+
+      expect(await stockOf(supplyA.id)).toBe(100);
+      expect(await stockOf(supplyB.id)).toBe(47);
+      const usages = await prisma.consultationSupply.findMany({
+        where: { consultationId: consultation.id },
+      });
+      expect(usages.map((u) => u.supplyId)).toEqual([supplyB.id]);
+    });
+
+    it("re-saving a consultation with the same supplies doesn't double-count", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 10 }],
+      });
+
+      for (let i = 0; i < 2; i++) {
+        await updateConsultation(clinicA.id, consultation.id, {
+          date: consultation.date,
+          treatment: consultation.treatment,
+          supplies: [{ supplyId: supply.id, quantityUsed: 10 }],
+        });
+      }
+
+      expect(await stockOf(supply.id)).toBe(90);
+    });
+
+    it("editing a consultation to remove its supplies entirely restores the stock", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 10 }],
+      });
+
+      await updateConsultation(clinicA.id, consultation.id, {
+        date: consultation.date,
+        treatment: consultation.treatment,
+      });
+
+      expect(await stockOf(supply.id)).toBe(100);
+      expect(
+        await prisma.consultationSupply.findMany({ where: { consultationId: consultation.id } }),
+      ).toHaveLength(0);
+    });
+
+    it("deleting a consultation with supplies restores their stock", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 10 }],
+      });
+
+      await deleteConsultation(clinicA.id, consultation.id);
+
+      expect(await stockOf(supply.id)).toBe(100);
+    });
+
+    it("deleting another clinic's consultation restores nothing and deletes nothing", async () => {
+      const patient = await createPatient(clinicB.id, { name: "Paciente B", phone: "222" });
+      const supply = await createSupply(clinicB.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const consultation = await createConsultation(clinicB.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 10 }],
+      });
+
+      await deleteConsultation(clinicA.id, consultation.id);
+
+      expect(await stockOf(supply.id)).toBe(90);
+      expect(await getConsultation(clinicB.id, consultation.id)).not.toBeNull();
+    });
   });
 
   describe("linking to a turno", () => {

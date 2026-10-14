@@ -12,6 +12,7 @@ export type NewConsultationInput = {
   amountCharged?: number;
   amountPaid?: number;
   appointmentId?: string;
+  supplies?: SupplyUsageInput[];
 };
 
 /** Checks a consulta may be linked to this turno and, if the turno was
@@ -44,6 +45,55 @@ async function linkAppointment(
   if (appointment.status === "CONFIRMED") {
     await tx.appointment.update({ where: { id: appointmentId }, data: { status: "COMPLETED" } });
   }
+}
+
+export type SupplyUsageInput = { supplyId: string; quantityUsed: number };
+
+function assertValidSupplyUsages(supplies: SupplyUsageInput[] | undefined) {
+  for (const usage of supplies ?? []) {
+    if (!Number.isInteger(usage.quantityUsed) || usage.quantityUsed <= 0) {
+      throw new Error("La cantidad usada tiene que ser un número entero mayor a 0");
+    }
+  }
+}
+
+/** Decrements each used supply's stock (scoped to the clinic, so another
+ * clinic's supply id is never touched) and records the usage row. Runs
+ * inside the caller's transaction, never on its own, so stock and usage
+ * rows can't drift apart. Stock may go negative on purpose — that's the
+ * "reponé ya" signal, not an error. */
+async function applySupplyUsages(
+  tx: Prisma.TransactionClient,
+  clinicId: string,
+  consultationId: string,
+  supplies: SupplyUsageInput[] | undefined,
+) {
+  for (const usage of supplies ?? []) {
+    const updated = await tx.supply.updateMany({
+      where: { id: usage.supplyId, clinicId },
+      data: { quantity: { decrement: usage.quantityUsed } },
+    });
+    if (updated.count === 0) {
+      throw new Error("Insumo no encontrado");
+    }
+    await tx.consultationSupply.create({
+      data: { consultationId, supplyId: usage.supplyId, quantityUsed: usage.quantityUsed },
+    });
+  }
+}
+
+/** Restores stock for every supply usage currently attached to a
+ * consultation, then removes those rows — the first half of "reconcile":
+ * undo the old state before applying the new one. */
+async function reverseSupplyUsages(tx: Prisma.TransactionClient, consultationId: string) {
+  const existing = await tx.consultationSupply.findMany({ where: { consultationId } });
+  for (const usage of existing) {
+    await tx.supply.update({
+      where: { id: usage.supplyId },
+      data: { quantity: { increment: usage.quantityUsed } },
+    });
+  }
+  await tx.consultationSupply.deleteMany({ where: { consultationId } });
 }
 
 export type ConsultationListFilters = {
@@ -153,12 +203,13 @@ export async function createConsultation(
     throw new Error("Patient not found for this clinic");
   }
   assertValidAmounts(input.amountCharged, input.amountPaid);
+  assertValidSupplyUsages(input.supplies);
 
   return prisma.$transaction(async (tx) => {
     if (input.appointmentId) {
       await linkAppointment(tx, clinicId, input.appointmentId, input.patientId);
     }
-    return tx.consultation.create({
+    const consultation = await tx.consultation.create({
       data: {
         patientId: input.patientId,
         date: input.date,
@@ -171,6 +222,8 @@ export async function createConsultation(
         clinicId,
       },
     });
+    await applySupplyUsages(tx, clinicId, consultation.id, input.supplies);
+    return consultation;
   });
 }
 
@@ -184,6 +237,9 @@ export type UpdateConsultationInput = {
   /** Like every other field here, the full new value — omitting it (or
    * null) clears the link, the same way omitting notes clears them. */
   appointmentId?: string | null;
+  /** Also the full new list — omitting it means "no supplies used", and
+   * the previous ones are put back into stock. */
+  supplies?: SupplyUsageInput[];
 };
 
 export async function updateConsultation(
@@ -192,6 +248,7 @@ export async function updateConsultation(
   input: UpdateConsultationInput,
 ): Promise<Consultation> {
   assertValidAmounts(input.amountCharged, input.amountPaid);
+  assertValidSupplyUsages(input.supplies);
 
   return prisma.$transaction(async (tx) => {
     const existing = await tx.consultation.findFirst({ where: { id, clinicId } });
@@ -201,7 +258,8 @@ export async function updateConsultation(
     if (input.appointmentId) {
       await linkAppointment(tx, clinicId, input.appointmentId, existing.patientId, id);
     }
-    return tx.consultation.update({
+    await reverseSupplyUsages(tx, id);
+    const updated = await tx.consultation.update({
       where: { id },
       data: {
         date: input.date,
@@ -213,9 +271,16 @@ export async function updateConsultation(
         appointmentId: input.appointmentId ?? null,
       },
     });
+    await applySupplyUsages(tx, clinicId, id, input.supplies);
+    return updated;
   });
 }
 
 export async function deleteConsultation(clinicId: string, id: string): Promise<void> {
-  await prisma.consultation.deleteMany({ where: { id, clinicId } });
+  await prisma.$transaction(async (tx) => {
+    const consultation = await tx.consultation.findFirst({ where: { id, clinicId } });
+    if (!consultation) return;
+    await reverseSupplyUsages(tx, id);
+    await tx.consultation.delete({ where: { id } });
+  });
 }
