@@ -18,6 +18,7 @@ model Clinic {
   appointments  Appointment[]
   options       ClinicOption[]
   businessHours BusinessHours[]
+  supplies      Supply[]
 }
 
 model Patient {
@@ -60,6 +61,8 @@ model Consultation {
   // una sola consulta. Borrar el turno no borra la consulta.
   appointmentId String?      @unique
   appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  supplyUsages ConsultationSupply[]
 
   @@index([clinicId])
   @@index([patientId])
@@ -128,4 +131,34 @@ model ClinicOption {
 
   @@unique([clinicId, category, label])
   @@index([clinicId, category])
+}
+
+model Supply {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name       String
+  unit       String  // "unidad", "caja", "ml", etc. — texto libre
+  price      Int?    // costo por unidad, pesos enteros (opcional)
+  quantity   Int     @default(0)  // stock actual; puede quedar negativo
+  lowStockAt Int?    // umbral de aviso, en la misma unidad (opcional)
+
+  usages ConsultationSupply[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId])
+}
+
+model ConsultationSupply {
+  id             String       @id @default(cuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  supplyId       String
+  supply         Supply       @relation(fields: [supplyId], references: [id], onDelete: Restrict)
+
+  quantityUsed Int   // cuánto se usó en ESTA consulta
+
+  @@index([consultationId])
+  @@index([supplyId])
 }
