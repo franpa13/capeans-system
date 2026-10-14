@@ -100,6 +100,17 @@ describe("clinic options data layer", () => {
     ).rejects.toThrow("El precio no puede ser negativo");
   });
 
+  it("ignores a price given for an insurance option on create", async () => {
+    const option = await createClinicOption(clinicA.id, "insurance", "OSDE Custom", 15000);
+    expect(option.price).toBeNull();
+  });
+
+  it("ignores a price given for an insurance option on update", async () => {
+    const option = await createClinicOption(clinicA.id, "insurance", "OSDE Custom 2");
+    const updated = await updateClinicOption(clinicA.id, option.id, "OSDE Custom 2", 15000);
+    expect(updated.price).toBeNull();
+  });
+
   it("does not return a clinic A option when queried with clinic B's id", async () => {
     await createClinicOption(clinicA.id, "insurance", "Solo A");
     const result = await getClinicOptions(clinicB.id, "insurance");

@@ -77,7 +77,7 @@ export async function createClinicOption(
       category,
       label: trimmed,
       order: (last?.order ?? -1) + 1,
-      price: price ?? null,
+      price: category === "treatment" ? price ?? null : null,
     },
   });
 }
@@ -113,7 +113,7 @@ export async function updateClinicOption(
 
   return prisma.clinicOption.update({
     where: { id },
-    data: { label: trimmed, price: price ?? null },
+    data: { label: trimmed, price: option.category === "treatment" ? price ?? null : null },
   });
 }
 
