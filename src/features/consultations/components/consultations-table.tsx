@@ -31,12 +31,14 @@ import { EditConsultationDialog } from "@/features/consultations/components/edit
 import { ViewConsultationDialog } from "@/features/consultations/components/view-consultation-dialog";
 import { PaymentStatusBadge } from "@/features/consultations/components/payment-status-badge";
 import type { Consultation, Patient } from "@prisma/client";
+import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
 export function ConsultationsTable({
   consultations,
   patients,
   treatmentOptions,
   treatmentPrices,
+  supplyOptions,
   showPatient = true,
   fixedPatientName,
   emptyMessage = "Todavía no hay consultas registradas.",
@@ -45,6 +47,7 @@ export function ConsultationsTable({
   patients?: Patient[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  supplyOptions: SupplyOption[];
   showPatient?: boolean;
   fixedPatientName?: string;
   emptyMessage?: string;
@@ -236,6 +239,7 @@ export function ConsultationsTable({
           patientName={nameFor(editing)}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          supplyOptions={supplyOptions}
           open
           onOpenChange={(next) => {
             if (!next) setEditing(null);

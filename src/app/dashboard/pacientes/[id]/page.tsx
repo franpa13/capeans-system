@@ -4,6 +4,7 @@ import { getPatient } from "@/features/clinic/data/patients";
 import { getConsultationsForPatient } from "@/features/clinic/data/consultations";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 import { outstandingBalance } from "@/features/clinic/lib/billing";
+import { getSupplies } from "@/features/clinic/data/supplies";
 
 export default async function PacienteDetailPage({
   params,
@@ -18,6 +19,8 @@ export default async function PacienteDetailPage({
   const treatmentPrices = Object.fromEntries(
     treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
   );
+  const supplies = clinic ? await getSupplies(clinic.id) : [];
+  const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const balance = outstandingBalance(consultations);
 
   return (
@@ -26,6 +29,7 @@ export default async function PacienteDetailPage({
       consultations={consultations}
       treatmentOptions={treatmentOptions.map((o) => o.label)}
       treatmentPrices={treatmentPrices}
+      supplyOptions={supplyOptions}
       balance={balance}
     />
   );

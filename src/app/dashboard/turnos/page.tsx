@@ -8,6 +8,7 @@ import { getAppointments } from "@/features/clinic/data/appointments";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getBusinessHours } from "@/features/clinic/data/business-hours";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
+import { getSupplies } from "@/features/clinic/data/supplies";
 import {
   addDays,
   getWeekStart,
@@ -44,7 +45,7 @@ export default async function TurnosPage({
       : weekStart;
 
   const clinic = await getCurrentClinic();
-  const [appointments, patients, businessHours, insuranceOptionRows, treatmentOptionRows] = clinic
+  const [appointments, patients, businessHours, insuranceOptionRows, treatmentOptionRows, supplies] = clinic
     ? await Promise.all([
         isDayView
           ? getAppointments(
@@ -57,8 +58,10 @@ export default async function TurnosPage({
         getBusinessHours(clinic.id),
         getClinicOptions(clinic.id, "insurance"),
         getClinicOptions(clinic.id, "treatment"),
+        getSupplies(clinic.id),
       ])
-    : [[], [], [], [], []];
+    : [[], [], [], [], [], []];
+  const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const insuranceOptions = insuranceOptionRows.map((o) => o.label);
   const treatmentOptions = treatmentOptionRows.map((o) => o.label);
   const treatmentPrices = Object.fromEntries(
@@ -92,6 +95,7 @@ export default async function TurnosPage({
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          supplyOptions={supplyOptions}
         />
       ) : (
         <AppointmentsCalendar
@@ -106,6 +110,7 @@ export default async function TurnosPage({
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          supplyOptions={supplyOptions}
         />
       )}
     </div>

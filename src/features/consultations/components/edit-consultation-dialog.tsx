@@ -25,8 +25,13 @@ import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
 import { combineDateAndTime, formatCurrency, splitDateAndTime } from "@/features/clinic/lib/format";
 import { paymentStatus, PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
-import { updateConsultationAction } from "@/features/consultations/actions";
+import { getConsultationUsagesAction, updateConsultationAction } from "@/features/consultations/actions";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
+import {
+  SuppliesUsedField,
+  type SupplyOption,
+} from "@/features/consultations/components/supplies-used-field";
+import type { SupplyUsageInput } from "@/features/clinic/data/consultations";
 import { editConsultationSchema, type EditConsultationValues } from "@/features/consultations/lib/schema";
 import type { Consultation } from "@prisma/client";
 
@@ -51,6 +56,7 @@ export function EditConsultationDialog({
   patientName,
   treatmentOptions,
   treatmentPrices,
+  supplyOptions = [],
   open,
   onOpenChange,
 }: {
@@ -58,12 +64,16 @@ export function EditConsultationDialog({
   patientName: string;
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  supplyOptions?: SupplyOption[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const [dentitionMode, setDentitionMode] = useState<DentitionMode>("adulto");
   const [discountPercent, setDiscountPercent] = useState("");
   const [amountTouched, setAmountTouched] = useState(consultation.amountCharged != null);
+  // null until the consulta's existing usages arrive — saving before then
+  // would send "no supplies" and put them all back into stock.
+  const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[] | null>(null);
 
   const {
     register,
@@ -87,6 +97,18 @@ export function EditConsultationDialog({
     }
   }, [open, consultation, treatmentOptions, reset]);
 
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getConsultationUsagesAction(consultation.id).then((usages) => {
+      if (cancelled) return;
+      setSupplyUsages(usages.map((u) => ({ supplyId: u.supplyId, quantityUsed: u.quantityUsed })));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, consultation.id]);
+
   const treatment = watch("treatment");
   const teeth = watch("teeth") ?? [];
   const paymentChoice = watch("paymentChoice");
@@ -106,6 +128,7 @@ export function EditConsultationDialog({
   }, [treatment]);
 
   const onSubmit = async (values: EditConsultationValues) => {
+    if (supplyUsages === null) return;
     const chargedNum = values.amountCharged ? Number(values.amountCharged) : undefined;
     const paidNum =
       values.paymentChoice === "COBRADO"
@@ -122,6 +145,7 @@ export function EditConsultationDialog({
       amountCharged: chargedNum,
       amountPaid: paidNum,
       appointmentId: values.appointmentId || null,
+      supplies: supplyUsages.length ? supplyUsages : undefined,
     });
     onOpenChange(false);
   };
@@ -346,10 +370,22 @@ export function EditConsultationDialog({
                 {...register("notes")}
               />
             </div>
+
+            {supplyOptions.length > 0 &&
+              (supplyUsages === null ? (
+                <p className="text-sm text-muted-foreground">Cargando insumos usados...</p>
+              ) : (
+                <SuppliesUsedField
+                  idPrefix="edit-"
+                  supplies={supplyOptions}
+                  value={supplyUsages}
+                  onChange={setSupplyUsages}
+                />
+              ))}
           </div>
 
           <DialogFooter>
-            <Button type="submit">
+            <Button type="submit" disabled={supplyUsages === null}>
               <Save />
               Guardar cambios
             </Button>

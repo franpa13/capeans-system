@@ -38,6 +38,7 @@ import {
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 import { formatDate } from "@/features/clinic/lib/format";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
+import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
 type PatientOption = { id: string; name: string };
 type CompletedTurno = { patient: PatientOption; appointment: Appointment };
@@ -97,6 +98,7 @@ export function AppointmentsCalendar({
   insuranceOptions,
   treatmentOptions,
   treatmentPrices,
+  supplyOptions,
 }: {
   weekStart: Date;
   appointments: AppointmentWithConsultation[];
@@ -109,6 +111,7 @@ export function AppointmentsCalendar({
   insuranceOptions: string[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  supplyOptions: SupplyOption[];
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -365,6 +368,7 @@ export function AppointmentsCalendar({
           treatmentPrices={treatmentPrices}
           insuranceOptions={insuranceOptions}
           initialAppointment={consultationFor.appointment}
+          supplyOptions={supplyOptions}
           open
           onOpenChange={(next) => {
             if (!next) setConsultationFor(null);

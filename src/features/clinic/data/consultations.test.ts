@@ -10,6 +10,7 @@ import {
   getConsultation,
   getConsultations,
   getConsultationsForPatient,
+  getConsultationUsages,
   updateConsultation,
 } from "@/features/clinic/data/consultations";
 
@@ -572,6 +573,22 @@ describe("consultations data layer", () => {
       await deleteConsultation(clinicA.id, consultation.id);
 
       expect(await stockOf(supply.id)).toBe(100);
+    });
+
+    it("getConsultationUsages lists a consulta's supplies with name and unit, scoped to the clinic", async () => {
+      const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
+      const supply = await createSupply(clinicA.id, { name: "Gomillas", unit: "unidad", quantity: 100 });
+      const consultation = await createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date("2026-01-01"),
+        treatment: "Ortodoncia",
+        supplies: [{ supplyId: supply.id, quantityUsed: 7 }],
+      });
+
+      expect(await getConsultationUsages(clinicA.id, consultation.id)).toEqual([
+        { supplyId: supply.id, supplyName: "Gomillas", unit: "unidad", quantityUsed: 7 },
+      ]);
+      expect(await getConsultationUsages(clinicB.id, consultation.id)).toEqual([]);
     });
 
     it("deleting another clinic's consultation restores nothing and deletes nothing", async () => {

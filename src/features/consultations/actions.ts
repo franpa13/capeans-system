@@ -8,6 +8,8 @@ import {
   createConsultation,
   deleteConsultation,
   getConsultation,
+  getConsultationUsages,
+  type ConsultationUsage,
   updateConsultation,
   type NewConsultationInput,
   type UpdateConsultationInput,
@@ -67,6 +69,14 @@ export async function deleteConsultationAction(id: string) {
   revalidatePath("/dashboard/consultas");
   if (consultation?.patientId) revalidatePath(`/dashboard/pacientes/${consultation.patientId}`);
   revalidatePath("/dashboard/turnos");
+}
+
+/** The supplies a consulta already used, for prefilling its edit form. */
+export async function getConsultationUsagesAction(
+  consultationId: string,
+): Promise<ConsultationUsage[]> {
+  const clinicId = await requireClinicId();
+  return getConsultationUsages(clinicId, consultationId);
 }
 
 export type LinkableAppointment = {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Consultation, Patient } from "@prisma/client";
+import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
 import { PaginationNavigation } from "@/components/pagination-navigation";
 import { ActiveFilterChips, type FilterChip } from "@/components/active-filter-chips";
@@ -35,11 +36,13 @@ export function ConsultationsView({
   patients,
   treatmentOptions,
   treatmentPrices,
+  supplyOptions,
 }: {
   consultations: Consultation[];
   patients: Patient[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  supplyOptions: SupplyOption[];
 }) {
   const { values, setValue, setMany, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
   const treatment = values.tratamiento || ALL_TREATMENTS;
@@ -117,6 +120,7 @@ export function ConsultationsView({
         showPatient
         treatmentOptions={treatmentOptions}
         treatmentPrices={treatmentPrices}
+        supplyOptions={supplyOptions}
         emptyMessage={
           hasFilters
             ? "No hay consultas que coincidan con los filtros."

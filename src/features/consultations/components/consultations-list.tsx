@@ -14,6 +14,7 @@ import { toLocalDateString } from "@/features/clinic/lib/format";
 import { paymentStatus } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import type { Consultation, Patient } from "@prisma/client";
+import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
 const PAGE_SIZE = 10;
 
@@ -37,6 +38,7 @@ export function ConsultationsList({
   emptyMessage = "Todavía no hay consultas registradas.",
   treatmentOptions,
   treatmentPrices,
+  supplyOptions,
 }: {
   consultations: Consultation[];
   patients?: Patient[];
@@ -45,6 +47,7 @@ export function ConsultationsList({
   emptyMessage?: string;
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  supplyOptions: SupplyOption[];
 }) {
   const [treatment, setTreatment] = useState(ALL_TREATMENTS);
   const [paymentStatusFilter, setPaymentStatusFilter] = useState(ALL_PAYMENT_STATUSES);
@@ -128,6 +131,7 @@ export function ConsultationsList({
         fixedPatientName={fixedPatientName}
         treatmentOptions={treatmentOptions}
         treatmentPrices={treatmentPrices}
+        supplyOptions={supplyOptions}
         emptyMessage={
           hasFilters
             ? "No hay consultas que coincidan con los filtros."

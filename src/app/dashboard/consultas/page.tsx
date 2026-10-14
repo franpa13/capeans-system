@@ -6,6 +6,7 @@ import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getConsultations } from "@/features/clinic/data/consultations";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
+import { getSupplies } from "@/features/clinic/data/supplies";
 import { parsePaymentStatusParam } from "@/features/clinic/lib/billing";
 
 export default async function ConsultasPage({
@@ -27,13 +28,15 @@ export default async function ConsultasPage({
   };
 
   const clinic = await getCurrentClinic();
-  const [patients, treatmentOptions, insuranceOptions] = clinic
+  const [patients, treatmentOptions, insuranceOptions, supplies] = clinic
     ? await Promise.all([
         getPatients(clinic.id),
         getClinicOptions(clinic.id, "treatment"),
         getClinicOptions(clinic.id, "insurance"),
+        getSupplies(clinic.id),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
+  const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const treatmentLabels = treatmentOptions.map((o) => o.label);
   const insuranceLabels = insuranceOptions.map((o) => o.label);
   const treatmentPrices = Object.fromEntries(
@@ -55,6 +58,7 @@ export default async function ConsultasPage({
             treatmentOptions={treatmentLabels}
             treatmentPrices={treatmentPrices}
             insuranceOptions={insuranceLabels}
+            supplyOptions={supplyOptions}
           />
         }
       />
@@ -64,6 +68,7 @@ export default async function ConsultasPage({
         patients={patients}
         treatmentOptions={treatmentLabels}
         treatmentPrices={treatmentPrices}
+        supplyOptions={supplyOptions}
       />
     </div>
   );

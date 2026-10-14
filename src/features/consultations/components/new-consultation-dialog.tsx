@@ -42,6 +42,11 @@ import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import {
+  SuppliesUsedField,
+  type SupplyOption,
+} from "@/features/consultations/components/supplies-used-field";
+import type { SupplyUsageInput } from "@/features/clinic/data/consultations";
+import {
   consultationSchema,
   NEW_PATIENT_VALUE,
   type ConsultationValues,
@@ -73,6 +78,7 @@ export function NewConsultationDialog({
   insuranceOptions = [],
   toothHistory = {},
   initialAppointment,
+  supplyOptions = [],
   open: openProp,
   onOpenChange: onOpenChangeProp,
 }: {
@@ -84,6 +90,7 @@ export function NewConsultationDialog({
   insuranceOptions?: string[];
   toothHistory?: ToothHistory;
   initialAppointment?: InitialAppointment;
+  supplyOptions?: SupplyOption[];
   /** Controlled mode, for opening this programmatically (e.g. right
    * after marking a turno completed) instead of from its own trigger
    * button — omit both to keep the default self-contained behavior. */
@@ -144,6 +151,7 @@ export function NewConsultationDialog({
   const listPrice = treatmentPrices[treatment];
   const [discountPercent, setDiscountPercent] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
+  const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[]>([]);
 
   /** Recalculates "Monto a cobrar" from the treatment's list price (minus
    * whatever discount % is already typed) every time the treatment
@@ -185,6 +193,7 @@ export function NewConsultationDialog({
       amountCharged: chargedNum,
       amountPaid: paidNum,
       appointmentId: values.appointmentId || undefined,
+      supplies: supplyUsages.length ? supplyUsages : undefined,
       newPatient: isNewPatient
         ? {
             name: values.newPatientName!.trim(),
@@ -228,6 +237,7 @@ export function NewConsultationDialog({
     });
     setDiscountPercent("");
     setAmountTouched(false);
+    setSupplyUsages([]);
     setOpen(false);
   };
 
@@ -236,7 +246,10 @@ export function NewConsultationDialog({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) reset();
+        if (!next) {
+          reset();
+          setSupplyUsages([]);
+        }
       }}
     >
       {!isControlled && (
@@ -606,6 +619,14 @@ export function NewConsultationDialog({
                 {...register("notes")}
               />
             </div>
+
+            {supplyOptions.length > 0 && (
+              <SuppliesUsedField
+                supplies={supplyOptions}
+                value={supplyUsages}
+                onChange={setSupplyUsages}
+              />
+            )}
           </div>
 
           <DialogFooter>

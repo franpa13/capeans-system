@@ -164,6 +164,34 @@ export async function getConsultation(
   return prisma.consultation.findFirst({ where: { id, clinicId } });
 }
 
+export type ConsultationUsage = {
+  supplyId: string;
+  supplyName: string;
+  unit: string;
+  quantityUsed: number;
+};
+
+/** Separate from getConsultation on purpose: the Edit dialog is the only
+ * place that needs a consulta's existing supply usages (to prefill
+ * "Insumos utilizados"); every list and the view dialog have no use for
+ * them, so they don't pay for the join. */
+export async function getConsultationUsages(
+  clinicId: string,
+  consultationId: string,
+): Promise<ConsultationUsage[]> {
+  const usages = await prisma.consultationSupply.findMany({
+    where: { consultationId, consultation: { clinicId } },
+    include: { supply: true },
+    orderBy: { supply: { name: "asc" } },
+  });
+  return usages.map((u) => ({
+    supplyId: u.supplyId,
+    supplyName: u.supply.name,
+    unit: u.supply.unit,
+    quantityUsed: u.quantityUsed,
+  }));
+}
+
 export async function getConsultationsForPatient(
   clinicId: string,
   patientId: string,

@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { formatCurrency, formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
+import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { isValidToothFdi } from "@/features/clinic/lib/odontogram";
 
@@ -28,12 +29,14 @@ export function PatientDetailView({
   consultations,
   treatmentOptions,
   treatmentPrices,
+  supplyOptions,
   balance,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  supplyOptions: SupplyOption[];
   balance: number;
 }) {
   const toothHistory: ToothHistory = useMemo(() => {
@@ -98,6 +101,7 @@ export function PatientDetailView({
               fixedPatientName={patient.name}
               treatmentOptions={treatmentOptions}
               treatmentPrices={treatmentPrices}
+              supplyOptions={supplyOptions}
               toothHistory={toothHistory}
             />
           }
@@ -150,6 +154,7 @@ export function PatientDetailView({
           emptyMessage="Todavía no hay consultas registradas para este paciente."
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          supplyOptions={supplyOptions}
         />
       </div>
     </div>
