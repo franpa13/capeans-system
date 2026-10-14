@@ -23,10 +23,17 @@ import { ViewAppointmentDialog } from "@/features/appointments/components/view-a
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle } from "@/features/appointments/components/view-toggle";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
+import {
+  CONSULTA_STATUS_LABELS,
+  ConsultaStatusIcon,
+  consultaStatus,
+} from "@/features/appointments/components/consulta-status";
 import { addDays, formatDayLabel, getWeekStart, toWeekParam } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
+import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 
 type PatientOption = { id: string; name: string };
+type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
 const HOUR_WIDTH = 80; // px
 const ROW_HEIGHT = 56; // px
@@ -93,9 +100,10 @@ export function DailyAgenda({
   diarioHref,
   insuranceOptions,
   treatmentOptions,
+  treatmentPrices,
 }: {
   day: Date;
-  appointments: Appointment[];
+  appointments: AppointmentWithConsultation[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
@@ -104,6 +112,7 @@ export function DailyAgenda({
   diarioHref: string;
   insuranceOptions: string[];
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -126,8 +135,8 @@ export function DailyAgenda({
   // After marking a turno completed, offer to log the consulta for it —
   // see appointments-calendar.tsx for why this is two separate pieces of
   // state instead of one reused across both dialogs.
-  const [completedPatient, setCompletedPatient] = useState<PatientOption | null>(null);
-  const [consultationPatient, setConsultationPatient] = useState<PatientOption | null>(null);
+  const [completed, setCompleted] = useState<CompletedTurno | null>(null);
+  const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
 
   // Lands the view on the clinic's opening time instead of midnight — a
   // day with few/no turnos before "Hora inicio" would otherwise open on
@@ -254,6 +263,7 @@ export function DailyAgenda({
                 (appointment.durationMinutes / 60) * HOUR_WIDTH,
                 40,
               );
+              const status = consultaStatus(appointment);
 
               return (
                 <Fragment key={appointment.id}>
@@ -283,9 +293,12 @@ export function DailyAgenda({
                           style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
                           className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
                         >
-                          <div className="truncate font-medium">
-                            {String(appointment.startsAt.getHours()).padStart(2, "0")}:
-                            {String(appointment.startsAt.getMinutes()).padStart(2, "0")}
+                          <div className="flex items-center gap-1 font-medium">
+                            <ConsultaStatusIcon appointment={appointment} />
+                            <span className="truncate">
+                              {String(appointment.startsAt.getHours()).padStart(2, "0")}:
+                              {String(appointment.startsAt.getMinutes()).padStart(2, "0")}
+                            </span>
                           </div>
                           {appointment.reason && (
                             <div className="truncate opacity-90">{appointment.reason}</div>
@@ -295,6 +308,7 @@ export function DailyAgenda({
                       <TooltipContent className="flex-col items-start gap-0.5 text-left">
                         <p className="font-medium">{patientName}</p>
                         <p>{appointment.reason || "Sin motivo especificado"}</p>
+                        {status && <p>{CONSULTA_STATUS_LABELS[status]}</p>}
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -333,33 +347,33 @@ export function DailyAgenda({
         onSaved={() => router.refresh()}
         onCompleted={(appointment) => {
           if (!appointment.patientId) return;
-          setCompletedPatient({
-            id: appointment.patientId,
-            name: patientsById.get(appointment.patientId) ?? "Paciente",
+          setCompleted({
+            patient: {
+              id: appointment.patientId,
+              name: patientsById.get(appointment.patientId) ?? "Paciente",
+            },
+            appointment,
           });
         }}
       />
 
-      <AlertDialog
-        open={!!completedPatient}
-        onOpenChange={(next) => !next && setCompletedPatient(null)}
-      >
+      <AlertDialog open={!!completed} onOpenChange={(next) => !next && setCompleted(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Turno completado</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Querés registrar qué se hizo en la consulta de {completedPatient?.name}?
+              ¿Querés registrar qué se hizo en la consulta de {completed?.patient.name}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCompletedPatient(null)}>
+            <AlertDialogCancel onClick={() => setCompleted(null)}>
               <X />
               Ahora no
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setConsultationPatient(completedPatient);
-                setCompletedPatient(null);
+                setConsultationFor(completed);
+                setCompleted(null);
               }}
             >
               <ClipboardList />
@@ -369,16 +383,18 @@ export function DailyAgenda({
         </AlertDialogContent>
       </AlertDialog>
 
-      {consultationPatient && (
+      {consultationFor && (
         <NewConsultationDialog
           patients={patients}
-          fixedPatientId={consultationPatient.id}
-          fixedPatientName={consultationPatient.name}
+          fixedPatientId={consultationFor.patient.id}
+          fixedPatientName={consultationFor.patient.name}
           treatmentOptions={treatmentOptions}
+          treatmentPrices={treatmentPrices}
           insuranceOptions={insuranceOptions}
-          open={!!consultationPatient}
+          initialAppointment={consultationFor.appointment}
+          open
           onOpenChange={(next) => {
-            if (!next) setConsultationPatient(null);
+            if (!next) setConsultationFor(null);
           }}
         />
       )}

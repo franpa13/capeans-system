@@ -26,6 +26,7 @@ import { combineDateAndTime, formatCurrency, splitDateAndTime } from "@/features
 import { paymentStatus, PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { updateConsultationAction } from "@/features/consultations/actions";
+import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import { editConsultationSchema, type EditConsultationValues } from "@/features/consultations/lib/schema";
 import type { Consultation } from "@prisma/client";
 
@@ -41,6 +42,7 @@ function toFormValues(consultation: Consultation, treatmentOptions: string[]): E
     amountCharged: consultation.amountCharged != null ? String(consultation.amountCharged) : "",
     paymentChoice: status === "SIN_MONTO" ? "PENDIENTE" : status,
     partialAmountPaid: status === "PARCIAL" ? String(consultation.amountPaid) : "",
+    appointmentId: consultation.appointmentId ?? "",
   };
 }
 
@@ -88,6 +90,8 @@ export function EditConsultationDialog({
   const treatment = watch("treatment");
   const teeth = watch("teeth") ?? [];
   const paymentChoice = watch("paymentChoice");
+  const date = watch("date");
+  const appointmentId = watch("appointmentId") ?? "";
   const listPrice = treatmentPrices[treatment];
 
   useEffect(() => {
@@ -117,6 +121,7 @@ export function EditConsultationDialog({
       notes: values.notes || undefined,
       amountCharged: chargedNum,
       amountPaid: paidNum,
+      appointmentId: values.appointmentId || null,
     });
     onOpenChange(false);
   };
@@ -178,6 +183,15 @@ export function EditConsultationDialog({
                 )}
               </div>
             </div>
+
+            <LinkedAppointmentField
+              idPrefix="edit-"
+              patientId={consultation.patientId ?? undefined}
+              day={date}
+              excludeConsultationId={consultation.id}
+              value={appointmentId}
+              onChange={(id) => setValue("appointmentId", id)}
+            />
 
             <Card>
               <CardContent className="space-y-4">

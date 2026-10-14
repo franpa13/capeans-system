@@ -61,6 +61,9 @@ export default async function TurnosPage({
     : [[], [], [], [], []];
   const insuranceOptions = insuranceOptionRows.map((o) => o.label);
   const treatmentOptions = treatmentOptionRows.map((o) => o.label);
+  const treatmentPrices = Object.fromEntries(
+    treatmentOptionRows.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
+  );
 
   const weekParam = toWeekParam(weekStart);
   const semanalHref = `/dashboard/turnos?week=${weekParam}&estado=${statusParam}`;
@@ -88,6 +91,7 @@ export default async function TurnosPage({
           diarioHref={diarioHref}
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
+          treatmentPrices={treatmentPrices}
         />
       ) : (
         <AppointmentsCalendar
@@ -101,6 +105,7 @@ export default async function TurnosPage({
           diarioHref={diarioHref}
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
+          treatmentPrices={treatmentPrices}
         />
       )}
     </div>

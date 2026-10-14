@@ -30,11 +30,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
 import { TeethField, type DentitionMode } from "@/features/clinic/components/teeth-field";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
-import { combineDateAndTime, formatCurrency, toLocalDateString } from "@/features/clinic/lib/format";
+import {
+  combineDateAndTime,
+  formatCurrency,
+  splitDateAndTime,
+  toLocalDateString,
+} from "@/features/clinic/lib/format";
 import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
+import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import {
   consultationSchema,
   NEW_PATIENT_VALUE,
@@ -42,6 +48,11 @@ import {
 } from "@/features/consultations/lib/schema";
 
 type PatientOption = { id: string; name: string };
+
+/** The turno this consulta is being registered for, when opened from the
+ * agenda — prefills its date/time, links it, and carries its motivo over
+ * into Observaciones. */
+type InitialAppointment = { id: string; startsAt: Date; reason: string | null };
 
 function todayISO() {
   // Not toISOString().slice(0, 10): that reads the UTC date, which is
@@ -61,6 +72,7 @@ export function NewConsultationDialog({
   treatmentPrices = {},
   insuranceOptions = [],
   toothHistory = {},
+  initialAppointment,
   open: openProp,
   onOpenChange: onOpenChangeProp,
 }: {
@@ -71,6 +83,7 @@ export function NewConsultationDialog({
   treatmentPrices?: Record<string, number>;
   insuranceOptions?: string[];
   toothHistory?: ToothHistory;
+  initialAppointment?: InitialAppointment;
   /** Controlled mode, for opening this programmatically (e.g. right
    * after marking a turno completed) instead of from its own trigger
    * button — omit both to keep the default self-contained behavior. */
@@ -104,19 +117,26 @@ export function NewConsultationDialog({
       newPatientInsurance: "",
       newPatientInsuranceOther: "",
       newPatientAllergies: "",
-      date: todayISO(),
-      time: nowHHMM(),
+      ...(initialAppointment
+        ? splitDateAndTime(initialAppointment.startsAt)
+        : { date: todayISO(), time: nowHHMM() }),
       treatment: "",
       treatmentOther: "",
       teeth: [],
-      notes: "",
+      notes: initialAppointment?.reason ?? "",
       amountCharged: "",
       paymentChoice: "PENDIENTE",
       partialAmountPaid: "",
+      appointmentId: initialAppointment?.id ?? "",
     },
   });
 
   const patientId = watch("patientId");
+  const date = watch("date");
+  const appointmentId = watch("appointmentId") ?? "";
+  // A brand-new patient can't have turnos yet, so there's nothing to link.
+  const linkPatientId =
+    fixedPatientId ?? (patientId && patientId !== NEW_PATIENT_VALUE ? patientId : undefined);
   const treatment = watch("treatment");
   const teeth = watch("teeth") ?? [];
   const isNewPatient = !fixedPatientId && patientId === NEW_PATIENT_VALUE;
@@ -164,6 +184,7 @@ export function NewConsultationDialog({
       notes: values.notes || undefined,
       amountCharged: chargedNum,
       amountPaid: paidNum,
+      appointmentId: values.appointmentId || undefined,
       newPatient: isNewPatient
         ? {
             name: values.newPatientName!.trim(),
@@ -203,6 +224,7 @@ export function NewConsultationDialog({
       amountCharged: "",
       paymentChoice: "PENDIENTE",
       partialAmountPaid: "",
+      appointmentId: "",
     });
     setDiscountPercent("");
     setAmountTouched(false);
@@ -414,6 +436,13 @@ export function NewConsultationDialog({
                 )}
               </div>
             </div>
+
+            <LinkedAppointmentField
+              patientId={linkPatientId}
+              day={date}
+              value={appointmentId}
+              onChange={(id) => setValue("appointmentId", id)}
+            />
 
             <Card>
               <CardContent className="space-y-4">

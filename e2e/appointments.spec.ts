@@ -295,7 +295,8 @@ test("marking a turno as completed offers to log the consulta for that patient",
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
-  await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+  await page.fill("#reason", "Control anual");
+  const slot = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 
   // The weekly grid opens the edit form directly on click.
@@ -311,24 +312,98 @@ test("marking a turno as completed offers to log the consulta for that patient",
   await expect(prompt.getByText(patientName)).toBeVisible();
   await prompt.getByRole("button", { name: "Registrar consulta" }).click();
 
-  // Opens the same Nueva consulta dialog used elsewhere, patient fixed.
+  // Opens the same Nueva consulta dialog used elsewhere, patient fixed,
+  // already linked to this turno and prefilled with its date, time and
+  // motivo — not "now", which would be wrong for a turno logged later.
   const consultationDialog = page.getByRole("dialog", { name: "Nueva consulta" });
   await expect(consultationDialog).toBeVisible();
   await expect(consultationDialog.getByText(patientName)).toBeVisible();
-  // With a fixed patient (no Paciente select), combobox order is 0 =
-  // Piezas dentales, 1 = Tratamiento realizado.
-  await consultationDialog.getByRole("combobox").nth(1).click();
+  await expect(consultationDialog.locator("#date")).toHaveValue(slot.dateStr);
+  await expect(consultationDialog.locator("#time")).toHaveValue(slot.timeStr);
+  await expect(consultationDialog.locator("#notes")).toHaveValue("Control anual");
+  await expect(consultationDialog.locator("#appointmentLink")).toContainText(slot.timeStr);
+  await expect(consultationDialog.locator("#appointmentLink")).toContainText("Control anual");
+  await consultationDialog.getByText("Elegí un tratamiento").click();
   await page.getByRole("option", { name: "Limpieza" }).click();
   await consultationDialog.getByRole("button", { name: "Guardar" }).click();
   await expect(consultationDialog).toHaveCount(0);
 
   // The turno itself is now completed — gone from the default
-  // confirmed-only filter, visible under "Turnos completados".
+  // confirmed-only filter, visible under "Turnos completados", and marked
+  // as having its consulta.
   await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: "Turnos completados", exact: true }).click();
   await expect(page).toHaveURL(/estado=COMPLETED/);
-  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+  const turno = page.getByRole("button", { name: patientName });
+  await expect(turno).toBeVisible();
+  await expect(turno.getByRole("img", { name: "Consulta registrada" })).toBeVisible();
+});
+
+test("a completed turno left without a consulta is flagged, and can be linked later from Consultas by its date", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Vincular E2E ${Date.now()}`;
+
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 9999-8888");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+
+  await page.goto("/dashboard/turnos");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  await page.fill("#reason", "Arreglo de caries");
+  const slot = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+
+  await page.getByRole("button", { name: patientName }).click();
+  const editDialog = page.getByRole("dialog", { name: "Editar turno" });
+  await editDialog.getByRole("button", { name: "Marcar como completado" }).click();
+  await expect(editDialog).toHaveCount(0);
+  await page
+    .getByRole("alertdialog", { name: "Turno completado" })
+    .getByRole("button", { name: "Ahora no" })
+    .click();
+
+  // Completed but no consulta yet — the agenda says so.
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Turnos completados", exact: true }).click();
+  await expect(
+    page
+      .getByRole("button", { name: patientName })
+      .getByRole("img", { name: "Falta registrar la consulta" }),
+  ).toBeVisible();
+
+  // Registering it afterwards from Consultas: a day with no turnos says
+  // so, and switching the date to the turno's day offers it.
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nueva consulta" });
+  await dialog.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  await dialog.locator("#date").fill("2020-01-01");
+  await expect(dialog.getByText("Sin turnos de este paciente ese día.")).toBeVisible();
+  await dialog.locator("#date").fill(slot.dateStr);
+  await dialog.locator("#appointmentLink").click();
+  await page.getByRole("option", { name: /Arreglo de caries/ }).click();
+  await dialog.getByText("Elegí un tratamiento").click();
+  await page.getByRole("option", { name: "Obturación (caries)" }).click();
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await page.goto("/dashboard/turnos?estado=COMPLETED");
+  await expect(
+    page.getByRole("button", { name: patientName }).getByRole("img", { name: "Consulta registrada" }),
+  ).toBeVisible();
 });
 
 test("Nuevo turno from the weekly header defaults to a date within the viewed week", async ({

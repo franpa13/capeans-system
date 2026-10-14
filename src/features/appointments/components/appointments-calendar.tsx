@@ -23,6 +23,11 @@ import { AppointmentStatusFilter } from "@/features/appointments/components/appo
 import { ViewToggle } from "@/features/appointments/components/view-toggle";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
+  CONSULTA_STATUS_LABELS,
+  ConsultaStatusIcon,
+  consultaStatus,
+} from "@/features/appointments/components/consulta-status";
+import {
   addDays,
   formatDayLabel,
   getWeekDays,
@@ -32,8 +37,10 @@ import {
 } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 import { formatDate } from "@/features/clinic/lib/format";
+import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 
 type PatientOption = { id: string; name: string };
+type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
 const HOUR_HEIGHT = 48; // px
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -89,9 +96,10 @@ export function AppointmentsCalendar({
   diarioHref,
   insuranceOptions,
   treatmentOptions,
+  treatmentPrices,
 }: {
   weekStart: Date;
-  appointments: Appointment[];
+  appointments: AppointmentWithConsultation[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
@@ -100,6 +108,7 @@ export function AppointmentsCalendar({
   diarioHref: string;
   insuranceOptions: string[];
   treatmentOptions: string[];
+  treatmentPrices: Record<string, number>;
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -115,11 +124,12 @@ export function AppointmentsCalendar({
   // After marking a turno completed, offer to log the consulta for it —
   // not forced. Two separate pieces of state (rather than one, reused)
   // so accepting the offer can't race the AlertDialog's own close:
-  // accepting sets consultationPatient and clears completedPatient in
-  // the same click handler, instead of one dialog's close trying to
-  // infer whether the other is about to open.
-  const [completedPatient, setCompletedPatient] = useState<PatientOption | null>(null);
-  const [consultationPatient, setConsultationPatient] = useState<PatientOption | null>(null);
+  // accepting sets consultationFor and clears completed in the same click
+  // handler, instead of one dialog's close trying to infer whether the
+  // other is about to open. Both carry the turno itself, so the consulta
+  // gets linked to it and prefilled with its date and motivo.
+  const [completed, setCompleted] = useState<CompletedTurno | null>(null);
+  const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
 
   function openCreateAt(day: Date, hour: number) {
     const start = new Date(day);
@@ -262,6 +272,7 @@ export function AppointmentsCalendar({
                   const patientName = appointment.patientId
                     ? (patientsById.get(appointment.patientId) ?? "Paciente")
                     : "Sin paciente";
+                  const status = consultaStatus(appointment);
 
                   return (
                     <Tooltip key={appointment.id}>
@@ -275,7 +286,10 @@ export function AppointmentsCalendar({
                           style={{ top, height }}
                           className={`absolute left-1 right-1 z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
                         >
-                          <div className="truncate font-medium">{patientName}</div>
+                          <div className="flex items-center gap-1 font-medium">
+                            <ConsultaStatusIcon appointment={appointment} />
+                            <span className="truncate">{patientName}</span>
+                          </div>
                           {appointment.reason && (
                             <div className="truncate opacity-90">{appointment.reason}</div>
                           )}
@@ -284,6 +298,7 @@ export function AppointmentsCalendar({
                       <TooltipContent className="flex-col items-start gap-0.5 text-left">
                         <p className="font-medium">{patientName}</p>
                         <p>{appointment.reason || "Sin motivo especificado"}</p>
+                        {status && <p>{CONSULTA_STATUS_LABELS[status]}</p>}
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -305,33 +320,33 @@ export function AppointmentsCalendar({
         onSaved={() => router.refresh()}
         onCompleted={(appointment) => {
           if (!appointment.patientId) return;
-          setCompletedPatient({
-            id: appointment.patientId,
-            name: patientsById.get(appointment.patientId) ?? "Paciente",
+          setCompleted({
+            patient: {
+              id: appointment.patientId,
+              name: patientsById.get(appointment.patientId) ?? "Paciente",
+            },
+            appointment,
           });
         }}
       />
 
-      <AlertDialog
-        open={!!completedPatient}
-        onOpenChange={(next) => !next && setCompletedPatient(null)}
-      >
+      <AlertDialog open={!!completed} onOpenChange={(next) => !next && setCompleted(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Turno completado</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Querés registrar qué se hizo en la consulta de {completedPatient?.name}?
+              ¿Querés registrar qué se hizo en la consulta de {completed?.patient.name}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCompletedPatient(null)}>
+            <AlertDialogCancel onClick={() => setCompleted(null)}>
               <X />
               Ahora no
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setConsultationPatient(completedPatient);
-                setCompletedPatient(null);
+                setConsultationFor(completed);
+                setCompleted(null);
               }}
             >
               <ClipboardList />
@@ -341,16 +356,18 @@ export function AppointmentsCalendar({
         </AlertDialogContent>
       </AlertDialog>
 
-      {consultationPatient && (
+      {consultationFor && (
         <NewConsultationDialog
           patients={patients}
-          fixedPatientId={consultationPatient.id}
-          fixedPatientName={consultationPatient.name}
+          fixedPatientId={consultationFor.patient.id}
+          fixedPatientName={consultationFor.patient.name}
           treatmentOptions={treatmentOptions}
+          treatmentPrices={treatmentPrices}
           insuranceOptions={insuranceOptions}
-          open={!!consultationPatient}
+          initialAppointment={consultationFor.appointment}
+          open
           onOpenChange={(next) => {
-            if (!next) setConsultationPatient(null);
+            if (!next) setConsultationFor(null);
           }}
         />
       )}

@@ -12,6 +12,7 @@ import {
   type UpdateConsultationInput,
 } from "@/features/clinic/data/consultations";
 import { createPatient, type NewPatientInput } from "@/features/clinic/data/patients";
+import { getLinkableAppointments } from "@/features/clinic/data/appointments";
 
 async function requireClinicId(): Promise<string> {
   const clinic = await getCurrentClinic();
@@ -42,6 +43,9 @@ export async function createConsultationAction(
   });
   revalidatePath("/dashboard/consultas");
   revalidatePath(`/dashboard/pacientes/${patientId}`);
+  // Linking can complete a turno, and the agenda shows which completed
+  // turnos still lack their consulta.
+  revalidatePath("/dashboard/turnos");
   return consultation;
 }
 
@@ -50,6 +54,7 @@ export async function updateConsultationAction(id: string, input: UpdateConsulta
   const consultation = await updateConsultation(clinicId, id, input);
   revalidatePath("/dashboard/consultas");
   if (consultation.patientId) revalidatePath(`/dashboard/pacientes/${consultation.patientId}`);
+  revalidatePath("/dashboard/turnos");
   return consultation;
 }
 
@@ -59,4 +64,30 @@ export async function deleteConsultationAction(id: string) {
   await deleteConsultation(clinicId, id);
   revalidatePath("/dashboard/consultas");
   if (consultation?.patientId) revalidatePath(`/dashboard/pacientes/${consultation.patientId}`);
+  revalidatePath("/dashboard/turnos");
+}
+
+export type LinkableAppointment = {
+  id: string;
+  startsAt: string;
+  reason: string | null;
+  status: string;
+};
+
+/** The turnos the consulta form offers to link to, for one patient on one
+ * local day ("YYYY-MM-DD") — re-fetched every time the form's patient or
+ * date changes. */
+export async function getLinkableAppointmentsAction(
+  patientId: string,
+  day: string,
+  excludeConsultationId?: string,
+): Promise<LinkableAppointment[]> {
+  const clinicId = await requireClinicId();
+  const appointments = await getLinkableAppointments(clinicId, patientId, day, excludeConsultationId);
+  return appointments.map((a) => ({
+    id: a.id,
+    startsAt: a.startsAt.toISOString(),
+    reason: a.reason,
+    status: a.status,
+  }));
 }

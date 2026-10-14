@@ -89,6 +89,7 @@ export const consultationSchema = z
     amountCharged: z.string().optional(),
     paymentChoice: z.enum(["PENDIENTE", "PARCIAL", "COBRADO"]).optional(),
     partialAmountPaid: z.string().optional(),
+    appointmentId: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.patientId === NEW_PATIENT_VALUE) {
@@ -140,6 +141,7 @@ export const editConsultationSchema = z
     amountCharged: z.string().optional(),
     paymentChoice: z.enum(["PENDIENTE", "PARCIAL", "COBRADO"]).optional(),
     partialAmountPaid: z.string().optional(),
+    appointmentId: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.treatment === "Otro" && !data.treatmentOther?.trim()) {
