@@ -56,8 +56,11 @@ type PaymentStatus = "SIN_MONTO" | "PENDIENTE" | "PARCIAL" | "COBRADO";
 
 function paymentStatus(amountCharged: number | null, amountPaid: number): PaymentStatus {
   if (amountCharged == null) return "SIN_MONTO";
-  if (amountPaid <= 0) return "PENDIENTE";
+  // COBRADO se chequea antes de PENDIENTE: un tratamiento tasado en $0
+  // tiene amountPaid (0) >= amountCharged (0), que debe leerse como
+  // "cobrado" (sin deuda), no "pendiente de pago".
   if (amountPaid >= amountCharged) return "COBRADO";
+  if (amountPaid <= 0) return "PENDIENTE";
   return "PARCIAL";
 }
 ```
