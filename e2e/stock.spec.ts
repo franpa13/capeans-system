@@ -1,0 +1,119 @@
+import { test, expect, type Page } from "@playwright/test";
+import { clerk } from "@clerk/testing/playwright";
+
+async function addSupply(page: Page, name: string, fields: { price?: string; quantity?: string } = {}) {
+  await page.goto("/dashboard/stock");
+  await page.getByPlaceholder("Agregar nuevo...").fill(name);
+  await page.getByPlaceholder("Unidad (ej: unidad, caja, ml)").fill("unidad");
+  if (fields.price) await page.getByPlaceholder("Precio (opcional)").fill(fields.price);
+  if (fields.quantity) await page.getByPlaceholder("Stock inicial").fill(fields.quantity);
+  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+  await page.getByPlaceholder("Buscar...").fill(name);
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+}
+
+test("an insumo can be added, restocked, and shows a low-stock warning at its threshold", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const name = `Insumo E2E ${Date.now()}`;
+  await addSupply(page, name, { price: "50", quantity: "100" });
+  const row = page.locator("li", { hasText: name });
+  await expect(row.getByText("100 unidad", { exact: true })).toBeVisible();
+
+  // A thousands separator is rejected, not silently parsed down
+  // (Number("1.000") === 1) — same mistake already fixed for amounts.
+  const restock = page.getByRole("spinbutton", { name: `Cantidad a reponer de ${name}` });
+  await page.getByRole("button", { name: `Reponer ${name}` }).click();
+  await restock.fill("1.000");
+  await page.getByRole("button", { name: "Confirmar reposición" }).click();
+  await expect(page.getByText("sin puntos ni comas", { exact: false })).toBeVisible();
+
+  await restock.fill("20");
+  await page.getByRole("button", { name: "Confirmar reposición" }).click();
+  await expect(restock).toHaveCount(0);
+  await expect(row.getByText("120 unidad", { exact: true })).toBeVisible();
+
+  // 120 <= 150 → flagged low, in words and not just color.
+  const threshold = page.getByRole("spinbutton", { name: `Umbral de stock bajo de ${name}` });
+  await page.getByRole("button", { name: `Editar ${name}` }).click();
+  await threshold.fill("150");
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(threshold).toHaveCount(0);
+  await expect(row.getByText("Stock bajo")).toBeVisible();
+
+  // Clearing the threshold clears the warning. Wait for the edit form to
+  // close first — while it's open there's no warning text to find anyway.
+  await page.getByRole("button", { name: `Editar ${name}` }).click();
+  await threshold.fill("");
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(threshold).toHaveCount(0);
+  await expect(row.getByText("120 unidad", { exact: true })).toBeVisible();
+  await expect(row.getByText("Stock bajo")).toHaveCount(0);
+
+  // Cleanup.
+  await page.getByRole("button", { name: `Eliminar ${name}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+});
+
+test("a duplicate insumo name is rejected, and an insumo in use can't be deleted", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const name = `Insumo Dup E2E ${Date.now()}`;
+  await addSupply(page, name, { quantity: "10" });
+
+  await page.getByPlaceholder("Agregar nuevo...").fill(name);
+  await page.getByPlaceholder("Unidad (ej: unidad, caja, ml)").fill("unidad");
+  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+  await expect(page.getByText("Ya existe un insumo con ese nombre")).toBeVisible();
+
+  // Use it in a consulta (a brand-new patient, so no turnos field in the way).
+  const patientName = `Paciente Insumo E2E ${Date.now()}`;
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 4444-5555");
+  await page.getByText("Elegí un tratamiento").click();
+  await page.getByRole("option", { name: "Limpieza" }).click();
+  await page.locator("#supplySelect").click();
+  await page.getByRole("option", { name: new RegExp(name) }).click();
+  await page.fill("#supplyQuantity", "1");
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Nueva consulta" })).toHaveCount(0);
+
+  // Deleting it is refused, and the dialog stays open to say why.
+  await page.goto("/dashboard/stock");
+  await page.getByPlaceholder("Buscar...").fill(name);
+  await page.getByRole("button", { name: `Eliminar ${name}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(
+    page.getByText("No se puede eliminar un insumo que ya fue usado en alguna consulta"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+
+  // Cleanup: once the consulta is gone, the insumo can be deleted.
+  await page.goto("/dashboard/consultas");
+  await expect(async () => {
+    await page.locator("#filter-patient").fill(patientName);
+    await expect(page.locator("tbody").getByText(patientName)).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+  await page
+    .locator("tbody tr", { hasText: patientName })
+    .getByRole("button", { name: "Eliminar consulta" })
+    .click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).last().click();
+  await expect(page.locator("tbody").getByText(patientName)).toHaveCount(0);
+
+  await page.goto("/dashboard/stock");
+  await page.getByPlaceholder("Buscar...").fill(name);
+  await page.getByRole("button", { name: `Eliminar ${name}` }).click();
+  await page.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.getByText(name, { exact: true })).toHaveCount(0);
+});
