@@ -57,6 +57,23 @@ describe("consultationSchema amount validation", () => {
     );
     expect(result.success).toBe(false);
   });
+
+  it("rejects choosing Cobrado with no amountCharged", () => {
+    const result = consultationSchema.safeParse(baseNewValues({ paymentChoice: "COBRADO" }));
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects choosing Parcial with no amountCharged", () => {
+    const result = consultationSchema.safeParse(
+      baseNewValues({ paymentChoice: "PARCIAL", partialAmountPaid: "1000" }),
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("allows Pendiente with no amountCharged", () => {
+    const result = consultationSchema.safeParse(baseNewValues({ paymentChoice: "PENDIENTE" }));
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("editConsultationSchema amount validation", () => {

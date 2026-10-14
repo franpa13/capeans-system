@@ -37,6 +37,12 @@ function refineAmounts(
       code: z.ZodIssueCode.custom,
       message: AMOUNT_ERROR,
     });
+  } else if (!data.amountCharged && (data.paymentChoice === "COBRADO" || data.paymentChoice === "PARCIAL")) {
+    ctx.addIssue({
+      path: ["amountCharged"],
+      code: z.ZodIssueCode.custom,
+      message: "Ingresá el monto a cobrar",
+    });
   }
   if (data.paymentChoice === "PARCIAL") {
     const paid = data.partialAmountPaid ? parseAmount(data.partialAmountPaid) : null;
