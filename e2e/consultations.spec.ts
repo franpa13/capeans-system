@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+import { addClinicOption, editClinicOption } from "./clinic-options";
 
 // With pagination (10/page) and backend filtering, a newly created
 // consultation isn't guaranteed to land on page 1 of the unfiltered,
@@ -239,11 +240,7 @@ test("a consultation's amount, discount, and payment status work end to end", as
   const treatmentLabel = `Cobro E2E ${Date.now()}`;
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
-  await page.getByPlaceholder("Agregar nuevo...").fill(treatmentLabel);
-  await page.getByPlaceholder("Precio (opcional)").fill("10000");
-  await page.getByRole("button", { name: "Agregar" }).click();
-  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
-  await expect(page.getByText(treatmentLabel, { exact: true })).toBeVisible();
+  await addClinicOption(page, "tratamiento", treatmentLabel, "10000");
 
   await page.goto("/dashboard/consultas");
   await page.getByRole("button", { name: "Nueva consulta" }).click();
@@ -326,10 +323,7 @@ test("opening Editar on an unpriced consultation does not bill it at the treatme
   const treatmentLabel = `SinPrecio E2E ${Date.now()}`;
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
-  await page.getByPlaceholder("Agregar nuevo...").fill(treatmentLabel);
-  await page.getByRole("button", { name: "Agregar" }).click();
-  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
-  await expect(page.getByText(treatmentLabel, { exact: true })).toBeVisible();
+  await addClinicOption(page, "tratamiento", treatmentLabel);
 
   await page.goto("/dashboard/consultas");
   await page.getByRole("button", { name: "Nueva consulta" }).click();
@@ -351,9 +345,7 @@ test("opening Editar on an unpriced consultation does not bill it at the treatme
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
   await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
-  await page.getByRole("button", { name: `Editar ${treatmentLabel}` }).click();
-  await page.getByRole("spinbutton", { name: `Precio de ${treatmentLabel}` }).fill("30000");
-  await page.getByRole("button", { name: "Guardar" }).click();
+  await editClinicOption(page, "tratamiento", treatmentLabel, { price: "30000" });
   await expect(page.getByText("30.000", { exact: false })).toBeVisible();
 
   // Open Editar on the old consultation and save without touching anything.
@@ -397,11 +389,7 @@ test("the discount recalculates when switching treatments, clamps to 0-100, and 
     [labelA, "10000"],
     [labelB, "20000"],
   ]) {
-    await page.getByPlaceholder("Agregar nuevo...").fill(label);
-    await page.getByPlaceholder("Precio (opcional)").fill(price);
-    await page.getByRole("button", { name: "Agregar" }).click();
-    await page.getByPlaceholder("Buscar...").fill(label);
-    await expect(page.getByText(label, { exact: true })).toBeVisible();
+    await addClinicOption(page, "tratamiento", label, price);
   }
   await page.getByPlaceholder("Buscar...").fill("");
 

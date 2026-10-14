@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+import { addClinicOption, editClinicOption } from "./clinic-options";
 
 const WEEKDAY_IDS: Record<string, number> = {
   Lunes: 1,
@@ -99,21 +100,17 @@ test("an insurance option can be added, renamed, and deleted from Configuración
   const renamed = `${label} (renombrada)`;
 
   await page.goto("/dashboard/configuracion");
-  await page
-    .getByPlaceholder("Agregar nuevo...")
-    .first()
-    .fill(label);
-  await page.getByRole("button", { name: "Agregar" }).first().click();
-  // Search by its own label, not just plain visibility — this list is
-  // paginated and a clinic's real obras sociales can already span more
-  // than one page, so a freshly added item isn't guaranteed to land on
-  // page 1 on its own.
-  await page.getByPlaceholder("Buscar...").fill(label);
-  await expect(page.getByText(label, { exact: true })).toBeVisible();
+  await addClinicOption(page, "obra social", label);
 
+  // The edit modal opens with the current name already filled in.
   await page.getByRole("button", { name: `Editar ${label}` }).click();
-  await page.getByRole("textbox", { name: "Editar valor" }).fill(renamed);
-  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Editar obra social" }).getByLabel("Nombre"),
+  ).toHaveValue(label);
+  await page.getByRole("button", { name: "Cancelar" }).click();
+
+  await editClinicOption(page, "obra social", label, { label: renamed });
+  await page.getByPlaceholder("Buscar...").fill(renamed);
   await expect(page.getByText(renamed, { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: `Eliminar ${renamed}` }).click();
@@ -122,10 +119,7 @@ test("an insurance option can be added, renamed, and deleted from Configuración
 
   // The new option is immediately selectable on the Pacientes form.
   const anotherLabel = `Obra Social E2E ${Date.now()}`;
-  await page.getByPlaceholder("Agregar nuevo...").first().fill(anotherLabel);
-  await page.getByRole("button", { name: "Agregar" }).first().click();
-  await page.getByPlaceholder("Buscar...").fill(anotherLabel);
-  await expect(page.getByText(anotherLabel, { exact: true })).toBeVisible();
+  await addClinicOption(page, "obra social", anotherLabel);
 
   await page.goto("/dashboard/pacientes");
   await page.getByRole("button", { name: "Nuevo paciente" }).click();
@@ -249,14 +243,7 @@ test("a long list of tratamientos gets pagination and a working search", async (
 
   try {
     for (const label of labels) {
-      await page.getByPlaceholder("Agregar nuevo...").fill(label);
-      await page.getByRole("button", { name: "Agregar" }).click();
-      // Confirm via its own unique label, not just list visibility — the
-      // clinic's pre-existing tratamientos can already be close to a full
-      // page, so a freshly added item can land on page 2 and never show
-      // up on page 1 at all.
-      await page.getByPlaceholder("Buscar...").fill(label);
-      await expect(page.getByText(label, { exact: true })).toBeVisible();
+      await addClinicOption(page, "tratamiento", label);
     }
 
     // Narrow to just this test's 11 entries — more than the page size (10),
@@ -297,23 +284,24 @@ test("a treatment's price can be set, edited, and cleared", async ({ page }) => 
 
   const label = `Tratamiento Precio E2E ${Date.now()}`;
 
-  await page.getByPlaceholder("Agregar nuevo...").fill(label);
-  await page.getByPlaceholder("Precio (opcional)").fill("15000");
-  await page.getByRole("button", { name: "Agregar" }).click();
-  await page.getByPlaceholder("Buscar...").fill(label);
-  await expect(page.getByText(label, { exact: true })).toBeVisible();
+  await addClinicOption(page, "tratamiento", label, "15000");
   // formatCurrency renders a non-breaking space after "$" on this Node
   // version — matching on the digits alone avoids depending on that.
   await expect(page.getByText("15.000", { exact: false })).toBeVisible();
 
-  await page.getByRole("button", { name: `Editar ${label}` }).click();
-  await page.getByRole("spinbutton", { name: `Precio de ${label}` }).fill("20000");
-  await page.getByRole("button", { name: "Guardar" }).click();
+  await editClinicOption(page, "tratamiento", label, { price: "20000" });
   await expect(page.getByText("20.000", { exact: false })).toBeVisible();
 
+  // A thousands separator is rejected inside the modal, which stays open.
   await page.getByRole("button", { name: `Editar ${label}` }).click();
-  await page.getByRole("spinbutton", { name: `Precio de ${label}` }).fill("");
-  await page.getByRole("button", { name: "Guardar" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar tratamiento" });
+  await edit.getByLabel("Precio (opcional)").fill("25.000");
+  await edit.getByRole("button", { name: "Guardar" }).click();
+  await expect(edit.getByText("sin puntos ni comas", { exact: false })).toBeVisible();
+  await edit.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.getByText("20.000", { exact: false })).toBeVisible();
+
+  await editClinicOption(page, "tratamiento", label, { price: "" });
   await expect(page.getByText("Sin precio")).toBeVisible();
 
   // Cleanup.

@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Search, Trash2, X, Check } from "lucide-react";
+import { Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -23,6 +24,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PaginationNavigation } from "@/components/pagination-navigation";
 import { usePagination } from "@/hooks/use-pagination";
 import type { OptionCategory } from "@/features/clinic/data/clinic-options";
@@ -53,6 +63,20 @@ function parsePrice(raw: string): { value: number | undefined } | { error: strin
 
 type Option = { id: string; label: string; price?: number | null };
 
+/** What each list calls one of its items, for button and modal titles. */
+const NOUNS: Record<OptionCategory, { create: string; edit: string; placeholder: string }> = {
+  insurance: {
+    create: "Nueva obra social",
+    edit: "Editar obra social",
+    placeholder: "Ej: OSDE",
+  },
+  treatment: {
+    create: "Nuevo tratamiento",
+    edit: "Editar tratamiento",
+    placeholder: "Ej: Limpieza",
+  },
+};
+
 export function OptionListManager({
   category,
   title,
@@ -65,17 +89,11 @@ export function OptionListManager({
   options: Option[];
 }) {
   const router = useRouter();
-  const showPrice = category === "treatment";
-  const [newLabel, setNewLabel] = useState("");
-  const [newPrice, setNewPrice] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const nouns = NOUNS[category];
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editLabel, setEditLabel] = useState("");
-  const [editPrice, setEditPrice] = useState("");
-  const [editError, setEditError] = useState<string | null>(null);
-
+  const [creating, setCreating] = useState(false);
+  const [editTarget, setEditTarget] = useState<Option | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Option | null>(null);
 
   const [query, setQuery] = useState("");
@@ -84,51 +102,6 @@ export function OptionListManager({
     return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
   }, [options, query]);
   const { page, setPage, pageCount, pageItems } = usePagination(filtered, PAGE_SIZE);
-
-  async function handleAdd() {
-    if (!newLabel.trim()) return;
-    const parsedPrice = showPrice ? parsePrice(newPrice) : { value: undefined };
-    if ("error" in parsedPrice) {
-      setAddError(parsedPrice.error);
-      return;
-    }
-    setAdding(true);
-    setAddError(null);
-    try {
-      await createClinicOptionAction(category, newLabel, parsedPrice.value);
-      setNewLabel("");
-      setNewPrice("");
-      router.refresh();
-    } catch (error) {
-      setAddError(error instanceof Error ? error.message : "No se pudo agregar");
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  function startEdit(option: Option) {
-    setEditingId(option.id);
-    setEditLabel(option.label);
-    setEditPrice(option.price != null ? String(option.price) : "");
-    setEditError(null);
-  }
-
-  async function handleSaveEdit(id: string) {
-    if (!editLabel.trim()) return;
-    const parsedPrice = showPrice ? parsePrice(editPrice) : { value: undefined };
-    if ("error" in parsedPrice) {
-      setEditError(parsedPrice.error);
-      return;
-    }
-    setEditError(null);
-    try {
-      await updateClinicOptionAction(id, editLabel, parsedPrice.value);
-      setEditingId(null);
-      router.refresh();
-    } catch (error) {
-      setEditError(error instanceof Error ? error.message : "No se pudo guardar");
-    }
-  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -144,52 +117,25 @@ export function OptionListManager({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            placeholder="Agregar nuevo..."
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAdd();
-              }
-            }}
-          />
-          {showPrice && (
-            <Input
-              type="number"
-              min={0}
-              placeholder="Precio (opcional)"
-              className="sm:w-40"
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAdd();
-                }
-              }}
-            />
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {options.length > 0 ? (
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                className="pl-8"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+          ) : (
+            <span />
           )}
-          <Button type="button" onClick={handleAdd} disabled={adding}>
+          <Button type="button" onClick={() => setCreating(true)}>
             <Plus />
-            Agregar
+            {nouns.create}
           </Button>
         </div>
-        {addError && <p className="text-sm text-destructive">{addError}</p>}
-
-        {options.length > 0 && (
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              className="pl-8"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-        )}
 
         {options.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -206,96 +152,56 @@ export function OptionListManager({
                 key={option.id}
                 className="flex items-center justify-between gap-2 px-3 py-2"
               >
-                {editingId === option.id ? (
-                  <div className="flex flex-1 items-center gap-2">
-                    <Input
-                      autoFocus
-                      aria-label="Editar valor"
-                      value={editLabel}
-                      onChange={(e) => setEditLabel(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSaveEdit(option.id);
-                        }
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                    />
-                    {showPrice && (
-                      <Input
-                        type="number"
-                        min={0}
-                        aria-label={`Precio de ${option.label}`}
-                        className="w-32"
-                        value={editPrice}
-                        onChange={(e) => setEditPrice(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleSaveEdit(option.id);
-                          }
-                          if (e.key === "Escape") setEditingId(null);
-                        }}
-                      />
-                    )}
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Guardar"
-                      onClick={() => handleSaveEdit(option.id)}
-                    >
-                      <Check />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Cancelar"
-                      onClick={() => setEditingId(null)}
-                    >
-                      <X />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm">{option.label}</span>
-                      {showPrice && (
-                        <span className="text-sm text-muted-foreground">
-                          {option.price != null ? formatCurrency(option.price) : "Sin precio"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Editar ${option.label}`}
-                        onClick={() => startEdit(option)}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label={`Eliminar ${option.label}`}
-                        onClick={() => setDeleteTarget(option)}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </>
-                )}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm">{option.label}</span>
+                  {category === "treatment" && (
+                    <span className="text-sm text-muted-foreground">
+                      {option.price != null ? formatCurrency(option.price) : "Sin precio"}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Editar ${option.label}`}
+                    onClick={() => {
+                      setEditTarget(option);
+                      setEditOpen(true);
+                    }}
+                  >
+                    <Pencil />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Eliminar ${option.label}`}
+                    onClick={() => setDeleteTarget(option)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         )}
         <PaginationNavigation page={page} pageCount={pageCount} onPageChange={setPage} />
-        {editError && <p className="text-sm text-destructive">{editError}</p>}
       </CardContent>
+
+      <OptionFormDialog category={category} open={creating} onOpenChange={setCreating} />
+      {/* The target stays set while the dialog animates closed, so its
+          title and fields don't flash to the "Nuevo" version on the way out. */}
+      {editTarget && (
+        <OptionFormDialog
+          key={editTarget.id}
+          category={category}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          option={editTarget}
+        />
+      )}
 
       <AlertDialog
         open={!!deleteTarget}
@@ -328,5 +234,118 @@ export function OptionListManager({
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+/** "Nuevo…" when `option` is undefined, "Editar…" otherwise. The form
+ * lives inside DialogContent, so it unmounts on close and every opening
+ * starts from fresh values. */
+function OptionFormDialog({
+  category,
+  open,
+  onOpenChange,
+  option,
+}: {
+  category: OptionCategory;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  option?: Option;
+}) {
+  const nouns = NOUNS[category];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{option ? nouns.edit : nouns.create}</DialogTitle>
+          <DialogDescription>
+            {category === "treatment"
+              ? "El precio se sugiere al cargar una consulta con este tratamiento."
+              : "Va a aparecer como opción al cargar un paciente."}
+          </DialogDescription>
+        </DialogHeader>
+        <OptionForm category={category} option={option} onDone={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OptionForm({
+  category,
+  option,
+  onDone,
+}: {
+  category: OptionCategory;
+  option?: Option;
+  onDone: () => void;
+}) {
+  const router = useRouter();
+  const showPrice = category === "treatment";
+  const [label, setLabel] = useState(option?.label ?? "");
+  const [price, setPrice] = useState(option?.price != null ? String(option.price) : "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!label.trim()) return setError("Completá el nombre");
+    const parsedPrice = showPrice ? parsePrice(price) : { value: undefined };
+    if ("error" in parsedPrice) return setError(parsedPrice.error);
+
+    setSaving(true);
+    setError(null);
+    try {
+      if (option) {
+        await updateClinicOptionAction(option.id, label, parsedPrice.value);
+      } else {
+        await createClinicOptionAction(category, label, parsedPrice.value);
+      }
+      router.refresh();
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="optionLabel">Nombre</Label>
+        <Input
+          id="optionLabel"
+          autoFocus
+          placeholder={NOUNS[category].placeholder}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+      </div>
+      {showPrice && (
+        <div className="space-y-1.5">
+          <Label htmlFor="optionPrice">Precio (opcional)</Label>
+          <Input
+            id="optionPrice"
+            type="number"
+            min={0}
+            placeholder="Ej: 15000"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button type="button" variant="outline">
+            <X />
+            Cancelar
+          </Button>
+        </DialogClose>
+        <Button type="submit" disabled={saving}>
+          <Save />
+          Guardar
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
