@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { outstandingBalance, paymentStatus, PAYMENT_STATUS_LABELS } from "./billing";
+import {
+  outstandingBalance,
+  parsePaymentStatusParam,
+  paymentStatus,
+  PAYMENT_STATUS_LABELS,
+} from "./billing";
 
 describe("paymentStatus", () => {
   it("is SIN_MONTO when no amount was ever charged", () => {
@@ -66,5 +71,27 @@ describe("PAYMENT_STATUS_LABELS", () => {
     expect(PAYMENT_STATUS_LABELS.PENDIENTE).toBeTruthy();
     expect(PAYMENT_STATUS_LABELS.PARCIAL).toBeTruthy();
     expect(PAYMENT_STATUS_LABELS.COBRADO).toBeTruthy();
+  });
+});
+
+describe("parsePaymentStatusParam", () => {
+  it("returns undefined for undefined", () => {
+    expect(parsePaymentStatusParam(undefined)).toBeUndefined();
+  });
+
+  it("parses a single valid status", () => {
+    expect(parsePaymentStatusParam("PENDIENTE")).toEqual(["PENDIENTE"]);
+  });
+
+  it("parses several comma-separated valid statuses", () => {
+    expect(parsePaymentStatusParam("PENDIENTE,PARCIAL")).toEqual(["PENDIENTE", "PARCIAL"]);
+  });
+
+  it("drops an unrecognized value instead of passing it through", () => {
+    expect(parsePaymentStatusParam("PENDIENTE,FOO")).toEqual(["PENDIENTE"]);
+  });
+
+  it("returns undefined when nothing in the param is a recognized status", () => {
+    expect(parsePaymentStatusParam("FOO")).toBeUndefined();
   });
 });

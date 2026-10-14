@@ -24,6 +24,27 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   COBRADO: "Cobrado",
 };
 
+/** The combined value the dashboard's "Por cobrar" card links with
+ * (?cobro=PENDIENTE,PARCIAL). Lives here (not in the "use client" filter
+ * bar) because the dashboard page that builds the link is a Server
+ * Component — importing even a plain string constant from a "use client"
+ * module turns it into an opaque client reference when read on the
+ * server, not its actual value. */
+export const PENDING_OR_PARTIAL = "PENDIENTE,PARCIAL";
+
+const VALID_PAYMENT_STATUSES = new Set(Object.keys(PAYMENT_STATUS_LABELS));
+
+/** Parses the Consultas page's untrusted `?cobro=` URL param into a list
+ * of real PaymentStatus values — an unrecognized value (a typo, a stale
+ * bookmark, someone editing the URL by hand) is dropped rather than
+ * passed through to a data-layer filter that would otherwise just match
+ * nothing and show an empty list with no explanation. */
+export function parsePaymentStatusParam(raw: string | undefined): PaymentStatus[] | undefined {
+  if (!raw) return undefined;
+  const values = raw.split(",").filter((v): v is PaymentStatus => VALID_PAYMENT_STATUSES.has(v));
+  return values.length > 0 ? values : undefined;
+}
+
 /** Total still owed across a set of consultations — a patient's balance
  * (their own consultations) or the clinic's "Por cobrar" figure (every
  * consultation). Consultations with no amountCharged don't contribute

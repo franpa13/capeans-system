@@ -13,7 +13,7 @@ import {
   ALL_TREATMENTS,
   ConsultationFilterBar,
 } from "@/features/consultations/components/consultation-filter-bar";
-import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
+import { PAYMENT_STATUS_LABELS, PENDING_OR_PARTIAL } from "@/features/clinic/lib/billing";
 
 const PAGE_SIZE = 10;
 const PARAM_KEYS = ["tratamiento", "cobro", "desde", "hasta", "paciente", "pieza"] as const;
@@ -43,7 +43,11 @@ export function ConsultationsView({
 }) {
   const { values, setValue, setMany, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
   const treatment = values.tratamiento || ALL_TREATMENTS;
-  const paymentStatusFilter = values.cobro || ALL_PAYMENT_STATUSES;
+  // An unrecognized ?cobro= (hand-edited URL, stale bookmark) falls back
+  // to "no filter" rather than showing a chip reading "...: undefined".
+  const isValidCobro =
+    !!values.cobro && (values.cobro === PENDING_OR_PARTIAL || values.cobro in PAYMENT_STATUS_LABELS);
+  const paymentStatusFilter = isValidCobro ? values.cobro : ALL_PAYMENT_STATUSES;
 
   const hasFilters =
     treatment !== ALL_TREATMENTS ||

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatCurrency } from "@/features/clinic/lib/format";
+import { PENDING_OR_PARTIAL } from "@/features/clinic/lib/billing";
 
 export function DashboardSummary({
   patientCount,
@@ -70,7 +71,7 @@ export function DashboardSummary({
         </Card>
       </Link>
 
-      <Link href="/dashboard/consultas?cobro=PENDIENTE,PARCIAL">
+      <Link href={`/dashboard/consultas?cobro=${PENDING_OR_PARTIAL}`}>
         <Card className="h-full transition-colors hover:border-primary/50">
           <CardHeader>
             <div className="flex items-center gap-2">

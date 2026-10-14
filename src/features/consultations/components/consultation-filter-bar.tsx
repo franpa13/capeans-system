@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
-import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
+import { PAYMENT_STATUS_LABELS, PENDING_OR_PARTIAL } from "@/features/clinic/lib/billing";
 import { DateRangeFilter } from "@/features/consultations/components/date-range-filter";
 
 export const ALL_TREATMENTS = "__all__";
@@ -99,6 +99,12 @@ export function ConsultationFilterBar({
                 {o.label}
               </SelectItem>
             ))}
+            {/* Only reachable via the dashboard's "Por cobrar" link — kept
+                out of normal browsing so the dropdown doesn't carry an
+                entry nobody would pick on their own. */}
+            {paymentStatus === PENDING_OR_PARTIAL && (
+              <SelectItem value={PENDING_OR_PARTIAL}>Pendiente o parcial</SelectItem>
+            )}
           </SelectContent>
         </Select>
       </div>

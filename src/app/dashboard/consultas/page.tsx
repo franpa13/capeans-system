@@ -6,7 +6,7 @@ import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getConsultations } from "@/features/clinic/data/consultations";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
-import type { PaymentStatus } from "@/features/clinic/lib/billing";
+import { parsePaymentStatusParam } from "@/features/clinic/lib/billing";
 
 export default async function ConsultasPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function ConsultasPage({
     to: asString(params.hasta),
     patientQuery: asString(params.paciente),
     tooth: asString(params.pieza),
-    paymentStatus: cobroParam ? (cobroParam.split(",") as PaymentStatus[]) : undefined,
+    paymentStatus: parsePaymentStatusParam(cobroParam),
   };
 
   const clinic = await getCurrentClinic();
