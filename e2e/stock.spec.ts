@@ -3,11 +3,14 @@ import { clerk } from "@clerk/testing/playwright";
 
 async function addSupply(page: Page, name: string, fields: { price?: string; quantity?: string } = {}) {
   await page.goto("/dashboard/stock");
-  await page.getByPlaceholder("Agregar nuevo...").fill(name);
-  await page.getByPlaceholder("Unidad (ej: unidad, caja, ml)").fill("unidad");
-  if (fields.price) await page.getByPlaceholder("Precio (opcional)").fill(fields.price);
-  if (fields.quantity) await page.getByPlaceholder("Stock inicial").fill(fields.quantity);
-  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+  await page.getByRole("button", { name: "Nuevo insumo" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nuevo insumo" });
+  await dialog.getByLabel("Nombre").fill(name);
+  await dialog.getByLabel("Unidad").fill("unidad");
+  if (fields.price) await dialog.getByLabel("Precio (opcional)").fill(fields.price);
+  if (fields.quantity) await dialog.getByLabel("Stock inicial").fill(fields.quantity);
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(dialog).toHaveCount(0);
   await page.getByPlaceholder("Buscar...").fill(name);
   await expect(page.getByText(name, { exact: true })).toBeVisible();
 }
@@ -25,31 +28,31 @@ test("an insumo can be added, restocked, and shows a low-stock warning at its th
 
   // A thousands separator is rejected, not silently parsed down
   // (Number("1.000") === 1) — same mistake already fixed for amounts.
-  const restock = page.getByRole("spinbutton", { name: `Cantidad a reponer de ${name}` });
   await page.getByRole("button", { name: `Reponer ${name}` }).click();
-  await restock.fill("1.000");
-  await page.getByRole("button", { name: "Confirmar reposición" }).click();
-  await expect(page.getByText("sin puntos ni comas", { exact: false })).toBeVisible();
+  const restock = page.getByRole("dialog", { name: "Reponer insumo" });
+  await restock.getByLabel("Cantidad a reponer").fill("1.000");
+  await restock.getByRole("button", { name: "Reponer" }).click();
+  await expect(restock.getByText("sin puntos ni comas", { exact: false })).toBeVisible();
 
-  await restock.fill("20");
-  await page.getByRole("button", { name: "Confirmar reposición" }).click();
+  await restock.getByLabel("Cantidad a reponer").fill("20");
+  await restock.getByRole("button", { name: "Reponer" }).click();
   await expect(restock).toHaveCount(0);
   await expect(row.getByText("120 unidad", { exact: true })).toBeVisible();
 
   // 120 <= 150 → flagged low, in words and not just color.
-  const threshold = page.getByRole("spinbutton", { name: `Umbral de stock bajo de ${name}` });
+  const edit = page.getByRole("dialog", { name: "Editar insumo" });
   await page.getByRole("button", { name: `Editar ${name}` }).click();
-  await threshold.fill("150");
-  await page.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(threshold).toHaveCount(0);
+  await edit.getByLabel("Avisar cuando queden (opcional)").fill("150");
+  await edit.getByRole("button", { name: "Guardar" }).click();
+  await expect(edit).toHaveCount(0);
   await expect(row.getByText("Stock bajo")).toBeVisible();
 
-  // Clearing the threshold clears the warning. Wait for the edit form to
-  // close first — while it's open there's no warning text to find anyway.
+  // Clearing the threshold clears the warning.
   await page.getByRole("button", { name: `Editar ${name}` }).click();
-  await threshold.fill("");
-  await page.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(threshold).toHaveCount(0);
+  await expect(edit.getByLabel("Avisar cuando queden (opcional)")).toHaveValue("150");
+  await edit.getByLabel("Avisar cuando queden (opcional)").fill("");
+  await edit.getByRole("button", { name: "Guardar" }).click();
+  await expect(edit).toHaveCount(0);
   await expect(row.getByText("120 unidad", { exact: true })).toBeVisible();
   await expect(row.getByText("Stock bajo")).toHaveCount(0);
 
@@ -66,10 +69,15 @@ test("a duplicate insumo name is rejected, and an insumo in use can't be deleted
   const name = `Insumo Dup E2E ${Date.now()}`;
   await addSupply(page, name, { quantity: "10" });
 
-  await page.getByPlaceholder("Agregar nuevo...").fill(name);
-  await page.getByPlaceholder("Unidad (ej: unidad, caja, ml)").fill("unidad");
-  await page.getByRole("button", { name: "Agregar", exact: true }).click();
-  await expect(page.getByText("Ya existe un insumo con ese nombre")).toBeVisible();
+  // The modal stays open to show why.
+  await page.getByRole("button", { name: "Nuevo insumo" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nuevo insumo" });
+  await dialog.getByLabel("Nombre").fill(name);
+  await dialog.getByLabel("Unidad").fill("unidad");
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(dialog.getByText("Ya existe un insumo con ese nombre")).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancelar" }).click();
+  await expect(dialog).toHaveCount(0);
 
   // Use it in a consulta (a brand-new patient, so no turnos field in the way).
   const patientName = `Paciente Insumo E2E ${Date.now()}`;

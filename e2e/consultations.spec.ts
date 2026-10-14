@@ -459,10 +459,13 @@ test("adding, editing, and removing insumos on a consultation reconciles stock c
   };
 
   await page.goto("/dashboard/stock");
-  await page.getByPlaceholder("Agregar nuevo...").fill(supplyName);
-  await page.getByPlaceholder("Unidad (ej: unidad, caja, ml)").fill("unidad");
-  await page.getByPlaceholder("Stock inicial").fill("100");
-  await page.getByRole("button", { name: "Agregar" }).click();
+  await page.getByRole("button", { name: "Nuevo insumo" }).click();
+  const newSupply = page.getByRole("dialog", { name: "Nuevo insumo" });
+  await newSupply.getByLabel("Nombre").fill(supplyName);
+  await newSupply.getByLabel("Unidad").fill("unidad");
+  await newSupply.getByLabel("Stock inicial").fill("100");
+  await newSupply.getByRole("button", { name: "Guardar" }).click();
+  await expect(newSupply).toHaveCount(0);
   await expectStock("100 unidad");
 
   const patientName = `Paciente Stock E2E ${Date.now()}`;
