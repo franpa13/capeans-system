@@ -33,7 +33,7 @@ import { businessHoursForWeekday, closedRanges } from "@/features/appointments/l
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
-type PatientOption = { id: string; name: string };
+type PatientOption = { id: string; name: string; phone?: string };
 type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
 const HOUR_WIDTH = 80; // px
@@ -103,6 +103,7 @@ export function DailyAgenda({
   treatmentOptions,
   treatmentPrices,
   supplyOptions,
+  clinicName,
 }: {
   day: Date;
   appointments: AppointmentWithConsultation[];
@@ -116,6 +117,7 @@ export function DailyAgenda({
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
   supplyOptions: SupplyOption[];
+  clinicName: string;
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -336,6 +338,8 @@ export function DailyAgenda({
             if (!next) setViewing(null);
           }}
           onEdit={() => openEdit(viewing)}
+          patientPhone={patients.find((p) => p.id === viewing.patientId)?.phone}
+          clinicName={clinicName}
         />
       )}
 
@@ -347,6 +351,7 @@ export function DailyAgenda({
         appointment={editing}
         initialStart={newStart}
         insuranceOptions={insuranceOptions}
+        clinicName={clinicName}
         onSaved={() => router.refresh()}
         onCompleted={(appointment) => {
           if (!appointment.patientId) return;

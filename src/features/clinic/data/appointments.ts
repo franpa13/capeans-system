@@ -194,3 +194,16 @@ export async function updateAppointment(
 export async function deleteAppointment(clinicId: string, id: string): Promise<void> {
   await prisma.appointment.deleteMany({ where: { id, clinicId } });
 }
+
+/** Records that the patient was reminded of this turno (the dentist sent
+ * the WhatsApp message). Sending again just moves the time forward. */
+export async function markReminderSent(clinicId: string, id: string): Promise<Appointment> {
+  const result = await prisma.appointment.updateMany({
+    where: { id, clinicId },
+    data: { reminderSentAt: new Date() },
+  });
+  if (result.count === 0) {
+    throw new Error("Appointment not found for this clinic");
+  }
+  return (await prisma.appointment.findFirst({ where: { id, clinicId } }))!;
+}

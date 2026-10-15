@@ -7,6 +7,7 @@ import {
   getAppointment,
   getAppointments,
   getLinkableAppointments,
+  markReminderSent,
   updateAppointment,
 } from "@/features/clinic/data/appointments";
 import { createConsultation } from "@/features/clinic/data/consultations";
@@ -334,5 +335,29 @@ describe("linking turnos to consultas", () => {
     const list = await getAppointments(clinicA.id);
     expect(list.find((a) => a.id === withConsulta.id)?.consultation?.id).toBe(consultation.id);
     expect(list.find((a) => a.id === without.id)?.consultation).toBeNull();
+  });
+});
+
+describe("turno reminders", () => {
+  it("records when the reminder was sent", async () => {
+    const appointment = await createAppointment(clinicA.id, {
+      startsAt: new Date("2026-02-02T10:00:00Z"),
+    });
+    expect(appointment.reminderSentAt).toBeNull();
+
+    const before = Date.now();
+    const updated = await markReminderSent(clinicA.id, appointment.id);
+    expect(updated.reminderSentAt!.getTime()).toBeGreaterThanOrEqual(before);
+    expect((await getAppointment(clinicA.id, appointment.id))!.reminderSentAt).not.toBeNull();
+  });
+
+  it("refuses marking another clinic's turno", async () => {
+    const appointment = await createAppointment(clinicB.id, {
+      startsAt: new Date("2026-02-02T10:00:00Z"),
+    });
+    await expect(markReminderSent(clinicA.id, appointment.id)).rejects.toThrow(
+      "Appointment not found for this clinic",
+    );
+    expect((await getAppointment(clinicB.id, appointment.id))!.reminderSentAt).toBeNull();
   });
 });

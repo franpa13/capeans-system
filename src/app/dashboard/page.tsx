@@ -22,6 +22,7 @@ export default async function DashboardPage() {
     consultations,
     weekAppointments,
     todayAppointments,
+    tomorrowAppointments,
     insuranceOptionRows,
     treatmentOptionRows,
     supplies,
@@ -31,11 +32,12 @@ export default async function DashboardPage() {
         getConsultations(clinic.id),
         getAppointments(clinic.id, { from: weekStart, to: addDays(weekStart, 7) }),
         getAppointments(clinic.id, { from: today, to: addDays(today, 1) }),
+        getAppointments(clinic.id, { from: addDays(today, 1), to: addDays(today, 2) }, "CONFIRMED"),
         getClinicOptions(clinic.id, "insurance"),
         getClinicOptions(clinic.id, "treatment"),
         getSupplies(clinic.id),
       ])
-    : [[], [], [], [], [], [], []];
+    : [[], [], [], [], [], [], [], []];
   // A cancelled turno isn't happening, so it's left off today's list.
   // Completed ones stay: that's where a forgotten consulta gets registered.
   const appointmentsToday = todayAppointments
@@ -69,7 +71,9 @@ export default async function DashboardPage() {
 
       <TodayPanel
         appointments={appointmentsToday}
-        patients={patients.map((p) => ({ id: p.id, name: p.name }))}
+        tomorrowAppointments={tomorrowAppointments}
+        clinicName={clinic?.name ?? ""}
+        patients={patients.map((p) => ({ id: p.id, name: p.name, phone: p.phone }))}
         debts={debts}
         supplies={supplies}
         insuranceOptions={insuranceOptionRows.map((o) => o.label)}

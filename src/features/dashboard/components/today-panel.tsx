@@ -3,7 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Boxes, CalendarDays, ClipboardCheck, ClipboardList, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  Boxes,
+  CalendarDays,
+  ClipboardCheck,
+  ClipboardList,
+  MessageCircle,
+  Wallet,
+} from "lucide-react";
 import type { Appointment, Supply } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -18,10 +26,11 @@ import { formatCurrency } from "@/features/clinic/lib/format";
 import { isLowStock } from "@/features/clinic/lib/stock";
 import { PENDING_OR_PARTIAL } from "@/features/clinic/lib/billing";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
+import { ReminderButton } from "@/features/appointments/components/reminder-button";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
-type PatientOption = { id: string; name: string };
+type PatientOption = { id: string; name: string; phone: string };
 type Debt = { patientId: string; name: string; amount: number };
 
 const MAX_DEBTS = 5;
@@ -84,6 +93,8 @@ function SeeAll({ href, children }: { href: string; children: React.ReactNode })
  * who owes money, and which insumos are running out. */
 export function TodayPanel({
   appointments,
+  tomorrowAppointments,
+  clinicName,
   patients,
   debts,
   supplies,
@@ -93,6 +104,9 @@ export function TodayPanel({
   supplyOptions,
 }: {
   appointments: AppointmentWithConsultation[];
+  /** Confirmed turnos for tomorrow, the ones worth a reminder today. */
+  tomorrowAppointments: AppointmentWithConsultation[];
+  clinicName: string;
   patients: PatientOption[];
   debts: Debt[];
   supplies: Supply[];
@@ -103,6 +117,8 @@ export function TodayPanel({
 }) {
   const router = useRouter();
   const patientsById = new Map(patients.map((p) => [p.id, p.name]));
+  const phonesById = new Map(patients.map((p) => [p.id, p.phone]));
+  const remindable = tomorrowAppointments.filter((a) => a.patientId);
   const [registering, setRegistering] = useState<{
     patient: PatientOption;
     appointment: Appointment;
@@ -114,7 +130,7 @@ export function TodayPanel({
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <div className="lg:col-span-2">
+      <div className="flex flex-col gap-4 lg:col-span-2">
         <Section
           id="today-turnos"
           title="Turnos de hoy"
@@ -174,7 +190,11 @@ export function TodayPanel({
                           className="shrink-0 self-start sm:self-auto"
                           onClick={() =>
                             setRegistering({
-                              patient: { id: appointment.patientId!, name: patientName },
+                              patient: {
+                                id: appointment.patientId!,
+                                name: patientName,
+                                phone: phonesById.get(appointment.patientId!) ?? "",
+                              },
                               appointment,
                             })
                           }
@@ -184,6 +204,44 @@ export function TodayPanel({
                         </Button>
                       )
                     )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Section>
+
+        <Section
+          id="tomorrow-reminders"
+          title="Recordatorios para mañana"
+          description="Mandale a cada paciente un WhatsApp con su turno ya escrito."
+          icon={MessageCircle}
+        >
+          {remindable.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay turnos para mañana.</p>
+          ) : (
+            <ul className="divide-y rounded-md border">
+              {remindable.map((appointment) => {
+                const patientName = patientsById.get(appointment.patientId!) ?? "Paciente";
+                return (
+                  <li
+                    key={appointment.id}
+                    className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="w-12 shrink-0 text-sm font-semibold tabular-nums">
+                        {formatTime(appointment.startsAt)}
+                      </span>
+                      <span className="truncate text-sm font-medium">{patientName}</span>
+                    </div>
+                    <ReminderButton
+                      appointmentId={appointment.id}
+                      startsAt={appointment.startsAt}
+                      reminderSentAt={appointment.reminderSentAt}
+                      patientName={patientName}
+                      phone={phonesById.get(appointment.patientId!) ?? ""}
+                      clinicName={clinicName}
+                    />
                   </li>
                 );
               })}

@@ -40,7 +40,7 @@ import { formatDate } from "@/features/clinic/lib/format";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
-type PatientOption = { id: string; name: string };
+type PatientOption = { id: string; name: string; phone?: string };
 type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
 const HOUR_HEIGHT = 48; // px
@@ -99,6 +99,7 @@ export function AppointmentsCalendar({
   treatmentOptions,
   treatmentPrices,
   supplyOptions,
+  clinicName,
 }: {
   weekStart: Date;
   appointments: AppointmentWithConsultation[];
@@ -112,6 +113,7 @@ export function AppointmentsCalendar({
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
   supplyOptions: SupplyOption[];
+  clinicName: string;
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -320,6 +322,7 @@ export function AppointmentsCalendar({
         appointment={editing}
         initialStart={newStart}
         insuranceOptions={insuranceOptions}
+        clinicName={clinicName}
         onSaved={() => router.refresh()}
         onCompleted={(appointment) => {
           if (!appointment.patientId) return;

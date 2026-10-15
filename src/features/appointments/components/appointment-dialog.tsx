@@ -40,8 +40,9 @@ import {
 } from "@/features/appointments/actions";
 import { unwrap } from "@/lib/action-result";
 import type { Appointment } from "@prisma/client";
+import { ReminderButton } from "@/features/appointments/components/reminder-button";
 
-type PatientOption = { id: string; name: string };
+type PatientOption = { id: string; name: string; phone?: string };
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -105,6 +106,7 @@ export function AppointmentDialog({
   insuranceOptions = [],
   onSaved,
   onCompleted,
+  clinicName,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -116,6 +118,8 @@ export function AppointmentDialog({
   /** Fired only when this turno is marked completed (not on a regular
    * save or cancel) — lets the caller offer logging the consulta for it. */
   onCompleted?: (appointment: Appointment) => void;
+  /** Enables the WhatsApp reminder for a confirmed turno. */
+  clinicName?: string;
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditing = !!appointment;
@@ -123,6 +127,10 @@ export function AppointmentDialog({
   // on a turno that's already cancelled or completed suggested you could
   // still change its mind for it, which isn't true once it's settled.
   const canChangeStatus = appointment?.status === "CONFIRMED";
+  const reminderPatient =
+    canChangeStatus && clinicName !== undefined
+      ? patients.find((p) => p.id === appointment.patientId && p.phone !== undefined)
+      : undefined;
 
   const {
     register,
@@ -447,6 +455,17 @@ export function AppointmentDialog({
 
             {submitError && (
               <p className="text-sm text-destructive">{submitError}</p>
+            )}
+
+            {appointment && reminderPatient && (
+              <ReminderButton
+                appointmentId={appointment.id}
+                startsAt={appointment.startsAt}
+                reminderSentAt={appointment.reminderSentAt}
+                patientName={reminderPatient.name}
+                phone={reminderPatient.phone!}
+                clinicName={clinicName!}
+              />
             )}
           </div>
 

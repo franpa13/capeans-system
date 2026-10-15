@@ -87,6 +87,9 @@ model Appointment {
   status          AppointmentStatus @default(CONFIRMED)
   notes           String?
   createdAt       DateTime          @default(now())
+  // When a WhatsApp reminder went out for this turno (today a one-tap
+  // wa.me link; later possibly an automatic send) — null = not sent yet.
+  reminderSentAt  DateTime?
 
   consultation    Consultation?
 

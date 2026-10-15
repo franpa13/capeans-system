@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
 import type { Appointment } from "@prisma/client";
+import { ReminderButton } from "@/features/appointments/components/reminder-button";
 
 const STATUS_LABELS: Record<Appointment["status"], string> = {
   CONFIRMED: "Confirmado",
@@ -37,9 +38,14 @@ export function ViewAppointmentDialog({
   open,
   onOpenChange,
   onEdit,
+  patientPhone,
+  clinicName,
 }: {
   appointment: Appointment;
   patientName: string;
+  /** With clinicName, enables the WhatsApp reminder for a confirmed turno. */
+  patientPhone?: string;
+  clinicName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: () => void;
@@ -96,7 +102,22 @@ export function ViewAppointmentDialog({
           </Field>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+          {appointment.status === "CONFIRMED" &&
+          appointment.patientId &&
+          patientPhone !== undefined &&
+          clinicName !== undefined ? (
+            <ReminderButton
+              appointmentId={appointment.id}
+              startsAt={appointment.startsAt}
+              reminderSentAt={appointment.reminderSentAt}
+              patientName={patientName}
+              phone={patientPhone}
+              clinicName={clinicName}
+            />
+          ) : (
+            <span />
+          )}
           <Button type="button" variant="outline" onClick={onEdit}>
             <Pencil />
             Editar

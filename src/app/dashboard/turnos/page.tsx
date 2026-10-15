@@ -96,6 +96,7 @@ export default async function TurnosPage({
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
           supplyOptions={supplyOptions}
+          clinicName={clinic?.name ?? ""}
         />
       ) : (
         <AppointmentsCalendar
@@ -111,6 +112,7 @@ export default async function TurnosPage({
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
           supplyOptions={supplyOptions}
+          clinicName={clinic?.name ?? ""}
         />
       )}
     </div>

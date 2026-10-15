@@ -5,11 +5,10 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-/** Today's half-hour slots in random order — earlier runs leave turnos
+/** A day's half-hour slots in random order — earlier runs leave turnos
  * behind, so the first free one is used (same idea as appointments.spec). */
-function shuffledSlotsToday() {
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+function shuffledSlotsOn(day: Date) {
+  const dateStr = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
   const slots = [0, 30].flatMap((minute) =>
     Array.from({ length: 24 }, (_, hour) => ({ dateStr, timeStr: `${pad(hour)}:${pad(minute)}` })),
   );
@@ -20,13 +19,13 @@ function shuffledSlotsToday() {
   return slots;
 }
 
-async function bookTurnoToday(page: Page, patientName: string) {
+async function bookTurno(page: Page, patientName: string, day: Date) {
   await page.goto("/dashboard/turnos");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
   const dialog = page.getByRole("dialog", { name: "Nuevo turno" });
-  for (const { dateStr, timeStr } of shuffledSlotsToday()) {
+  for (const { dateStr, timeStr } of shuffledSlotsOn(day)) {
     await page.fill("#date", dateStr);
     await page.fill("#time", timeStr);
     await page.getByRole("button", { name: "Guardar" }).click();
@@ -39,7 +38,16 @@ async function bookTurnoToday(page: Page, patientName: string) {
     ]).catch(() => "unknown" as const);
     if (outcome === "success") return timeStr;
   }
-  throw new Error("No free slot left today");
+  throw new Error("No free slot left that day");
+}
+
+async function createPatient(page: Page, name: string, phone: string) {
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", name);
+  await page.fill("#phone", phone);
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
 }
 
 test("Inicio shows today's turnos, lets a consulta be registered from there, and lists debts and low stock", async ({
@@ -49,14 +57,8 @@ test("Inicio shows today's turnos, lets a consulta be registered from there, and
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const patientName = `Paciente Hoy E2E ${Date.now()}`;
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 5555-6666");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
-
-  const time = await bookTurnoToday(page, patientName);
+  await createPatient(page, patientName, "11 5555-6666");
+  const time = await bookTurno(page, patientName, new Date());
 
   const supplyName = `Insumo Hoy E2E ${Date.now()}`;
   await page.goto("/dashboard/stock");
@@ -121,4 +123,40 @@ test("Inicio shows today's turnos, lets a consulta be registered from there, and
   await page.getByRole("menuitem", { name: "Eliminar" }).click();
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await expect(page.locator("tbody").getByText(supplyName)).toHaveCount(0);
+});
+
+test("tomorrow's turnos get a one-tap WhatsApp reminder that's marked as sent", async ({
+  page,
+  context,
+}) => {
+  // Never actually reach WhatsApp from a test run.
+  await context.route("https://wa.me/**", (route) => route.fulfill({ body: "WhatsApp" }));
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Recordatorio E2E ${Date.now()}`;
+  await createPatient(page, patientName, "011 15 3333-4444");
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const time = await bookTurno(page, patientName, tomorrow);
+
+  await page.goto("/dashboard");
+  const reminders = page.getByRole("region", { name: "Recordatorios para mañana" });
+  const row = reminders.getByRole("listitem").filter({ hasText: patientName });
+  const link = row.getByRole("link", { name: "Recordar por WhatsApp" });
+
+  // The chat opens on the patient's number, normalized to the
+  // international format, with the reminder already written.
+  const href = (await link.getAttribute("href"))!;
+  expect(href.startsWith("https://wa.me/5491133334444?text=")).toBe(true);
+  const message = decodeURIComponent(href.split("?text=")[1]);
+  expect(message).toContain("Hola Recordatorio,");
+  expect(message).toContain(`tu turno mañana a las ${time}`);
+
+  const popup = context.waitForEvent("page");
+  await link.click();
+  await (await popup).close();
+
+  await expect(row.getByText("Recordatorio enviado")).toBeVisible();
+  await expect(row.getByRole("link", { name: "Volver a enviar" })).toBeVisible();
 });

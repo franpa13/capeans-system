@@ -7,6 +7,7 @@ import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
   createAppointment,
   deleteAppointment,
+  markReminderSent,
   updateAppointment,
   type NewAppointmentInput,
   type UpdateAppointmentInput,
@@ -79,6 +80,16 @@ export async function deleteAppointmentAction(id: string) {
   return runAction(async () => {
     const clinicId = await requireClinicId();
     await deleteAppointment(clinicId, id);
+    revalidatePath("/dashboard/turnos");
+  });
+}
+
+/** Called when the dentist opens the WhatsApp reminder for a turno. */
+export async function markReminderSentAction(id: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await markReminderSent(clinicId, id);
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/turnos");
   });
 }
