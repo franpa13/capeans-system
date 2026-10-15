@@ -528,3 +528,28 @@ test("an insumo picked but not added to the list blocks saving instead of being 
   await expect(page.getByText("Tocá «Agregar insumo» para sumarlo a la lista")).toHaveCount(0);
   await expect(save).toBeEnabled();
 });
+
+test("a picked insumo can be cleared without adding it", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  const save = page.getByRole("button", { name: "Guardar", exact: true });
+  const clear = page.getByRole("button", { name: "Borrar insumo elegido" });
+
+  await expect(clear).toHaveCount(0);
+  await page.locator("#supplySelect").click();
+  await page.getByRole("option").first().click();
+  await page.fill("#supplyQuantity", "0");
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await expect(page.getByText("Ingresá una cantidad entera mayor a 0")).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  await clear.click();
+  await expect(page.locator("#supplySelect")).toHaveText("Elegí un insumo");
+  await expect(page.locator("#supplyQuantity")).toHaveValue("");
+  await expect(page.getByText("Ingresá una cantidad entera mayor a 0")).toHaveCount(0);
+  await expect(clear).toHaveCount(0);
+  await expect(save).toBeEnabled();
+});

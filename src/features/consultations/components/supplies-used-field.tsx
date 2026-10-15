@@ -85,6 +85,15 @@ export function SuppliesUsedField({
     onPendingChange?.(false);
   }
 
+  /** Backs out of a pick without adding it — otherwise a chosen insumo
+   * (or a typed quantity) would keep Guardar blocked with no way out. */
+  function handleClear() {
+    setSelectedSupplyIdState("");
+    setQuantityState("");
+    setError(null);
+    onPendingChange?.(false);
+  }
+
   function handleRemove(supplyId: string) {
     onChange(value.filter((v) => v.supplyId !== supplyId));
   }
@@ -125,6 +134,18 @@ export function SuppliesUsedField({
           <Plus />
           Agregar insumo
         </Button>
+        {(pending || error) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Borrar insumo elegido"
+            title="Borrar insumo elegido"
+            onClick={handleClear}
+          >
+            <X />
+          </Button>
+        )}
       </div>
       {error ? (
         <p className="text-sm text-destructive">{error}</p>
