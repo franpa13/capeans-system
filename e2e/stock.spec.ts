@@ -62,6 +62,17 @@ test("an insumo can be added, restocked, and shows a low-stock warning at its th
   await expect(row.getByText("120 unidad", { exact: true })).toBeVisible();
   await expect(row.getByText("Stock bajo")).toHaveCount(0);
 
+  // A manual count from Editar sets the stock outright (shown prefilled).
+  await supplyAction(page, name, "Editar");
+  await expect(edit.getByLabel("Stock actual")).toHaveValue("120");
+  await edit.getByLabel("Stock actual").fill("1.000");
+  await edit.getByRole("button", { name: "Guardar" }).click();
+  await expect(edit.getByText("sin puntos ni comas", { exact: false })).toBeVisible();
+  await edit.getByLabel("Stock actual").fill("75");
+  await edit.getByRole("button", { name: "Guardar" }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(row.getByText("75 unidad", { exact: true })).toBeVisible();
+
   // Cleanup.
   await supplyAction(page, name, "Eliminar");
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();

@@ -126,6 +126,28 @@ describe("supplies data layer", () => {
     expect(updated.quantity).toBe(30);
   });
 
+  it("sets the stock to the given quantity when editing (a manual count)", async () => {
+    const supply = await createSupply(clinicA.id, { name: "Guantes", unit: "caja", quantity: 30 });
+    const updated = await updateSupply(clinicA.id, supply.id, {
+      name: "Guantes",
+      unit: "caja",
+      quantity: 12,
+    });
+    expect(updated.quantity).toBe(12);
+  });
+
+  it("refuses editing the stock to a negative or non-integer quantity", async () => {
+    const supply = await createSupply(clinicA.id, { name: "Guantes", unit: "caja", quantity: 30 });
+    await expect(
+      updateSupply(clinicA.id, supply.id, { name: "Guantes", unit: "caja", quantity: -1 }),
+    ).rejects.toThrow("El stock no puede ser negativo");
+    await expect(
+      updateSupply(clinicA.id, supply.id, { name: "Guantes", unit: "caja", quantity: 1.5 }),
+    ).rejects.toThrow("El stock tiene que ser un número entero");
+    const [unchanged] = await getSupplies(clinicA.id);
+    expect(unchanged.quantity).toBe(30);
+  });
+
   it("refuses updating to a duplicate name within the same clinic", async () => {
     await createSupply(clinicA.id, { name: "Guantes", unit: "caja" });
     const other = await createSupply(clinicA.id, { name: "Mascarillas", unit: "caja" });

@@ -71,8 +71,8 @@ function DialogButtons({ saving, submitLabel }: { saving: boolean; submitLabel: 
 
 /** Nuevo insumo when `supply` is undefined, Editar insumo otherwise. The
  * form lives inside DialogContent, so it unmounts on close and every
- * opening starts from fresh values. Editing never touches the quantity —
- * stock only moves through Reponer and consultas. */
+ * opening starts from fresh values. In Editar, "Stock actual" is a manual
+ * count that replaces the stock — it's only sent if it was changed. */
 export function SupplyFormDialog({
   open,
   onOpenChange,
@@ -89,7 +89,7 @@ export function SupplyFormDialog({
           <DialogTitle>{supply ? "Editar insumo" : "Nuevo insumo"}</DialogTitle>
           <DialogDescription>
             {supply
-              ? "El stock no se cambia acá: usá Reponer o registralo en una consulta."
+              ? "Si contaste el insumo y no coincide, corregí el stock actual."
               : "Cargá el insumo con la cantidad que tenés hoy."}
           </DialogDescription>
         </DialogHeader>
@@ -104,7 +104,8 @@ function SupplyForm({ supply, onDone }: { supply?: Supply; onDone: () => void })
   const [name, setName] = useState(supply?.name ?? "");
   const [unit, setUnit] = useState(supply?.unit ?? "");
   const [price, setPrice] = useState(supply?.price != null ? String(supply.price) : "");
-  const [quantity, setQuantity] = useState("");
+  const originalQuantity = supply ? String(supply.quantity) : "";
+  const [quantity, setQuantity] = useState(originalQuantity);
   const [lowStockAt, setLowStockAt] = useState(
     supply?.lowStockAt != null ? String(supply.lowStockAt) : "",
   );
@@ -116,7 +117,10 @@ function SupplyForm({ supply, onDone }: { supply?: Supply; onDone: () => void })
     if (!name.trim() || !unit.trim()) return setError("Completá el nombre y la unidad");
     const parsedPrice = parseWholeNumber(price);
     if ("error" in parsedPrice) return setError(parsedPrice.error);
-    const parsedQuantity = parseWholeNumber(quantity);
+    // Untouched in Editar → not sent, so an already-negative stock (more
+    // used than was loaded) doesn't block saving the other fields.
+    const quantityChanged = quantity.trim() !== originalQuantity;
+    const parsedQuantity = quantityChanged ? parseWholeNumber(quantity) : { value: undefined };
     if ("error" in parsedQuantity) return setError(parsedQuantity.error);
     const parsedLowStockAt = parseWholeNumber(lowStockAt);
     if ("error" in parsedLowStockAt) return setError(parsedLowStockAt.error);
@@ -131,7 +135,7 @@ function SupplyForm({ supply, onDone }: { supply?: Supply; onDone: () => void })
         lowStockAt: parsedLowStockAt.value,
       };
       if (supply) {
-        await updateSupplyAction(supply.id, input);
+        await updateSupplyAction(supply.id, { ...input, quantity: parsedQuantity.value });
       } else {
         await createSupplyAction({ ...input, quantity: parsedQuantity.value });
       }
@@ -170,17 +174,16 @@ function SupplyForm({ supply, onDone }: { supply?: Supply; onDone: () => void })
         value={price}
         onChange={(e) => setPrice(e.target.value)}
       />
-      {!supply && (
-        <Field
-          id="supplyInitialQuantity"
-          label="Stock inicial"
-          type="number"
-          min={0}
-          placeholder="Ej: 50"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-        />
-      )}
+      <Field
+        id="supplyQuantity"
+        label={supply ? "Stock actual" : "Stock inicial"}
+        hint={supply ? "Lo que hay hoy. Para sumar una compra, usá Reponer." : undefined}
+        type="number"
+        min={0}
+        placeholder="Ej: 50"
+        value={quantity}
+        onChange={(e) => setQuantity(e.target.value)}
+      />
       <Field
         id="supplyLowStockAt"
         label="Avisar cuando queden (opcional)"

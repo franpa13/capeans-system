@@ -13,6 +13,9 @@ export type UpdateSupplyInput = {
   name: string;
   unit: string;
   price?: number;
+  /** A manual count ("hoy hay 12"): sets the stock outright. Omitted →
+   * the stock is left as is. */
+  quantity?: number;
   lowStockAt?: number;
 };
 
@@ -33,6 +36,16 @@ function assertValidInitialQuantity(quantity: number | undefined) {
   }
   if (quantity < 0) {
     throw new Error("El stock inicial no puede ser negativo");
+  }
+}
+
+function assertValidEditedQuantity(quantity: number | undefined) {
+  if (quantity == null) return;
+  if (!Number.isInteger(quantity)) {
+    throw new Error("El stock tiene que ser un número entero");
+  }
+  if (quantity < 0) {
+    throw new Error("El stock no puede ser negativo");
   }
 }
 
@@ -83,8 +96,9 @@ export async function createSupply(clinicId: string, input: NewSupplyInput): Pro
   });
 }
 
-/** Never touches quantity — stock only moves through restockSupply and
- * through consultations that use the insumo. */
+/** Only touches quantity when the dentist typed a new count in Editar —
+ * otherwise stock moves through restockSupply and through consultations
+ * that use the insumo. */
 export async function updateSupply(
   clinicId: string,
   id: string,
@@ -93,6 +107,7 @@ export async function updateSupply(
   const name = requireText(input.name, "El nombre no puede estar vacío");
   const unit = requireText(input.unit, "La unidad no puede estar vacía");
   assertValidPrice(input.price);
+  assertValidEditedQuantity(input.quantity);
   assertValidLowStockAt(input.lowStockAt);
 
   const supply = await prisma.supply.findFirst({ where: { id, clinicId } });
@@ -113,6 +128,7 @@ export async function updateSupply(
       name,
       unit,
       price: input.price ?? null,
+      ...(input.quantity != null && { quantity: input.quantity }),
       lowStockAt: input.lowStockAt ?? null,
     },
   });
