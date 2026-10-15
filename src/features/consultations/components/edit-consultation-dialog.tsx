@@ -26,6 +26,7 @@ import { combineDateAndTime, formatCurrency, splitDateAndTime } from "@/features
 import { paymentStatus, PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { getConsultationUsagesAction, updateConsultationAction } from "@/features/consultations/actions";
+import { unwrap } from "@/lib/action-result";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import {
   SuppliesUsedField,
@@ -88,6 +89,7 @@ export function EditConsultationDialog({
     resolver: zodResolver(editConsultationSchema),
     defaultValues: toFormValues(consultation, treatmentOptions),
   });
+  const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -101,7 +103,7 @@ export function EditConsultationDialog({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    getConsultationUsagesAction(consultation.id).then((usages) => {
+    unwrap(getConsultationUsagesAction(consultation.id)).then((usages) => {
       if (cancelled) return;
       setSupplyUsages(usages.map((u) => ({ supplyId: u.supplyId, quantityUsed: u.quantityUsed })));
     });
@@ -128,7 +130,7 @@ export function EditConsultationDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treatment]);
 
-  const onSubmit = async (values: EditConsultationValues) => {
+  const save = async (values: EditConsultationValues) => {
     if (supplyUsages === null) return;
     const chargedNum = values.amountCharged ? Number(values.amountCharged) : undefined;
     const paidNum =
@@ -138,7 +140,7 @@ export function EditConsultationDialog({
           ? Number(values.partialAmountPaid)
           : undefined;
 
-    await updateConsultationAction(consultation.id, {
+    await unwrap(updateConsultationAction(consultation.id, {
       date: combineDateAndTime(values.date, values.time),
       treatment: values.treatment === OTHER_TREATMENT ? values.treatmentOther!.trim() : values.treatment,
       teeth: values.teeth?.length ? values.teeth : undefined,
@@ -147,10 +149,20 @@ export function EditConsultationDialog({
       amountPaid: paidNum,
       appointmentId: values.appointmentId || null,
       supplies: supplyUsages.length ? supplyUsages : undefined,
-    });
+    }));
     onOpenChange(false);
   };
 
+  /** Shows a server-side refusal (e.g. "Lo pagado no puede superar el
+   * monto a cobrar") inside the dialog instead of failing silently. */
+  const onSubmit = async (values: EditConsultationValues) => {
+    setServerError(null);
+    try {
+      await save(values);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "No se pudo guardar");
+    }
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -386,6 +398,7 @@ export function EditConsultationDialog({
               ))}
           </div>
 
+          {serverError && <p className="text-sm text-destructive">{serverError}</p>}
           <DialogFooter>
             <Button type="submit" disabled={supplyUsages === null || supplyPending}>
               <Save />

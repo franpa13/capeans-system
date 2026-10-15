@@ -40,6 +40,7 @@ import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
+import { unwrap } from "@/lib/action-result";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import {
   SuppliesUsedField,
@@ -137,6 +138,7 @@ export function NewConsultationDialog({
       appointmentId: initialAppointment?.id ?? "",
     },
   });
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const patientId = watch("patientId");
   const date = watch("date");
@@ -171,7 +173,7 @@ export function NewConsultationDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treatment]);
 
-  const onSubmit = async (values: ConsultationValues) => {
+  const save = async (values: ConsultationValues) => {
     const finalPatientId = fixedPatientId ?? values.patientId;
 
     const chargedNum = values.amountCharged ? Number(values.amountCharged) : undefined;
@@ -182,7 +184,7 @@ export function NewConsultationDialog({
           ? Number(values.partialAmountPaid)
           : undefined;
 
-    await createConsultationAction({
+    await unwrap(createConsultationAction({
       patientId: finalPatientId,
       date: combineDateAndTime(values.date, values.time),
       treatment:
@@ -212,7 +214,7 @@ export function NewConsultationDialog({
             allergies: values.newPatientAllergies || undefined,
           }
         : undefined,
-    });
+    }));
 
     reset({
       patientId: fixedPatientId ?? "",
@@ -243,6 +245,16 @@ export function NewConsultationDialog({
     setOpen(false);
   };
 
+  /** Shows a server-side refusal (e.g. "Lo pagado no puede superar el
+   * monto a cobrar") inside the dialog instead of failing silently. */
+  const onSubmit = async (values: ConsultationValues) => {
+    setServerError(null);
+    try {
+      await save(values);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "No se pudo guardar");
+    }
+  };
   return (
     <Dialog
       open={open}
@@ -252,6 +264,7 @@ export function NewConsultationDialog({
           reset();
           setSupplyUsages([]);
           setSupplyPending(false);
+          setServerError(null);
         }
       }}
     >
@@ -633,6 +646,7 @@ export function NewConsultationDialog({
             )}
           </div>
 
+          {serverError && <p className="text-sm text-destructive">{serverError}</p>}
           <DialogFooter>
             <Button type="submit" disabled={supplyPending}>
               <Save />

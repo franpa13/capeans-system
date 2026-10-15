@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { WEEKDAY_FULL_LABELS } from "@/features/appointments/lib/week";
 import { updateBusinessHoursAction } from "@/features/settings/actions";
+import { unwrap } from "@/lib/action-result";
 import type { BusinessHoursInput } from "@/features/clinic/data/business-hours";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -92,7 +93,7 @@ export function BusinessHoursManager({ hours }: { hours: BusinessHours[] }) {
     setError("");
     try {
       await Promise.all(
-        WEEKDAYS.map((weekday) => updateBusinessHoursAction(weekday, toInput(drafts[weekday]))),
+        WEEKDAYS.map((weekday) => unwrap(updateBusinessHoursAction(weekday, toInput(drafts[weekday])))),
       );
       router.refresh();
     } catch (err) {

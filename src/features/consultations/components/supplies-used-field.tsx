@@ -130,9 +130,9 @@ export function SuppliesUsedField({
             }
           }}
         />
-        <Button type="button" variant="secondary" onClick={handleAdd}>
+        <Button type="button" variant="secondary"  onClick={handleAdd}>
           <Plus />
-          Agregar insumo
+          Agregar insumo a la lista
         </Button>
         {(pending || error) && (
           <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save, User } from "lucide-react";
@@ -18,6 +18,7 @@ import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientFormFields } from "@/features/patients/components/patient-form-fields";
 import { patientSchema, type PatientValues } from "@/features/patients/lib/schema";
 import { updatePatientAction } from "@/features/patients/actions";
+import { unwrap } from "@/lib/action-result";
 import type { Patient } from "@prisma/client";
 
 function toDateInputValue(date: Date | null): string {
@@ -65,13 +66,14 @@ export function EditPatientDialog({
     resolver: zodResolver(patientSchema),
     defaultValues: toFormValues(patient, insuranceOptions),
   });
+  const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) reset(toFormValues(patient, insuranceOptions));
   }, [open, patient, insuranceOptions, reset]);
 
-  const onSubmit = async (values: PatientValues) => {
-    await updatePatientAction(patient.id, {
+  const save = async (values: PatientValues) => {
+    await unwrap(updatePatientAction(patient.id, {
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
@@ -83,12 +85,28 @@ export function EditPatientDialog({
           ? values.insuranceOther?.trim()
           : values.insurance || undefined,
       allergies: values.allergies || undefined,
-    });
+    }));
     onOpenChange(false);
   };
 
+  /** Shows a server-side refusal (e.g. "Lo pagado no puede superar el
+   * monto a cobrar") inside the dialog instead of failing silently. */
+  const onSubmit = async (values: PatientValues) => {
+    setServerError(null);
+    try {
+      await save(values);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "No se pudo guardar");
+    }
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setServerError(null);
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <DialogHeader>
@@ -108,6 +126,7 @@ export function EditPatientDialog({
             insuranceOptions={insuranceOptions}
           />
 
+          {serverError && <p className="text-sm text-destructive">{serverError}</p>}
           <DialogFooter>
             <Button type="submit">
               <Save />

@@ -42,6 +42,7 @@ import {
   deleteClinicOptionAction,
   updateClinicOptionAction,
 } from "@/features/settings/actions";
+import { unwrap } from "@/lib/action-result";
 
 const PAGE_SIZE = 10;
 
@@ -105,7 +106,7 @@ export function OptionListManager({
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await deleteClinicOptionAction(deleteTarget.id);
+    await unwrap(deleteClinicOptionAction(deleteTarget.id));
     setDeleteTarget(null);
     router.refresh();
   }
@@ -295,9 +296,9 @@ function OptionForm({
     setError(null);
     try {
       if (option) {
-        await updateClinicOptionAction(option.id, label, parsedPrice.value);
+        await unwrap(updateClinicOptionAction(option.id, label, parsedPrice.value));
       } else {
-        await createClinicOptionAction(category, label, parsedPrice.value);
+        await unwrap(createClinicOptionAction(category, label, parsedPrice.value));
       }
       router.refresh();
       onDone();

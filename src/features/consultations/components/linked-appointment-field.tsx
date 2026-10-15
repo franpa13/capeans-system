@@ -9,6 +9,7 @@ import {
   getLinkableAppointmentsAction,
   type LinkableAppointment,
 } from "@/features/consultations/actions";
+import { unwrap } from "@/lib/action-result";
 
 // Radix Select can't use "" as an item value, so "not linked" needs its
 // own sentinel; the form itself stores "" for it.
@@ -43,7 +44,7 @@ export function LinkedAppointmentField({
   useEffect(() => {
     if (!searchKey || !patientId) return;
     let cancelled = false;
-    getLinkableAppointmentsAction(patientId, day, excludeConsultationId).then((result) => {
+    unwrap(getLinkableAppointmentsAction(patientId, day, excludeConsultationId)).then((result) => {
       if (cancelled) return;
       setLoaded({ key: searchKey, options: result });
       // A turno picked for a different patient or day no longer applies.

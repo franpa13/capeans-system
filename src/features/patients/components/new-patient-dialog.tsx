@@ -19,6 +19,7 @@ import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientFormFields } from "@/features/patients/components/patient-form-fields";
 import { patientSchema, type PatientValues } from "@/features/patients/lib/schema";
 import { createPatientAction } from "@/features/patients/actions";
+import { unwrap } from "@/lib/action-result";
 import type { Patient } from "@prisma/client";
 
 const emptyValues: PatientValues = {
@@ -52,9 +53,10 @@ export function NewPatientDialog({
     resolver: zodResolver(patientSchema),
     defaultValues: emptyValues,
   });
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const onSubmit = async (values: PatientValues) => {
-    const patient = await createPatientAction({
+  const save = async (values: PatientValues) => {
+    const patient = await unwrap(createPatientAction({
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
@@ -66,18 +68,31 @@ export function NewPatientDialog({
           ? values.insuranceOther?.trim()
           : values.insurance || undefined,
       allergies: values.allergies || undefined,
-    });
+    }));
     onCreated?.(patient);
     reset();
     setOpen(false);
   };
 
+  /** Shows a server-side refusal (e.g. "Lo pagado no puede superar el
+   * monto a cobrar") inside the dialog instead of failing silently. */
+  const onSubmit = async (values: PatientValues) => {
+    setServerError(null);
+    try {
+      await save(values);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "No se pudo guardar");
+    }
+  };
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) reset();
+        if (!next) {
+          reset();
+          setServerError(null);
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -105,6 +120,7 @@ export function NewPatientDialog({
             insuranceOptions={insuranceOptions}
           />
 
+          {serverError && <p className="text-sm text-destructive">{serverError}</p>}
           <DialogFooter>
             <Button type="submit">
               <Save />

@@ -38,6 +38,7 @@ import {
   deleteAppointmentAction,
   updateAppointmentAction,
 } from "@/features/appointments/actions";
+import { unwrap } from "@/lib/action-result";
 import type { Appointment } from "@prisma/client";
 
 type PatientOption = { id: string; name: string };
@@ -160,23 +161,23 @@ export function AppointmentDialog({
 
     try {
       if (isEditing) {
-        await updateAppointmentAction(appointment.id, {
+        await unwrap(updateAppointmentAction(appointment.id, {
           patientId: values.patientId,
           startsAt,
           durationMinutes: values.durationMinutes,
           reason: values.reason || undefined,
           notes: values.notes || undefined,
           newPatient,
-        });
+        }));
       } else {
-        await createAppointmentAction({
+        await unwrap(createAppointmentAction({
           patientId: values.patientId,
           startsAt,
           durationMinutes: values.durationMinutes,
           reason: values.reason || undefined,
           notes: values.notes || undefined,
           newPatient,
-        });
+        }));
       }
       onOpenChange(false);
       onSaved?.();
@@ -191,7 +192,7 @@ export function AppointmentDialog({
     if (!appointment) return;
     setSubmitError(null);
     try {
-      await updateAppointmentAction(appointment.id, { status: "CANCELLED" });
+      await unwrap(updateAppointmentAction(appointment.id, { status: "CANCELLED" }));
       onOpenChange(false);
       onSaved?.();
     } catch (error) {
@@ -205,7 +206,7 @@ export function AppointmentDialog({
     if (!appointment) return;
     setSubmitError(null);
     try {
-      const updated = await updateAppointmentAction(appointment.id, { status: "COMPLETED" });
+      const updated = await unwrap(updateAppointmentAction(appointment.id, { status: "COMPLETED" }));
       onOpenChange(false);
       onSaved?.();
       onCompleted?.(updated);
@@ -220,7 +221,7 @@ export function AppointmentDialog({
     if (!appointment) return;
     setSubmitError(null);
     try {
-      await deleteAppointmentAction(appointment.id);
+      await unwrap(deleteAppointmentAction(appointment.id));
       onOpenChange(false);
       onSaved?.();
     } catch (error) {

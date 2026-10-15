@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction } from "@/lib/action-result";
 import { revalidatePath } from "next/cache";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
@@ -16,22 +17,28 @@ async function requireClinicId(): Promise<string> {
 }
 
 export async function createPatientAction(input: NewPatientInput) {
-  const clinicId = await requireClinicId();
-  const patient = await createPatient(clinicId, input);
-  revalidatePath("/dashboard/pacientes");
-  return patient;
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const patient = await createPatient(clinicId, input);
+    revalidatePath("/dashboard/pacientes");
+    return patient;
+  });
 }
 
 export async function updatePatientAction(id: string, input: NewPatientInput) {
-  const clinicId = await requireClinicId();
-  const patient = await updatePatient(clinicId, id, input);
-  revalidatePath("/dashboard/pacientes");
-  revalidatePath(`/dashboard/pacientes/${id}`);
-  return patient;
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const patient = await updatePatient(clinicId, id, input);
+    revalidatePath("/dashboard/pacientes");
+    revalidatePath(`/dashboard/pacientes/${id}`);
+    return patient;
+  });
 }
 
 export async function deletePatientAction(id: string) {
-  const clinicId = await requireClinicId();
-  await deletePatient(clinicId, id);
-  revalidatePath("/dashboard/pacientes");
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deletePatient(clinicId, id);
+    revalidatePath("/dashboard/pacientes");
+  });
 }

@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { deleteSupplyAction } from "@/features/stock/actions";
+import { unwrap } from "@/lib/action-result";
 import { RestockDialog, SupplyFormDialog } from "@/features/stock/components/supply-dialogs";
 import type { Supply } from "@prisma/client";
 
@@ -51,7 +52,7 @@ export function SupplyActions({ supply }: { supply: Supply }) {
 
   async function handleDelete() {
     try {
-      await deleteSupplyAction(supply.id);
+      await unwrap(deleteSupplyAction(supply.id));
       setDeleteOpen(false);
       router.refresh();
     } catch (error) {

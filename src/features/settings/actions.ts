@@ -1,5 +1,6 @@
 "use server";
 
+import { runAction } from "@/lib/action-result";
 import { revalidatePath } from "next/cache";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
@@ -24,30 +25,38 @@ export async function createClinicOptionAction(
   label: string,
   price?: number,
 ) {
-  const clinicId = await requireClinicId();
-  const option = await createClinicOption(clinicId, category, label, price);
-  revalidatePath("/dashboard/configuracion");
-  return option;
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const option = await createClinicOption(clinicId, category, label, price);
+    revalidatePath("/dashboard/configuracion");
+    return option;
+  });
 }
 
 export async function updateClinicOptionAction(id: string, label: string, price?: number) {
-  const clinicId = await requireClinicId();
-  const option = await updateClinicOption(clinicId, id, label, price);
-  revalidatePath("/dashboard/configuracion");
-  return option;
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const option = await updateClinicOption(clinicId, id, label, price);
+    revalidatePath("/dashboard/configuracion");
+    return option;
+  });
 }
 
 export async function deleteClinicOptionAction(id: string) {
-  const clinicId = await requireClinicId();
-  await deleteClinicOption(clinicId, id);
-  revalidatePath("/dashboard/configuracion");
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deleteClinicOption(clinicId, id);
+    revalidatePath("/dashboard/configuracion");
+  });
 }
 
 export async function updateBusinessHoursAction(weekday: number, input: BusinessHoursInput) {
-  const clinicId = await requireClinicId();
-  const hours = await upsertBusinessHours(clinicId, weekday, input);
-  revalidatePath("/dashboard/configuracion");
-  // The Turnos grid reads business hours too, to shade closed hours.
-  revalidatePath("/dashboard/turnos");
-  return hours;
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const hours = await upsertBusinessHours(clinicId, weekday, input);
+    revalidatePath("/dashboard/configuracion");
+    // The Turnos grid reads business hours too, to shade closed hours.
+    revalidatePath("/dashboard/turnos");
+    return hours;
+  });
 }

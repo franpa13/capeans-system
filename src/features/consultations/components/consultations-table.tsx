@@ -27,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
 import { deleteConsultationAction } from "@/features/consultations/actions";
+import { unwrap } from "@/lib/action-result";
 import { EditConsultationDialog } from "@/features/consultations/components/edit-consultation-dialog";
 import { ViewConsultationDialog } from "@/features/consultations/components/view-consultation-dialog";
 import { PaymentStatusBadge } from "@/features/consultations/components/payment-status-badge";
@@ -64,7 +65,7 @@ export function ConsultationsTable({
 
   const handleDelete = async () => {
     if (!deleting) return;
-    await deleteConsultationAction(deleting.id);
+    await unwrap(deleteConsultationAction(deleting.id));
     setDeleting(null);
   };
 

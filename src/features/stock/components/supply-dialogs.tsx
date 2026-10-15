@@ -21,6 +21,7 @@ import {
   restockSupplyAction,
   updateSupplyAction,
 } from "@/features/stock/actions";
+import { unwrap } from "@/lib/action-result";
 import type { Supply } from "@prisma/client";
 
 const QUANTITY_ERROR = "Tiene que ser un número entero, sin puntos ni comas (ej: 15000)";
@@ -135,9 +136,9 @@ function SupplyForm({ supply, onDone }: { supply?: Supply; onDone: () => void })
         lowStockAt: parsedLowStockAt.value,
       };
       if (supply) {
-        await updateSupplyAction(supply.id, { ...input, quantity: parsedQuantity.value });
+        await unwrap(updateSupplyAction(supply.id, { ...input, quantity: parsedQuantity.value }));
       } else {
-        await createSupplyAction({ ...input, quantity: parsedQuantity.value });
+        await unwrap(createSupplyAction({ ...input, quantity: parsedQuantity.value }));
       }
       router.refresh();
       onDone();
@@ -244,7 +245,7 @@ function RestockForm({ supply, onDone }: { supply: Supply; onDone: () => void })
     setSaving(true);
     setError(null);
     try {
-      await restockSupplyAction(supply.id, parsed.value);
+      await unwrap(restockSupplyAction(supply.id, parsed.value));
       router.refresh();
       onDone();
     } catch (err) {

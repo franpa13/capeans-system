@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditPatientDialog } from "@/features/patients/components/edit-patient-dialog";
 import { deletePatientAction } from "@/features/patients/actions";
+import { unwrap } from "@/lib/action-result";
 import type { Patient } from "@prisma/client";
 
 export function PatientActions({
@@ -107,7 +108,7 @@ export function PatientActions({
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletePatientAction(patient.id)}
+              onClick={() => unwrap(deletePatientAction(patient.id))}
               className="bg-destructive! text-white! hover:bg-destructive/90!"
             >
               <Trash2 />
