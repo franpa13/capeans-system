@@ -16,13 +16,14 @@ export default async function DashboardPage() {
   const user = await currentUser();
   const clinic = await getCurrentClinic();
   const weekStart = getWeekStart(new Date());
-  const today = startOfDay(new Date());
+  const now = new Date();
+  const today = startOfDay(now);
   const [
     patients,
     consultations,
     weekAppointments,
     todayAppointments,
-    tomorrowAppointments,
+    reminderAppointments,
     insuranceOptionRows,
     treatmentOptionRows,
     supplies,
@@ -32,7 +33,12 @@ export default async function DashboardPage() {
         getConsultations(clinic.id),
         getAppointments(clinic.id, { from: weekStart, to: addDays(weekStart, 7) }),
         getAppointments(clinic.id, { from: today, to: addDays(today, 1) }),
-        getAppointments(clinic.id, { from: addDays(today, 1), to: addDays(today, 2) }, "CONFIRMED"),
+        // Everything still to come in the next 24 hours, across midnight.
+        getAppointments(
+          clinic.id,
+          { from: now, to: new Date(now.getTime() + 24 * 60 * 60 * 1000) },
+          "CONFIRMED",
+        ),
         getClinicOptions(clinic.id, "insurance"),
         getClinicOptions(clinic.id, "treatment"),
         getSupplies(clinic.id),
@@ -71,7 +77,7 @@ export default async function DashboardPage() {
 
       <TodayPanel
         appointments={appointmentsToday}
-        tomorrowAppointments={tomorrowAppointments}
+        reminderAppointments={reminderAppointments}
         clinicName={clinic?.name ?? ""}
         patients={patients.map((p) => ({ id: p.id, name: p.name, phone: p.phone }))}
         debts={debts}

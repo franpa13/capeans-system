@@ -93,7 +93,7 @@ function SeeAll({ href, children }: { href: string; children: React.ReactNode })
  * who owes money, and which insumos are running out. */
 export function TodayPanel({
   appointments,
-  tomorrowAppointments,
+  reminderAppointments,
   clinicName,
   patients,
   debts,
@@ -104,8 +104,8 @@ export function TodayPanel({
   supplyOptions,
 }: {
   appointments: AppointmentWithConsultation[];
-  /** Confirmed turnos for tomorrow, the ones worth a reminder today. */
-  tomorrowAppointments: AppointmentWithConsultation[];
+  /** Confirmed turnos in the next 24 hours — the ones worth a reminder now. */
+  reminderAppointments: AppointmentWithConsultation[];
   clinicName: string;
   patients: PatientOption[];
   debts: Debt[];
@@ -118,7 +118,8 @@ export function TodayPanel({
   const router = useRouter();
   const patientsById = new Map(patients.map((p) => [p.id, p.name]));
   const phonesById = new Map(patients.map((p) => [p.id, p.phone]));
-  const remindable = tomorrowAppointments.filter((a) => a.patientId);
+  const remindable = reminderAppointments.filter((a) => a.patientId);
+  const todayKey = new Date().toDateString();
   const [registering, setRegistering] = useState<{
     patient: PatientOption;
     appointment: Appointment;
@@ -212,13 +213,15 @@ export function TodayPanel({
         </Section>
 
         <Section
-          id="tomorrow-reminders"
-          title="Recordatorios para mañana"
+          id="upcoming-reminders"
+          title="Recordatorios: próximas 24 hs"
           description="Mandale a cada paciente un WhatsApp con su turno ya escrito."
           icon={MessageCircle}
         >
           {remindable.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay turnos para mañana.</p>
+            <p className="text-sm text-muted-foreground">
+              No hay turnos en las próximas 24 horas.
+            </p>
           ) : (
             <ul className="divide-y rounded-md border">
               {remindable.map((appointment) => {
@@ -229,6 +232,9 @@ export function TodayPanel({
                     className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex min-w-0 items-center gap-3">
+                      <span className="w-16 shrink-0 text-xs text-muted-foreground">
+                        {appointment.startsAt.toDateString() === todayKey ? "Hoy" : "Mañana"}
+                      </span>
                       <span className="w-12 shrink-0 text-sm font-semibold tabular-nums">
                         {formatTime(appointment.startsAt)}
                       </span>
