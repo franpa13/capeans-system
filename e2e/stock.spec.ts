@@ -1,6 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 
+/** Opens a supply row's "⋯" menu and picks an action, like PatientActions. */
+async function supplyAction(page: Page, name: string, action: "Reponer" | "Editar" | "Eliminar") {
+  await page.getByRole("button", { name: `Acciones para ${name}` }).click();
+  await page.getByRole("menuitem", { name: action }).click();
+}
+
 async function addSupply(page: Page, name: string, fields: { price?: string; quantity?: string } = {}) {
   await page.goto("/dashboard/stock");
   await page.getByRole("button", { name: "Nuevo insumo" }).click();
@@ -12,7 +18,7 @@ async function addSupply(page: Page, name: string, fields: { price?: string; qua
   await dialog.getByRole("button", { name: "Guardar" }).click();
   await expect(dialog).toHaveCount(0);
   await page.getByPlaceholder("Buscar...").fill(name);
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
+  await expect(page.locator("tbody").getByText(name, { exact: true })).toBeVisible();
 }
 
 test("an insumo can be added, restocked, and shows a low-stock warning at its threshold", async ({
@@ -23,12 +29,12 @@ test("an insumo can be added, restocked, and shows a low-stock warning at its th
 
   const name = `Insumo E2E ${Date.now()}`;
   await addSupply(page, name, { price: "50", quantity: "100" });
-  const row = page.locator("li", { hasText: name });
+  const row = page.locator("tr", { hasText: name });
   await expect(row.getByText("100 unidad", { exact: true })).toBeVisible();
 
   // A thousands separator is rejected, not silently parsed down
   // (Number("1.000") === 1) — same mistake already fixed for amounts.
-  await page.getByRole("button", { name: `Reponer ${name}` }).click();
+  await supplyAction(page, name, "Reponer");
   const restock = page.getByRole("dialog", { name: "Reponer insumo" });
   await restock.getByLabel("Cantidad a reponer").fill("1.000");
   await restock.getByRole("button", { name: "Reponer" }).click();
@@ -41,14 +47,14 @@ test("an insumo can be added, restocked, and shows a low-stock warning at its th
 
   // 120 <= 150 → flagged low, in words and not just color.
   const edit = page.getByRole("dialog", { name: "Editar insumo" });
-  await page.getByRole("button", { name: `Editar ${name}` }).click();
+  await supplyAction(page, name, "Editar");
   await edit.getByLabel("Avisar cuando queden (opcional)").fill("150");
   await edit.getByRole("button", { name: "Guardar" }).click();
   await expect(edit).toHaveCount(0);
   await expect(row.getByText("Stock bajo")).toBeVisible();
 
   // Clearing the threshold clears the warning.
-  await page.getByRole("button", { name: `Editar ${name}` }).click();
+  await supplyAction(page, name, "Editar");
   await expect(edit.getByLabel("Avisar cuando queden (opcional)")).toHaveValue("150");
   await edit.getByLabel("Avisar cuando queden (opcional)").fill("");
   await edit.getByRole("button", { name: "Guardar" }).click();
@@ -57,7 +63,7 @@ test("an insumo can be added, restocked, and shows a low-stock warning at its th
   await expect(row.getByText("Stock bajo")).toHaveCount(0);
 
   // Cleanup.
-  await page.getByRole("button", { name: `Eliminar ${name}` }).click();
+  await supplyAction(page, name, "Eliminar");
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 });
@@ -99,7 +105,7 @@ test("a duplicate insumo name is rejected, and an insumo in use can't be deleted
   // Deleting it is refused, and the dialog stays open to say why.
   await page.goto("/dashboard/stock");
   await page.getByPlaceholder("Buscar...").fill(name);
-  await page.getByRole("button", { name: `Eliminar ${name}` }).click();
+  await supplyAction(page, name, "Eliminar");
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await expect(
     page.getByText("No se puede eliminar un insumo que ya fue usado en alguna consulta"),
@@ -121,7 +127,7 @@ test("a duplicate insumo name is rejected, and an insumo in use can't be deleted
 
   await page.goto("/dashboard/stock");
   await page.getByPlaceholder("Buscar...").fill(name);
-  await page.getByRole("button", { name: `Eliminar ${name}` }).click();
+  await supplyAction(page, name, "Eliminar");
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 });

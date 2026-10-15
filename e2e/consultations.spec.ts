@@ -439,7 +439,7 @@ test("adding, editing, and removing insumos on a consultation reconciles stock c
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const supplyName = `Insumo Reconcile E2E ${Date.now()}`;
-  const stockRow = page.locator("li", { hasText: supplyName });
+  const stockRow = page.locator("tr", { hasText: supplyName });
   const expectStock = async (text: string) => {
     await page.goto("/dashboard/stock");
     await page.getByPlaceholder("Buscar...").fill(supplyName);
@@ -502,7 +502,8 @@ test("adding, editing, and removing insumos on a consultation reconciles stock c
   await expectStock("100 unidad");
 
   // Cleanup the insumo (no longer in use, so deletable).
-  await page.getByRole("button", { name: `Eliminar ${supplyName}` }).click();
+  await page.getByRole("button", { name: `Acciones para ${supplyName}` }).click();
+  await page.getByRole("menuitem", { name: "Eliminar" }).click();
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   await expect(page.getByText(supplyName, { exact: true })).toHaveCount(0);
 });
