@@ -58,3 +58,22 @@ export function outstandingBalance(
     return sum + Math.max(0, c.amountCharged - c.amountPaid);
   }, 0);
 }
+
+/** Who owes money and how much, largest debt first — the dashboard's
+ * "Le deben" list. Each patient's figure is outstandingBalance over their
+ * own consultas, so the same rules apply (unpriced consultas don't count,
+ * an overpaid one doesn't offset another). Consultas whose patient was
+ * deleted have nobody to chase and are left out. */
+export function debtsByPatient(
+  consultations: { patientId: string | null; amountCharged: number | null; amountPaid: number }[],
+): { patientId: string; amount: number }[] {
+  const byPatient = new Map<string, typeof consultations>();
+  for (const c of consultations) {
+    if (!c.patientId) continue;
+    byPatient.set(c.patientId, [...(byPatient.get(c.patientId) ?? []), c]);
+  }
+  return [...byPatient.entries()]
+    .map(([patientId, own]) => ({ patientId, amount: outstandingBalance(own) }))
+    .filter((d) => d.amount > 0)
+    .sort((a, b) => b.amount - a.amount);
+}

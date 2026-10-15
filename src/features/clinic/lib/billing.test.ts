@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  debtsByPatient,
   outstandingBalance,
   parsePaymentStatusParam,
   paymentStatus,
@@ -93,5 +94,39 @@ describe("parsePaymentStatusParam", () => {
 
   it("returns undefined when nothing in the param is a recognized status", () => {
     expect(parsePaymentStatusParam("FOO")).toBeUndefined();
+  });
+});
+
+describe("debtsByPatient", () => {
+  it("adds up each patient's balance and lists the largest debt first", () => {
+    expect(
+      debtsByPatient([
+        { patientId: "ana", amountCharged: 10000, amountPaid: 4000 },
+        { patientId: "beto", amountCharged: 20000, amountPaid: 0 },
+        { patientId: "ana", amountCharged: 5000, amountPaid: 0 },
+      ]),
+    ).toEqual([
+      { patientId: "beto", amount: 20000 },
+      { patientId: "ana", amount: 11000 },
+    ]);
+  });
+
+  it("leaves out patients who owe nothing and consultas without a patient", () => {
+    expect(
+      debtsByPatient([
+        { patientId: "ana", amountCharged: 10000, amountPaid: 10000 },
+        { patientId: "beto", amountCharged: null, amountPaid: 0 },
+        { patientId: null, amountCharged: 8000, amountPaid: 0 },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("doesn't let an overpaid consulta cancel out what's owed on another", () => {
+    expect(
+      debtsByPatient([
+        { patientId: "ana", amountCharged: 1000, amountPaid: 5000 },
+        { patientId: "ana", amountCharged: 3000, amountPaid: 0 },
+      ]),
+    ).toEqual([{ patientId: "ana", amount: 3000 }]);
   });
 });
