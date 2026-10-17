@@ -553,3 +553,29 @@ test("a picked insumo can be cleared without adding it", async ({ page }) => {
   await expect(clear).toHaveCount(0);
   await expect(save).toBeEnabled();
 });
+
+test("adding an insumo that's already in the list replaces its quantity instead of adding to it", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nueva consulta" });
+
+  await page.locator("#supplySelect").click();
+  const option = page.getByRole("option").first();
+  const supplyName = (await option.innerText()).replace(/\s*\(.*\)$/, "");
+  await option.click();
+  await page.fill("#supplyQuantity", "3");
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await expect(dialog.getByText(new RegExp(`${supplyName} × 3 `))).toBeVisible();
+
+  await page.locator("#supplySelect").click();
+  await page.getByRole("option", { name: new RegExp(supplyName) }).click();
+  await page.fill("#supplyQuantity", "5");
+  await page.getByRole("button", { name: "Agregar insumo" }).click();
+  await expect(dialog.getByText(new RegExp(`${supplyName} × 5 `))).toBeVisible();
+  await expect(dialog.getByText(new RegExp(`${supplyName} × 8 `))).toHaveCount(0);
+});

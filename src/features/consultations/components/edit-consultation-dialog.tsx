@@ -75,6 +75,7 @@ export function EditConsultationDialog({
   // null until the consulta's existing usages arrive — saving before then
   // would send "no supplies" and put them all back into stock.
   const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[] | null>(null);
+  const [usagesError, setUsagesError] = useState(false);
   const [supplyPending, setSupplyPending] = useState(false);
 
   const {
@@ -103,10 +104,16 @@ export function EditConsultationDialog({
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    unwrap(getConsultationUsagesAction(consultation.id)).then((usages) => {
-      if (cancelled) return;
-      setSupplyUsages(usages.map((u) => ({ supplyId: u.supplyId, quantityUsed: u.quantityUsed })));
-    });
+    unwrap(getConsultationUsagesAction(consultation.id))
+      .then((usages) => {
+        if (cancelled) return;
+        setSupplyUsages(usages.map((u) => ({ supplyId: u.supplyId, quantityUsed: u.quantityUsed })));
+      })
+      // Saving stays disabled (saving with no list would put the insumos
+      // back into stock), so at least say why and what to do.
+      .catch(() => {
+        if (!cancelled) setUsagesError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -386,7 +393,11 @@ export function EditConsultationDialog({
 
             {supplyOptions.length > 0 &&
               (supplyUsages === null ? (
-                <p className="text-sm text-muted-foreground">Cargando insumos usados...</p>
+                <p className={`text-sm ${usagesError ? "text-destructive" : "text-muted-foreground"}`}>
+                  {usagesError
+                    ? "No se pudieron cargar los insumos usados. Cerrá esta ventana y volvé a abrirla."
+                    : "Cargando insumos usados..."}
+                </p>
               ) : (
                 <SuppliesUsedField
                   idPrefix="edit-"

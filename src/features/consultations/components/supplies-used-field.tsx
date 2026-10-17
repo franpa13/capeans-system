@@ -69,13 +69,12 @@ export function SuppliesUsedField({
     }
     setError(null);
 
+    // Picking an insumo that's already listed corrects its quantity (the
+    // way to change "× 10" to "× 5"), rather than adding to it.
     const existingIndex = value.findIndex((v) => v.supplyId === selectedSupplyId);
     if (existingIndex >= 0) {
       const next = [...value];
-      next[existingIndex] = {
-        ...next[existingIndex],
-        quantityUsed: next[existingIndex].quantityUsed + qty,
-      };
+      next[existingIndex] = { ...next[existingIndex], quantityUsed: qty };
       onChange(next);
     } else {
       onChange([...value, { supplyId: selectedSupplyId, quantityUsed: qty }]);

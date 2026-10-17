@@ -52,6 +52,9 @@ export async function createConsultationAction(
     // Linking can complete a turno, and the agenda shows which completed
     // turnos still lack their consulta.
     revalidatePath("/dashboard/turnos");
+    // Insumos used move stock; amounts move Inicio's "Le deben".
+    revalidatePath("/dashboard/stock");
+    revalidatePath("/dashboard");
     return consultation;
   });
 }
@@ -63,6 +66,9 @@ export async function updateConsultationAction(id: string, input: UpdateConsulta
     revalidatePath("/dashboard/consultas");
     if (consultation.patientId) revalidatePath(`/dashboard/pacientes/${consultation.patientId}`);
     revalidatePath("/dashboard/turnos");
+    // Insumos used move stock; amounts move Inicio's "Le deben".
+    revalidatePath("/dashboard/stock");
+    revalidatePath("/dashboard");
     return consultation;
   });
 }
@@ -75,6 +81,9 @@ export async function deleteConsultationAction(id: string) {
     revalidatePath("/dashboard/consultas");
     if (consultation?.patientId) revalidatePath(`/dashboard/pacientes/${consultation.patientId}`);
     revalidatePath("/dashboard/turnos");
+    // Insumos used move stock; amounts move Inicio's "Le deben".
+    revalidatePath("/dashboard/stock");
+    revalidatePath("/dashboard");
   });
 }
 
