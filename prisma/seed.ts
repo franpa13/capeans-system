@@ -279,6 +279,19 @@ async function seedConsultations(
         amountPaid: row.amountPaid ?? 0,
       },
     });
+    // Mirrors recordPayment: what's paid is a dated payment, and amountPaid
+    // above equals the payments' sum. Alternating methods give Ingresos a mix.
+    if (row.amountPaid) {
+      await prisma.payment.create({
+        data: {
+          clinicId,
+          consultationId: consultation.id,
+          amount: row.amountPaid,
+          method: row.patient % 2 === 0 ? "EFECTIVO" : "TRANSFERENCIA",
+          paidAt: consultation.date,
+        },
+      });
+    }
     // Mirrors applySupplyUsages in clinic/data/consultations.ts (duplicated
     // here for the same no-"@/"-imports reason as getWeekStart): every
     // usage row comes with its stock decrement, so seeded stock adds up.

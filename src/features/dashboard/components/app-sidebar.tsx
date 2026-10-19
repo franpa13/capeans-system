@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 import {
+  Banknote,
   Boxes,
   CalendarDays,
   ClipboardList,
@@ -32,6 +33,7 @@ const navItems = [
   { title: "Inicio", url: "/dashboard", icon: LayoutDashboard },
   { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
   { title: "Consultas/Tratamientos", url: "/dashboard/consultas", icon: ClipboardList },
+  { title: "Ingresos", url: "/dashboard/ingresos", icon: Banknote },
   { title: "Turnos", url: "/dashboard/turnos", icon: CalendarDays },
   { title: "Stock", url: "/dashboard/stock", icon: Boxes },
   { title: "Configuración", url: "/dashboard/configuracion", icon: Settings },

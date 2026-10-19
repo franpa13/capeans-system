@@ -17,6 +17,13 @@ import {
 } from "@/features/clinic/data/consultations";
 import { createPatient, type NewPatientInput } from "@/features/clinic/data/patients";
 import { getLinkableAppointments } from "@/features/clinic/data/appointments";
+import {
+  addPayment,
+  deletePayment,
+  getConsultationPayments,
+  type NewPaymentInput,
+} from "@/features/clinic/data/payments";
+import type { Payment } from "@prisma/client";
 
 async function requireClinicId(): Promise<string> {
   const clinic = await getCurrentClinic();
@@ -121,5 +128,40 @@ export async function getLinkableAppointmentsAction(
       reason: a.reason,
       status: a.status,
     }));
+  });
+}
+
+function revalidatePaymentPages(patientId: string | null) {
+  revalidatePath("/dashboard/consultas");
+  revalidatePath("/dashboard/ingresos");
+  revalidatePath("/dashboard");
+  if (patientId) revalidatePath(`/dashboard/pacientes/${patientId}`);
+}
+
+/** A later payment on a consulta — an installment or the rest owed. */
+export async function addPaymentAction(consultationId: string, input: NewPaymentInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await addPayment(clinicId, consultationId, input);
+    const consultation = await getConsultation(clinicId, consultationId);
+    revalidatePaymentPages(consultation?.patientId ?? null);
+  });
+}
+
+export async function deletePaymentAction(consultationId: string, paymentId: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deletePayment(clinicId, paymentId);
+    const consultation = await getConsultation(clinicId, consultationId);
+    revalidatePaymentPages(consultation?.patientId ?? null);
+  });
+}
+
+export async function getConsultationPaymentsAction(
+  consultationId: string,
+): Promise<ActionResult<Payment[]>> {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    return getConsultationPayments(clinicId, consultationId);
   });
 }

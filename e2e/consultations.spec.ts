@@ -259,6 +259,8 @@ test("a consultation's amount, discount, and payment status work end to end", as
 
   await page.getByRole("button", { name: "Parcial" }).click();
   await page.fill("#partialAmountPaid", "3000");
+  // A paid amount asks how it was paid.
+  await page.getByRole("radio", { name: "Efectivo" }).click();
   await page.getByRole("button", { name: "Guardar" }).click();
   await createConsultationAndFindIt(page, patientName);
 
@@ -271,15 +273,34 @@ test("a consultation's amount, discount, and payment status work end to end", as
   await expect(page.getByText("Debe: ", { exact: false })).toBeVisible();
   await expect(page.getByText("5.000", { exact: false })).toBeVisible();
 
-  // Mark it fully paid from the Editar dialog and confirm the balance clears.
+  // Pay the rest as a second, dated installment from the Editar dialog —
+  // the first payment is listed, and the new one defaults to the balance.
   await page.goto("/dashboard/consultas");
   await page.locator("#filter-patient").fill(patientName);
   const editRow = page.locator("tbody tr", { hasText: patientName });
   await editRow.getByRole("button", { name: "Editar consulta" }).click();
-  await page.getByRole("button", { name: "Cobrado", exact: true }).click();
-  await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByText("Editar consulta")).toHaveCount(0);
+  const editDialog = page.getByRole("dialog", { name: "Editar consulta" });
+  const payments = editDialog.getByRole("region", { name: "Pagos" });
+  await expect(payments.getByRole("listitem").filter({ hasText: "Efectivo" })).toContainText("3.000");
+  await expect(payments.getByText("Saldo:", { exact: false })).toContainText("5.000");
+  await expect(payments.locator("#newPaymentAmount")).toHaveValue("5000");
+  await payments.getByRole("radio", { name: "Transferencia" }).click();
+  await payments.getByRole("button", { name: "Registrar pago" }).click();
+  await expect(payments.getByRole("listitem").filter({ hasText: "Transferencia" })).toContainText("5.000");
+  await expect(payments.getByText("Cobrado")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(editDialog).toHaveCount(0);
   await expect(editRow.getByText("Cobrado", { exact: false })).toBeVisible();
+
+  // Ingresos lists both payments for this month, by method.
+  await page.goto("/dashboard/ingresos");
+  const received = page.locator("tbody tr", { hasText: patientName });
+  await expect(received).toHaveCount(2);
+  await expect(received.filter({ hasText: "Transferencia" })).toContainText("5.000");
+  await expect(received.filter({ hasText: "Efectivo" })).toContainText("3.000");
+
+  await page.goto("/dashboard/consultas");
+  await page.locator("#filter-patient").fill(patientName);
 
   await editRow.getByRole("link", { name: patientName }).click();
   await expect(page.getByText("Debe: ", { exact: false })).toHaveCount(0);

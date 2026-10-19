@@ -43,6 +43,8 @@ import { createConsultationAction } from "@/features/consultations/actions";
 import { unwrap } from "@/lib/action-result";
 import { medicalAlerts } from "@/features/clinic/lib/medical";
 import { MedicalAlert } from "@/features/patients/components/medical-alert";
+import { PaymentMethodPicker } from "@/features/consultations/components/payment-method-picker";
+import type { PaymentMethod } from "@prisma/client";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import {
   SuppliesUsedField,
@@ -177,6 +179,7 @@ export function NewConsultationDialog({
   const [amountTouched, setAmountTouched] = useState(false);
   const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[]>([]);
   const [supplyPending, setSupplyPending] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("EFECTIVO");
 
   /** Recalculates "Monto a cobrar" from the treatment's list price (minus
    * whatever discount % is already typed) every time the treatment
@@ -217,6 +220,7 @@ export function NewConsultationDialog({
       notes: values.notes || undefined,
       amountCharged: chargedNum,
       amountPaid: paidNum,
+      paymentMethod: paidNum ? paymentMethod : undefined,
       appointmentId: values.appointmentId || undefined,
       supplies: supplyUsages.length ? supplyUsages : undefined,
       newPatient: isNewPatient
@@ -264,6 +268,7 @@ export function NewConsultationDialog({
     setAmountTouched(false);
     setSupplyUsages([]);
     setSupplyPending(false);
+    setPaymentMethod("EFECTIVO");
     setOpen(false);
   };
 
@@ -287,6 +292,7 @@ export function NewConsultationDialog({
           setSupplyUsages([]);
           setSupplyPending(false);
           setServerError(null);
+          setPaymentMethod("EFECTIVO");
         }
       }}
     >
@@ -648,6 +654,10 @@ export function NewConsultationDialog({
                   <p className="text-sm text-destructive">{errors.partialAmountPaid.message}</p>
                 )}
               </div>
+            )}
+
+            {paymentChoice !== "PENDIENTE" && (
+              <PaymentMethodPicker value={paymentMethod} onChange={setPaymentMethod} />
             )}
 
             <div className="space-y-2">

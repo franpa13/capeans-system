@@ -23,11 +23,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { TeethField, type DentitionMode } from "@/features/clinic/components/teeth-field";
 import { ToothChart3D } from "@/features/clinic/components/tooth-chart-3d";
 import { combineDateAndTime, formatCurrency, splitDateAndTime } from "@/features/clinic/lib/format";
-import { paymentStatus, PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { getConsultationUsagesAction, updateConsultationAction } from "@/features/consultations/actions";
 import { unwrap } from "@/lib/action-result";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
+import { PaymentsSection } from "@/features/consultations/components/payments-section";
 import {
   SuppliesUsedField,
   type SupplyOption,
@@ -38,7 +38,6 @@ import type { Consultation } from "@prisma/client";
 
 function toFormValues(consultation: Consultation, treatmentOptions: string[]): EditConsultationValues {
   const knownTreatment = treatmentOptions.includes(consultation.treatment);
-  const status = paymentStatus(consultation.amountCharged, consultation.amountPaid);
   return {
     ...splitDateAndTime(consultation.date),
     treatment: knownTreatment ? consultation.treatment : OTHER_TREATMENT,
@@ -46,8 +45,6 @@ function toFormValues(consultation: Consultation, treatmentOptions: string[]): E
     teeth: consultation.teeth,
     notes: consultation.notes ?? "",
     amountCharged: consultation.amountCharged != null ? String(consultation.amountCharged) : "",
-    paymentChoice: status === "SIN_MONTO" ? "PENDIENTE" : status,
-    partialAmountPaid: status === "PARCIAL" ? String(consultation.amountPaid) : "",
     appointmentId: consultation.appointmentId ?? "",
   };
 }
@@ -121,7 +118,6 @@ export function EditConsultationDialog({
 
   const treatment = watch("treatment");
   const teeth = watch("teeth") ?? [];
-  const paymentChoice = watch("paymentChoice");
   const date = watch("date");
   const appointmentId = watch("appointmentId") ?? "";
   const listPrice = treatmentPrices[treatment];
@@ -140,12 +136,6 @@ export function EditConsultationDialog({
   const save = async (values: EditConsultationValues) => {
     if (supplyUsages === null) return;
     const chargedNum = values.amountCharged ? Number(values.amountCharged) : undefined;
-    const paidNum =
-      values.paymentChoice === "COBRADO"
-        ? chargedNum
-        : values.paymentChoice === "PARCIAL"
-          ? Number(values.partialAmountPaid)
-          : undefined;
 
     await unwrap(updateConsultationAction(consultation.id, {
       date: combineDateAndTime(values.date, values.time),
@@ -153,7 +143,6 @@ export function EditConsultationDialog({
       teeth: values.teeth?.length ? values.teeth : undefined,
       notes: values.notes || undefined,
       amountCharged: chargedNum,
-      amountPaid: paidNum,
       appointmentId: values.appointmentId || null,
       supplies: supplyUsages.length ? supplyUsages : undefined,
     }));
@@ -348,38 +337,10 @@ export function EditConsultationDialog({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>Estado del cobro</Label>
-              <div className="flex w-fit gap-1 rounded-md border p-1">
-                {(["PENDIENTE", "PARCIAL", "COBRADO"] as const).map((choice) => (
-                  <Button
-                    key={choice}
-                    type="button"
-                    size="sm"
-                    variant={paymentChoice === choice ? "secondary" : "ghost"}
-                    onClick={() => setValue("paymentChoice", choice)}
-                  >
-                    {PAYMENT_STATUS_LABELS[choice]}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {paymentChoice === "PARCIAL" && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-partialAmountPaid">Pagado hasta ahora</Label>
-                <Input
-                  id="edit-partialAmountPaid"
-                  type="number"
-                  min={0}
-                  aria-invalid={!!errors.partialAmountPaid}
-                  {...register("partialAmountPaid")}
-                />
-                {errors.partialAmountPaid && (
-                  <p className="text-sm text-destructive">{errors.partialAmountPaid.message}</p>
-                )}
-              </div>
-            )}
+            <PaymentsSection
+              consultationId={consultation.id}
+              amountCharged={consultation.amountCharged}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="edit-notes">Observaciones (opcional)</Label>

@@ -10,7 +10,7 @@ const AMOUNT_ERROR = "Ingresá un monto entero, sin puntos ni comas (ej: 15000)"
  * amount like 8000 as "$ 8.000", so a user re-typing what they just saw
  * would type "8.000", and Number("8.000") silently parses to 8. "." and
  * "," are rejected outright, same fix as the treatment price field. */
-function parseAmount(raw: string | undefined): number | null {
+export function parseAmount(raw: string | undefined): number | null {
   if (!raw) return null;
   if (raw.includes(".") || raw.includes(",")) return null;
   const n = Number(raw);
@@ -138,9 +138,8 @@ export const editConsultationSchema = z
     treatmentOther: z.string().optional(),
     teeth: z.array(z.string()).optional(),
     notes: z.string().optional(),
+    // No payment status here: Editar registers payments one by one.
     amountCharged: z.string().optional(),
-    paymentChoice: z.enum(["PENDIENTE", "PARCIAL", "COBRADO"]).optional(),
-    partialAmountPaid: z.string().optional(),
     appointmentId: z.string().optional(),
   })
   .superRefine((data, ctx) => {

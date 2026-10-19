@@ -19,6 +19,7 @@ model Clinic {
   options       ClinicOption[]
   businessHours BusinessHours[]
   supplies      Supply[]
+  payments      Payment[]
 }
 
 model Patient {
@@ -68,6 +69,9 @@ model Consultation {
   appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
   supplyUsages ConsultationSupply[]
+  // Each payment towards amountCharged; amountPaid above is kept equal to
+  // their sum by the data layer, so balances and filters can read it alone.
+  payments     Payment[]
 
   @@index([clinicId])
   @@index([patientId])
@@ -170,4 +174,28 @@ model ConsultationSupply {
 
   @@index([consultationId])
   @@index([supplyId])
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TRANSFERENCIA
+  TARJETA
+  OTRO
+}
+
+/// One payment towards a consulta (a full payment, or one installment).
+model Payment {
+  id             String        @id @default(cuid())
+  clinicId       String
+  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  consultationId String
+  consultation   Consultation  @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+
+  amount    Int
+  method    PaymentMethod @default(EFECTIVO)
+  paidAt    DateTime
+  createdAt DateTime      @default(now())
+
+  @@index([clinicId, paidAt])
+  @@index([consultationId])
 }

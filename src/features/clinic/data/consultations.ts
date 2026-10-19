@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import type { Consultation, Prisma } from "@prisma/client";
+import { recordPayment } from "@/features/clinic/data/payments";
+import type { Consultation, PaymentMethod, Prisma } from "@prisma/client";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { paymentStatus, type PaymentStatus } from "@/features/clinic/lib/billing";
 
@@ -10,7 +11,10 @@ export type NewConsultationInput = {
   teeth?: string[];
   notes?: string;
   amountCharged?: number;
+  /** What's paid at the visit — recorded as a first payment, dated the
+   * consulta's day, with `paymentMethod` (efectivo when not given). */
   amountPaid?: number;
+  paymentMethod?: PaymentMethod;
   appointmentId?: string;
   supplies?: SupplyUsageInput[];
 };
@@ -248,13 +252,19 @@ export async function createConsultation(
         teeth: input.teeth ?? [],
         notes: input.notes ?? null,
         amountCharged: input.amountCharged ?? null,
-        amountPaid: input.amountPaid ?? 0,
         appointmentId: input.appointmentId ?? null,
         clinicId,
       },
     });
+    if (input.amountPaid) {
+      await recordPayment(tx, clinicId, consultation.id, {
+        amount: input.amountPaid,
+        method: input.paymentMethod ?? "EFECTIVO",
+        paidAt: input.date,
+      });
+    }
     await applySupplyUsages(tx, clinicId, consultation.id, input.supplies);
-    return consultation;
+    return tx.consultation.findUniqueOrThrow({ where: { id: consultation.id } });
   });
 }
 
@@ -263,8 +273,9 @@ export type UpdateConsultationInput = {
   treatment: string;
   teeth?: string[];
   notes?: string;
+  /** What's paid isn't edited here: it moves only through payments
+   * (addPayment / deletePayment), so it keeps its dates and methods. */
   amountCharged?: number;
-  amountPaid?: number;
   /** Like every other field here, the full new value — omitting it (or
    * null) clears the link, the same way omitting notes clears them. */
   appointmentId?: string | null;
@@ -278,7 +289,7 @@ export async function updateConsultation(
   id: string,
   input: UpdateConsultationInput,
 ): Promise<Consultation> {
-  assertValidAmounts(input.amountCharged, input.amountPaid);
+  assertValidAmounts(input.amountCharged, undefined);
   assertValidSupplyUsages(input.supplies);
 
   return prisma.$transaction(async (tx) => {
@@ -286,6 +297,10 @@ export async function updateConsultation(
     if (!existing) {
       throw new Error("Consultation not found for this clinic");
     }
+    if (existing.amountPaid > 0 && input.amountCharged == null) {
+      throw new Error("La consulta ya tiene pagos: no se puede quitar el monto a cobrar");
+    }
+    assertValidAmounts(input.amountCharged, existing.amountPaid);
     if (input.appointmentId) {
       await linkAppointment(tx, clinicId, input.appointmentId, existing.patientId, id);
     }
@@ -298,7 +313,6 @@ export async function updateConsultation(
         teeth: input.teeth ?? [],
         notes: input.notes ?? null,
         amountCharged: input.amountCharged ?? null,
-        amountPaid: input.amountPaid ?? 0,
         appointmentId: input.appointmentId ?? null,
       },
     });

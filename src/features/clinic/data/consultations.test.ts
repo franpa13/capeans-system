@@ -279,45 +279,6 @@ describe("consultations data layer", () => {
     ).rejects.toThrow("Lo pagado no puede superar el monto a cobrar");
   });
 
-  it("updates a consultation's amount and payment", async () => {
-    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
-    const consultation = await createConsultation(clinicA.id, {
-      patientId: patient.id,
-      date: new Date("2026-01-01"),
-      treatment: "Limpieza",
-      amountCharged: 15000,
-      amountPaid: 0,
-    });
-
-    const updated = await updateConsultation(clinicA.id, consultation.id, {
-      date: consultation.date,
-      treatment: consultation.treatment,
-      amountCharged: 15000,
-      amountPaid: 15000,
-    });
-
-    expect(updated.amountPaid).toBe(15000);
-  });
-
-  it("refuses amountPaid greater than amountCharged on update", async () => {
-    const patient = await createPatient(clinicA.id, { name: "Paciente A", phone: "111" });
-    const consultation = await createConsultation(clinicA.id, {
-      patientId: patient.id,
-      date: new Date("2026-01-01"),
-      treatment: "Limpieza",
-      amountCharged: 10000,
-    });
-
-    await expect(
-      updateConsultation(clinicA.id, consultation.id, {
-        date: consultation.date,
-        treatment: consultation.treatment,
-        amountCharged: 10000,
-        amountPaid: 50000,
-      }),
-    ).rejects.toThrow("Lo pagado no puede superar el monto a cobrar");
-  });
-
   it("changing a treatment's list price later does not change a past consultation's amountCharged", async () => {
     // amountCharged is a snapshot taken at save time, not a live lookup —
     // there's no FK to ClinicOption at all. This test proves it by
