@@ -33,6 +33,7 @@ export function PatientDetailView({
   treatmentPrices,
   supplyOptions,
   balance,
+  noShows,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
@@ -40,6 +41,8 @@ export function PatientDetailView({
   treatmentPrices: Record<string, number>;
   supplyOptions: SupplyOption[];
   balance: number;
+  /** Turnos this patient didn't come to. */
+  noShows: number;
 }) {
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
@@ -114,6 +117,11 @@ export function PatientDetailView({
         />
         {balance > 0 && (
           <p className="text-sm font-medium text-destructive">Debe: {formatCurrency(balance)}</p>
+        )}
+        {noShows > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Faltó a {noShows} {noShows === 1 ? "turno" : "turnos"}
+          </p>
         )}
         <MedicalAlert alerts={alerts} />
       </div>

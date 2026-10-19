@@ -3,7 +3,16 @@
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, CalendarX2, CheckCircle2, Save, Trash2, UserPlus } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarX2,
+  CheckCircle2,
+  Save,
+  Trash2,
+  Undo2,
+  UserPlus,
+  UserX,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -196,19 +205,22 @@ export function AppointmentDialog({
     }
   };
 
-  const onCancel = async () => {
+  const changeStatus = async (status: Appointment["status"], failure: string) => {
     if (!appointment) return;
     setSubmitError(null);
     try {
-      await unwrap(updateAppointmentAction(appointment.id, { status: "CANCELLED" }));
+      await unwrap(updateAppointmentAction(appointment.id, { status }));
       onOpenChange(false);
       onSaved?.();
     } catch (error) {
-      setSubmitError(
-        error instanceof Error ? error.message : "No se pudo cancelar el turno",
-      );
+      setSubmitError(error instanceof Error ? error.message : failure);
     }
   };
+
+  const onCancel = () => changeStatus("CANCELLED", "No se pudo cancelar el turno");
+  const onNoShow = () => changeStatus("NO_SHOW", "No se pudo marcar el turno");
+  // Marking "No vino" by mistake is easy — this puts the turno back.
+  const onUndoNoShow = () => changeStatus("CONFIRMED", "No se pudo deshacer");
 
   const onComplete = async () => {
     if (!appointment) return;
@@ -488,12 +500,32 @@ export function AppointmentDialog({
                         type="button"
                         variant="outline"
                         disabled={isSubmitting}
+                        onClick={onNoShow}
+                      >
+                        <UserX />
+                        No vino
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitting}
                         onClick={onCancel}
                       >
                         <CalendarX2 />
                         Cancelar turno
                       </Button>
                     </>
+                  )}
+                  {appointment?.status === "NO_SHOW" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSubmitting}
+                      onClick={onUndoNoShow}
+                    >
+                      <Undo2 />
+                      Deshacer “No vino”
+                    </Button>
                   )}
                   <Button
                     type="button"

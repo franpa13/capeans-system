@@ -21,6 +21,7 @@ const STATUS_LABELS: Record<Appointment["status"], string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Completado",
+  NO_SHOW: "No vino",
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

@@ -15,6 +15,7 @@ const OPTIONS = [
   { value: "CONFIRMED", label: "Turnos confirmados" },
   { value: "CANCELLED", label: "Turnos cancelados" },
   { value: "COMPLETED", label: "Turnos completados" },
+  { value: "NO_SHOW", label: "Turnos ausentes" },
   { value: ALL_STATUSES, label: "Todos los turnos" },
 ] as const;
 

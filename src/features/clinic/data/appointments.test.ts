@@ -7,6 +7,7 @@ import {
   getAppointment,
   getAppointments,
   getLinkableAppointments,
+  countNoShows,
   markReminderSent,
   updateAppointment,
 } from "@/features/clinic/data/appointments";
@@ -359,5 +360,49 @@ describe("turno reminders", () => {
       "Appointment not found for this clinic",
     );
     expect((await getAppointment(clinicB.id, appointment.id))!.reminderSentAt).toBeNull();
+  });
+});
+
+describe("no-shows", () => {
+  it("frees the slot of a turno the patient didn't come to", async () => {
+    const startsAt = new Date("2026-02-02T10:00:00Z");
+    const first = await createAppointment(clinicA.id, { startsAt });
+    await updateAppointment(clinicA.id, first.id, { status: "NO_SHOW" });
+    await expect(createAppointment(clinicA.id, { startsAt })).resolves.toBeDefined();
+  });
+
+  it("isn't offered for linking to a consulta", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Ana", phone: "1" });
+    const appointment = await createAppointment(clinicA.id, {
+      patientId: patient.id,
+      startsAt: new Date(2026, 1, 2, 10, 0),
+    });
+    await updateAppointment(clinicA.id, appointment.id, { status: "NO_SHOW" });
+    await expect(getLinkableAppointments(clinicA.id, patient.id, "2026-02-02")).resolves.toEqual([]);
+    await expect(
+      createConsultation(clinicA.id, {
+        patientId: patient.id,
+        date: new Date(2026, 1, 2, 10, 0),
+        treatment: "Limpieza",
+        appointmentId: appointment.id,
+      }),
+    ).rejects.toThrow("No se puede vincular un turno al que el paciente no vino");
+  });
+
+  it("counts a patient's no-shows, only in their own clinic", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Ana", phone: "1" });
+    for (const [hour, status] of [
+      [9, "NO_SHOW"],
+      [10, "NO_SHOW"],
+      [11, "COMPLETED"],
+    ] as const) {
+      const a = await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: new Date(2026, 1, 2, hour, 0),
+      });
+      await updateAppointment(clinicA.id, a.id, { status });
+    }
+    await expect(countNoShows(clinicA.id, patient.id)).resolves.toBe(2);
+    await expect(countNoShows(clinicB.id, patient.id)).resolves.toBe(0);
   });
 });

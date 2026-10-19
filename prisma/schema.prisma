@@ -77,6 +77,7 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+  NO_SHOW // el paciente no vino
 }
 
 model Appointment {

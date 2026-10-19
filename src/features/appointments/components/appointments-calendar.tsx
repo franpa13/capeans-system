@@ -84,6 +84,7 @@ const STATUS_STYLES: Record<Appointment["status"], string> = {
   CONFIRMED: "bg-primary/15 text-accent-foreground border-primary/30 dark:bg-primary/25 dark:border-primary/40",
   CANCELLED: "bg-muted text-muted-foreground border-border line-through opacity-60",
   COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
+  NO_SHOW: "bg-destructive/10 text-destructive border-destructive/30 opacity-80",
 };
 
 export function AppointmentsCalendar({

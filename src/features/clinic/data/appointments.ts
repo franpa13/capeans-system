@@ -14,6 +14,10 @@ export type NewAppointmentInput = {
 
 export type UpdateAppointmentInput = Partial<NewAppointmentInput>;
 
+/** Turnos that don't take up their slot anymore: a cancelled one, or one
+ * the patient didn't come to — the slot can be given to someone else. */
+const NOT_HAPPENING: AppointmentStatus[] = ["CANCELLED", "NO_SHOW"];
+
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
@@ -37,7 +41,7 @@ async function findConflict(
   const candidates = await db.appointment.findMany({
     where: {
       clinicId,
-      status: { not: "CANCELLED" },
+      status: { notIn: NOT_HAPPENING },
       startsAt: {
         gte: new Date(startsAt.getTime() - MAX_CONFLICT_LOOKBACK_MS),
         lt: endsAt,
@@ -96,7 +100,7 @@ export async function getLinkableAppointments(
     where: {
       clinicId,
       patientId,
-      status: { not: "CANCELLED" },
+      status: { notIn: NOT_HAPPENING },
       startsAt: { gte: from, lt: to },
       OR: [
         { consultation: { is: null } },
@@ -171,7 +175,7 @@ export async function updateAppointment(
   const durationMinutes = input.durationMinutes ?? existing.durationMinutes;
   const status = input.status ?? existing.status;
 
-  if (status !== "CANCELLED") {
+  if (!NOT_HAPPENING.includes(status)) {
     const conflict = await findConflict(db, clinicId, startsAt, durationMinutes, id);
     if (conflict) {
       throw new Error("Ya hay un turno agendado en ese horario");
@@ -206,4 +210,9 @@ export async function markReminderSent(clinicId: string, id: string): Promise<Ap
     throw new Error("Appointment not found for this clinic");
   }
   return (await prisma.appointment.findFirst({ where: { id, clinicId } }))!;
+}
+
+/** How many turnos this patient didn't come to — shown on their ficha. */
+export async function countNoShows(clinicId: string, patientId: string): Promise<number> {
+  return prisma.appointment.count({ where: { clinicId, patientId, status: "NO_SHOW" } });
 }

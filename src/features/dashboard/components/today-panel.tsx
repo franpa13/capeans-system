@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   MessageCircle,
+  UserX,
   Wallet,
 } from "lucide-react";
 import type { Appointment, Supply } from "@prisma/client";
@@ -184,7 +185,12 @@ export function TodayPanel({
                         )}
                       </div>
                     </div>
-                    {appointment.consultation ? (
+                    {appointment.status === "NO_SHOW" ? (
+                      <span className="flex shrink-0 items-center gap-1.5 text-sm text-destructive">
+                        <UserX className="size-4" />
+                        No vino
+                      </span>
+                    ) : appointment.consultation ? (
                       <span className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
                         <ClipboardCheck className="size-4" />
                         Consulta registrada

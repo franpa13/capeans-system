@@ -36,6 +36,9 @@ async function linkAppointment(
   if (appointment.status === "CANCELLED") {
     throw new Error("No se puede vincular un turno cancelado");
   }
+  if (appointment.status === "NO_SHOW") {
+    throw new Error("No se puede vincular un turno al que el paciente no vino");
+  }
   if (appointment.patientId !== patientId) {
     throw new Error("El turno es de otro paciente");
   }

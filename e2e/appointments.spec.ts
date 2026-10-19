@@ -473,3 +473,54 @@ test("a cancelled turno no longer offers to cancel or complete it, only delete",
   await expect(dialog.getByRole("button", { name: "Cancelar turno" })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Eliminar" })).toBeVisible();
 });
+
+test("a turno can be marked 'No vino' (and undone), and the ficha counts the absences", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Ausente E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 7777-8888");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+
+  await page.goto("/dashboard/turnos");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
+
+  await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("button", { name: "No vino" }).click();
+  await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
+  // Like a cancelled one, it leaves the default confirmed-only view…
+  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+
+  // …and has its own filter.
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Turnos ausentes", exact: true }).click();
+  await expect(page).toHaveURL(/estado=NO_SHOW/);
+  await expect(page.getByRole("button", { name: patientName })).toBeVisible();
+
+  // The ficha counts it.
+  await page.goto("/dashboard/pacientes");
+  await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+  await page.getByRole("link", { name: patientName }).first().click();
+  await expect(page.getByText("Faltó a 1 turno")).toBeVisible();
+
+  // A mistake can be undone: back to confirmed, and the count goes away.
+  await page.goto("/dashboard/turnos?estado=NO_SHOW");
+  await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("button", { name: "Deshacer “No vino”" }).click();
+  await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+
+  await page.goto("/dashboard/pacientes");
+  await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+  await page.getByRole("link", { name: patientName }).first().click();
+  await expect(page.getByText(/Faltó a/)).toHaveCount(0);
+});
