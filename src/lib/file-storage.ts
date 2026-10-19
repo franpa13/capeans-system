@@ -5,8 +5,11 @@ import path from "node:path";
 /** Patient files (radiografías, fotos, PDFs) live on the server's disk,
  * under UPLOADS_DIR (a Docker volume in production, included in the
  * backup), one folder per clinic. */
+// The turbopackIgnore comments below tell the build these are runtime data
+// paths, not source files to bundle — otherwise it traces (and ships) the
+// whole project into the standalone server output.
 function uploadsDir() {
-  return path.resolve(process.env.UPLOADS_DIR ?? "uploads");
+  return path.resolve(/* turbopackIgnore: true */ process.env.UPLOADS_DIR ?? "uploads");
 }
 
 /** Only these are accepted, recognized by their first bytes — never by the
@@ -30,7 +33,7 @@ export function detectFileType(buffer: Buffer): StoredFileType | null {
  * the uploads folder ("../" tricks). */
 function resolveKey(key: string) {
   const root = uploadsDir();
-  const full = path.resolve(root, key);
+  const full = path.resolve(/* turbopackIgnore: true */ root, key);
   if (!full.startsWith(root + path.sep)) throw new Error("Archivo inválido");
   return full;
 }
@@ -38,15 +41,15 @@ function resolveKey(key: string) {
 export async function storeFile(clinicId: string, buffer: Buffer): Promise<string> {
   const key = `${clinicId}/${randomUUID()}`;
   const full = resolveKey(key);
-  await mkdir(path.dirname(full), { recursive: true });
-  await writeFile(full, buffer);
+  await mkdir(/* turbopackIgnore: true */ path.dirname(full), { recursive: true });
+  await writeFile(/* turbopackIgnore: true */ full, buffer);
   return key;
 }
 
 export async function readStoredFile(key: string): Promise<Buffer> {
-  return readFile(resolveKey(key));
+  return readFile(/* turbopackIgnore: true */ resolveKey(key));
 }
 
 export async function removeStoredFile(key: string): Promise<void> {
-  await rm(resolveKey(key), { force: true });
+  await rm(/* turbopackIgnore: true */ resolveKey(key), { force: true });
 }
