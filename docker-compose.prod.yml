@@ -1,0 +1,80 @@
+# Producción. Uso:
+#   1. Copiá .env.production.example a .env y completá las claves.
+#   2. docker compose -f docker-compose.prod.yml up -d --build
+# Ver docs/publicar-y-copias.md.
+#
+# (docker-compose.yml es solo para desarrollo: tiene una contraseña fija y
+# deja la base abierta en el puerto 5433.)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dentia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: dentia
+    # Sin "ports": la base solo es accesible desde los otros servicios.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dentia -d dentia"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Aplica las migraciones pendientes y termina; la app arranca después.
+  migrate:
+    build: .
+    command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://dentia:${POSTGRES_PASSWORD}@postgres:5432/dentia
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://dentia:${POSTGRES_PASSWORD}@postgres:5432/dentia
+      UPLOADS_DIR: /data/uploads
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?Falta la clave de Clerk}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?Falta la clave secreta de Clerk}
+      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:?Falta el secreto del webhook de Clerk}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Copia diaria de la base y de los archivos a ./backups (en el servidor).
+  # Desde ahí conviene sincronizarla a otro lugar: ver la guía.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    command: ["/scripts/backup-loop.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: dentia
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: dentia
+      BACKUP_DIR: /backups
+      UPLOADS_DIR: /data/uploads
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+      # Read-write so scripts/restore.sh can put files back from a copy.
+      - uploads:/data/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  uploads:
