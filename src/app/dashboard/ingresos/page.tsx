@@ -1,5 +1,6 @@
 import { Banknote } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ExcelDownloadButton } from "@/features/excel/components/excel-download-button";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getPayments } from "@/features/clinic/data/payments";
 import { addDays, startOfDay } from "@/features/appointments/lib/week";
@@ -29,6 +30,7 @@ export default async function IngresosPage({
         title="Ingresos"
         description="Lo cobrado por día y por mes, y con qué medio de pago."
         icon={Banknote}
+        action={<ExcelDownloadButton path="/api/excel/ingresos" />}
       />
       <IncomeView
         monthStart={monthStart}

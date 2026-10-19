@@ -1,5 +1,7 @@
 import { Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ExcelDownloadButton } from "@/features/excel/components/excel-download-button";
+import { ImportExcelDialog } from "@/features/excel/components/import-excel-dialog";
 import { PatientsView } from "@/features/patients/components/patients-view";
 import { NewPatientDialog } from "@/features/patients/components/new-patient-dialog";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
@@ -28,7 +30,13 @@ export default async function PacientesPage({
         title="Pacientes"
         description="Buscá pacientes existentes o cargá uno nuevo."
         icon={Users}
-        action={<NewPatientDialog insuranceOptions={insuranceLabels} />}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <ImportExcelDialog kind="pacientes" />
+            <ExcelDownloadButton path="/api/excel/pacientes" />
+            <NewPatientDialog insuranceOptions={insuranceLabels} />
+          </div>
+        }
       />
 
       <PatientsView patients={patients} insuranceOptions={insuranceLabels} />

@@ -1,5 +1,6 @@
 import { ClipboardList } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ExcelDownloadButton } from "@/features/excel/components/excel-download-button";
 import { ConsultationsView } from "@/features/consultations/components/consultations-view";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
@@ -53,13 +54,16 @@ export default async function ConsultasPage({
         description="Historial de todo lo realizado a los pacientes."
         icon={ClipboardList}
         action={
-          <NewConsultationDialog
-            patients={patients}
-            treatmentOptions={treatmentLabels}
-            treatmentPrices={treatmentPrices}
-            insuranceOptions={insuranceLabels}
-            supplyOptions={supplyOptions}
-          />
+          <div className="flex flex-wrap gap-2">
+            <ExcelDownloadButton path="/api/excel/consultas" />
+            <NewConsultationDialog
+              patients={patients}
+              treatmentOptions={treatmentLabels}
+              treatmentPrices={treatmentPrices}
+              insuranceOptions={insuranceLabels}
+              supplyOptions={supplyOptions}
+            />
+          </div>
         }
       />
 

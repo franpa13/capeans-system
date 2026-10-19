@@ -83,8 +83,11 @@ export function OptionListManager({
   title,
   description,
   options,
+  actions,
 }: {
   category: OptionCategory;
+  /** Extra buttons next to "Nuevo…" (e.g. Importar Excel). */
+  actions?: React.ReactNode;
   title: string;
   description: string;
   options: Option[];
@@ -132,10 +135,13 @@ export function OptionListManager({
           ) : (
             <span />
           )}
-          <Button type="button" onClick={() => setCreating(true)}>
-            <Plus />
-            {nouns.create}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {actions}
+            <Button type="button" onClick={() => setCreating(true)}>
+              <Plus />
+              {nouns.create}
+            </Button>
+          </div>
         </div>
 
         {options.length === 0 ? (
