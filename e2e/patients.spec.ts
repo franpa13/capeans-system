@@ -177,3 +177,51 @@ test("a patient's medical history is saved and warned about in the ficha and the
   await page.getByRole("link", { name: patientName }).first().click();
   await expect(page.getByRole("alert").filter({ hasText: "Antecedentes" }).getByText("Diabetes")).toHaveCount(0);
 });
+
+test("radiografías and fotos can be uploaded to the ficha, viewed and deleted; disguised files are refused", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Rx E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 0000-1111");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+  await page.getByRole("link", { name: patientName }).first().click();
+
+  const files = page.getByRole("region", { name: "Radiografías y fotos" });
+  await expect(files.getByText("Todavía no hay radiografías ni fotos")).toBeVisible();
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await files.getByLabel("Subir radiografías o fotos").setInputFiles([
+    { name: "panoramica.png", mimeType: "image/png", buffer: png },
+    { name: "truco.png", mimeType: "image/png", buffer: Buffer.from("<html><script>alert(1)</script>") },
+  ]);
+  const image = files.getByRole("img", { name: "panoramica.png" });
+  await expect(image).toBeVisible();
+  await expect(
+    files.getByText("truco.png: Solo se pueden subir imágenes (JPG, PNG, WEBP, GIF) o archivos PDF"),
+  ).toBeVisible();
+
+  // The image is served to this clinic, as the type detected on upload.
+  const src = (await image.getAttribute("src"))!;
+  const response = await page.request.get(src);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("image/png");
+  expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+
+  await files.getByRole("button", { name: "Borrar panoramica.png" }).click();
+  await page.getByRole("button", { name: "Borrar", exact: true }).click();
+  await expect(image).toHaveCount(0);
+  expect((await page.request.get(src)).status()).toBe(404);
+});

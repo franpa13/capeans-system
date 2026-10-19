@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Patient, Prisma } from "@prisma/client";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { sanitizeConditions } from "@/features/clinic/lib/medical";
+import { removePatientFilesFromDisk } from "@/features/clinic/data/patient-files";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -98,5 +99,7 @@ export async function updatePatient(
 }
 
 export async function deletePatient(clinicId: string, id: string): Promise<void> {
+  // Their PatientFile rows cascade with them; the files on disk don't.
+  await removePatientFilesFromDisk(clinicId, id);
   await prisma.patient.deleteMany({ where: { id, clinicId } });
 }

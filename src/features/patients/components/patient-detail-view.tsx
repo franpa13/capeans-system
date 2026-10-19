@@ -15,6 +15,7 @@ import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/to
 import { isValidToothFdi } from "@/features/clinic/lib/odontogram";
 import { medicalAlerts } from "@/features/clinic/lib/medical";
 import { MedicalAlert } from "@/features/patients/components/medical-alert";
+import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -34,6 +35,7 @@ export function PatientDetailView({
   supplyOptions,
   balance,
   noShows,
+  files,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
@@ -43,6 +45,7 @@ export function PatientDetailView({
   balance: number;
   /** Turnos this patient didn't come to. */
   noShows: number;
+  files: PatientFileItem[];
 }) {
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
@@ -161,6 +164,8 @@ export function PatientDetailView({
           <ToothChart3D history={toothHistory} />
         </CardContent>
       </Card>
+
+      <PatientFiles patientId={patient.id} files={files} />
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">Historial de consultas</h2>

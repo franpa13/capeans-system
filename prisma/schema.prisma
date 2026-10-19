@@ -20,6 +20,7 @@ model Clinic {
   businessHours BusinessHours[]
   supplies      Supply[]
   payments      Payment[]
+  patientFiles  PatientFile[]
 }
 
 model Patient {
@@ -43,6 +44,7 @@ model Patient {
 
   consultations Consultation[]
   appointments  Appointment[]
+  files         PatientFile[]
 
   @@index([clinicId])
 }
@@ -198,4 +200,22 @@ model Payment {
 
   @@index([clinicId, paidAt])
   @@index([consultationId])
+}
+
+/// A radiografía, foto or PDF attached to a patient. The bytes live on disk
+/// (lib/file-storage.ts) under `storageKey`; this row is what's listed.
+model PatientFile {
+  id         String   @id @default(cuid())
+  clinicId   String
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  fileName   String
+  mimeType   String
+  size       Int
+  storageKey String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([clinicId, patientId])
 }

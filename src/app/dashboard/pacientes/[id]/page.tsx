@@ -6,6 +6,7 @@ import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 import { outstandingBalance } from "@/features/clinic/lib/billing";
 import { getSupplies } from "@/features/clinic/data/supplies";
 import { countNoShows } from "@/features/clinic/data/appointments";
+import { getPatientFiles } from "@/features/clinic/data/patient-files";
 
 export default async function PacienteDetailPage({
   params,
@@ -24,6 +25,7 @@ export default async function PacienteDetailPage({
   const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const balance = outstandingBalance(consultations);
   const noShows = clinic ? await countNoShows(clinic.id, id) : 0;
+  const files = clinic && patient ? await getPatientFiles(clinic.id, id) : [];
 
   return (
     <PatientDetailView
@@ -34,6 +36,12 @@ export default async function PacienteDetailPage({
       supplyOptions={supplyOptions}
       balance={balance}
       noShows={noShows}
+      files={files.map((f) => ({
+        id: f.id,
+        fileName: f.fileName,
+        mimeType: f.mimeType,
+        createdAt: f.createdAt,
+      }))}
     />
   );
 }
