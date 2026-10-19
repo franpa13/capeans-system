@@ -600,3 +600,36 @@ test("adding an insumo that's already in the list replaces its quantity instead 
   await expect(dialog.getByText(new RegExp(`${supplyName} × 5 `))).toBeVisible();
   await expect(dialog.getByText(new RegExp(`${supplyName} × 8 `))).toHaveCount(0);
 });
+
+test("the ficha's odontograma shows, per tooth, which consultas treated it and when", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/consultas");
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
+  const patientName = `Paciente Diente E2E ${Date.now()}`;
+  await page.fill("#newPatientName", patientName);
+  await page.fill("#newPatientPhone", "11 7777-1616");
+  await page.locator("#teeth").click();
+  await page.getByRole("option", { name: "16", exact: true }).click();
+  await page.getByRole("combobox").nth(3).click();
+  await page.getByRole("option", { name: "Limpieza" }).click();
+  await page.fill("#notes", "Caries oclusal chica");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await createConsultationAndFindIt(page, patientName);
+
+  await page.locator("tbody tr", { hasText: patientName }).getByRole("link", { name: patientName }).click();
+  const odontogram = page.getByRole("region", { name: "Odontograma" });
+  await expect(odontogram.getByText("Tocá un diente verde o elegí una pieza")).toBeVisible();
+
+  await odontogram.getByRole("button", { name: "Pieza 16" }).click();
+  const history = odontogram.getByRole("region", { name: "Pieza 16" });
+  const entry = history.getByRole("listitem").filter({ hasText: "Limpieza" });
+  await expect(entry).toContainText("Caries oclusal chica");
+  await expect(entry).toContainText(new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }));
+
+  await entry.getByRole("button", { name: "Ver consulta" }).click();
+  await expect(page.getByRole("dialog", { name: "Detalle de la consulta" })).toBeVisible();
+});

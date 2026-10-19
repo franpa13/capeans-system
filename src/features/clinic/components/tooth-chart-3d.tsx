@@ -8,7 +8,12 @@ import { OrbitControls, Bounds, Center, useBounds, useGLTF, useProgress } from "
 import { ALL_TEETH, LOWER_ARCH, UPPER_ARCH, cameraFocusFor } from "@/features/clinic/lib/odontogram";
 import { findMeshIslands } from "@/features/clinic/lib/mesh-islands";
 
-export type ToothHistoryEntry = { date: Date; treatment: string };
+export type ToothHistoryEntry = {
+  date: Date;
+  treatment: string;
+  consultationId?: string;
+  notes?: string | null;
+};
 export type ToothHistory = Record<string, ToothHistoryEntry[]>;
 
 const COLOR_TREATED = "#4ade80";
@@ -133,7 +138,17 @@ function extractToothGeometries(scene: THREE.Object3D): Map<string, THREE.Buffer
   return geometries;
 }
 
-function MouthModel({ paintedTeeth }: { paintedTeeth: Map<string, string> }) {
+// A pointer that moved more than this between press and release was
+// rotating the mouth, not tapping a tooth.
+const MAX_CLICK_DRAG_PX = 5;
+
+function MouthModel({
+  paintedTeeth,
+  onToothClick,
+}: {
+  paintedTeeth: Map<string, string>;
+  onToothClick?: (fdi: string) => void;
+}) {
   const { scene } = useGLTF("/teeth/teeth.glb");
   const toothGeometries = useMemo(() => extractToothGeometries(scene), [scene]);
 
@@ -144,7 +159,20 @@ function MouthModel({ paintedTeeth }: { paintedTeeth: Map<string, string> }) {
         const geometry = toothGeometries.get(fdi);
         if (!geometry) return null;
         return (
-          <mesh key={fdi} geometry={geometry}>
+          <mesh
+            key={fdi}
+            geometry={geometry}
+            onClick={
+              onToothClick &&
+              ((e) => {
+                if (e.delta > MAX_CLICK_DRAG_PX) return;
+                e.stopPropagation();
+                onToothClick(fdi);
+              })
+            }
+            onPointerOver={onToothClick && (() => (document.body.style.cursor = "pointer"))}
+            onPointerOut={onToothClick && (() => (document.body.style.cursor = ""))}
+          >
             <meshStandardMaterial color={color} />
           </mesh>
         );
@@ -211,11 +239,14 @@ export function ToothChart3D({
   selectedTeeth = [],
   autoFocus = true,
   className = "h-112",
+  onToothClick,
 }: {
   history?: ToothHistory;
   selectedTeeth?: string[];
   autoFocus?: boolean;
   className?: string;
+  /** Makes the painted (treated/selected) teeth tappable. */
+  onToothClick?: (fdi: string) => void;
 }) {
   const focusFdi = autoFocus && selectedTeeth.length === 1 ? selectedTeeth[0] : null;
 
@@ -251,7 +282,7 @@ export function ToothChart3D({
               re-trigger Bounds' own fit and silently cancel our explicit
               zoom below. Turning it off while focused freezes that out. */}
           <Bounds fit clip observe={!focusFdi} margin={1.3}>
-            <MouthModel paintedTeeth={paintedTeeth} />
+            <MouthModel paintedTeeth={paintedTeeth} onToothClick={onToothClick} />
             <CameraFocus fdi={focusFdi} />
           </Bounds>
         </Suspense>

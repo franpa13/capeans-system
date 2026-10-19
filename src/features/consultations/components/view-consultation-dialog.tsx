@@ -38,7 +38,8 @@ export function ViewConsultationDialog({
   patientName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: () => void;
+  /** Omit to show the detail without an Editar button. */
+  onEdit?: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,12 +119,14 @@ export function ViewConsultationDialog({
           autoFocus={false}
         />
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onEdit}>
-            <Pencil />
-            Editar
-          </Button>
-        </DialogFooter>
+        {onEdit && (
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onEdit}>
+              <Pencil />
+              Editar
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

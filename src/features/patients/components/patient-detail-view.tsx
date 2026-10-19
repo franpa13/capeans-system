@@ -5,16 +5,17 @@ import Link from "next/link";
 import { ArrowLeft, Info, User } from "lucide-react";
 import type { Consultation, Patient } from "@prisma/client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { formatCurrency, formatDate } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
-import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
+import type { ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { isValidToothFdi } from "@/features/clinic/lib/odontogram";
 import { medicalAlerts } from "@/features/clinic/lib/medical";
 import { MedicalAlert } from "@/features/patients/components/medical-alert";
+import { OdontogramCard } from "@/features/patients/components/odontogram-card";
 import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
@@ -52,7 +53,12 @@ export function PatientDetailView({
     for (const c of consultations) {
       for (const tooth of c.teeth) {
         if (isValidToothFdi(tooth)) {
-          (history[tooth] ??= []).push({ date: c.date, treatment: c.treatment });
+          (history[tooth] ??= []).push({
+            date: c.date,
+            treatment: c.treatment,
+            consultationId: c.id,
+            notes: c.notes,
+          });
         }
       }
     }
@@ -152,18 +158,11 @@ export function PatientDetailView({
         )}
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Odontograma</CardTitle>
-          <CardDescription>
-            Vista de la boca del paciente. En verde, los dientes con
-            consultas registradas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ToothChart3D history={toothHistory} />
-        </CardContent>
-      </Card>
+      <OdontogramCard
+        history={toothHistory}
+        consultations={consultations}
+        patientName={patient.name}
+      />
 
       <PatientFiles patientId={patient.id} files={files} />
 
