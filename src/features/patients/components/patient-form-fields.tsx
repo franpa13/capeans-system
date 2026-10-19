@@ -5,6 +5,7 @@ import { Controller, type Control, type FieldErrors, type UseFormRegister } from
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InsuranceField } from "@/features/clinic/components/insurance-field";
+import { MEDICAL_CONDITIONS } from "@/features/clinic/lib/medical";
 import type { PatientValues } from "@/features/patients/lib/schema";
 
 export function PatientFormFields({
@@ -103,13 +104,63 @@ export function PatientFormFields({
       />
 
       <div className="space-y-2">
-        <Label htmlFor="allergies">Alergias / antecedentes</Label>
-        <Input
-          id="allergies"
-          placeholder="Ej: alergia a penicilina"
-          {...register("allergies")}
-        />
+        <Label htmlFor="insuranceNumber">N° de afiliado</Label>
+        <Input id="insuranceNumber" placeholder="Ej: 123456/01" {...register("insuranceNumber")} />
       </div>
+
+      <fieldset className="space-y-3 rounded-md border p-3 sm:col-span-2">
+        <legend className="px-1 text-sm font-medium">Antecedentes médicos</legend>
+
+        <div className="space-y-2">
+          <Label htmlFor="allergies">Alergias</Label>
+          <Input
+            id="allergies"
+            placeholder="Ej: penicilina, látex"
+            {...register("allergies")}
+          />
+        </div>
+
+        <Controller
+          control={control}
+          name="medicalConditions"
+          render={({ field }) => (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {MEDICAL_CONDITIONS.map((condition) => {
+                const checked = field.value.includes(condition.value);
+                return (
+                  <label
+                    key={condition.value}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={checked}
+                      onChange={() =>
+                        field.onChange(
+                          checked
+                            ? field.value.filter((v) => v !== condition.value)
+                            : [...field.value, condition.value],
+                        )
+                      }
+                    />
+                    {condition.label}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        />
+
+        <div className="space-y-2">
+          <Label htmlFor="medications">Medicación habitual</Label>
+          <Input
+            id="medications"
+            placeholder="Ej: Sintrom 4mg, Enalapril"
+            {...register("medications")}
+          />
+        </div>
+      </fieldset>
     </div>
   );
 }

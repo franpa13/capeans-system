@@ -41,6 +41,8 @@ import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
 import { unwrap } from "@/lib/action-result";
+import { medicalAlerts } from "@/features/clinic/lib/medical";
+import { MedicalAlert } from "@/features/patients/components/medical-alert";
 import { LinkedAppointmentField } from "@/features/consultations/components/linked-appointment-field";
 import {
   SuppliesUsedField,
@@ -53,7 +55,14 @@ import {
   type ConsultationValues,
 } from "@/features/consultations/lib/schema";
 
-type PatientOption = { id: string; name: string };
+/** Allergies/conditions are optional: callers that have them (full
+ * Patient rows) get the medical warning for the chosen patient. */
+type PatientOption = {
+  id: string;
+  name: string;
+  allergies?: string | null;
+  medicalConditions?: string[];
+};
 
 /** The turno this consulta is being registered for, when opened from the
  * agenda — prefills its date/time, links it, and carries its motivo over
@@ -74,6 +83,7 @@ export function NewConsultationDialog({
   patients = [],
   fixedPatientId,
   fixedPatientName,
+  fixedPatientAlerts,
   treatmentOptions,
   treatmentPrices = {},
   insuranceOptions = [],
@@ -86,6 +96,9 @@ export function NewConsultationDialog({
   patients?: PatientOption[];
   fixedPatientId?: string;
   fixedPatientName?: string;
+  /** Medical warnings for the fixed patient, when `patients` doesn't
+   * include them (e.g. opened from the patient's own ficha). */
+  fixedPatientAlerts?: string[];
   treatmentOptions: string[];
   treatmentPrices?: Record<string, number>;
   insuranceOptions?: string[];
@@ -141,6 +154,15 @@ export function NewConsultationDialog({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const patientId = watch("patientId");
+  const chosenPatient = patients.find((p) => p.id === (fixedPatientId ?? patientId));
+  const alerts =
+    fixedPatientAlerts ??
+    (chosenPatient
+      ? medicalAlerts({
+          allergies: chosenPatient.allergies ?? null,
+          medicalConditions: chosenPatient.medicalConditions ?? [],
+        })
+      : []);
   const date = watch("date");
   const appointmentId = watch("appointmentId") ?? "";
   // A brand-new patient can't have turnos yet, so there's nothing to link.
@@ -329,6 +351,8 @@ export function NewConsultationDialog({
                 )}
               </div>
             )}
+
+            <MedicalAlert alerts={alerts} />
 
             {isNewPatient && (
               <div className="grid gap-4 rounded-md border p-3 sm:grid-cols-2">

@@ -114,3 +114,30 @@ describe("patients data layer", () => {
     expect(updated.allergies).toBeNull();
   });
 });
+
+describe("medical history", () => {
+  it("stores the n° de afiliado, medication and known medical conditions", async () => {
+    const patient = await createPatient(clinicA.id, {
+      name: "Ana",
+      phone: "11 1111-1111",
+      insuranceNumber: "123456/01",
+      medications: "Sintrom 4mg",
+      medicalConditions: ["anticoagulantes", "hipertension"],
+    });
+    expect(patient.insuranceNumber).toBe("123456/01");
+    expect(patient.medications).toBe("Sintrom 4mg");
+    expect(patient.medicalConditions).toEqual(["anticoagulantes", "hipertension"]);
+  });
+
+  it("drops conditions it doesn't know and clears them on update", async () => {
+    const patient = await createPatient(clinicA.id, {
+      name: "Ana",
+      phone: "11 1111-1111",
+      medicalConditions: ["diabetes", "inventada"],
+    });
+    expect(patient.medicalConditions).toEqual(["diabetes"]);
+
+    const updated = await updatePatient(clinicA.id, patient.id, { name: "Ana", phone: "11 1111-1111" });
+    expect(updated.medicalConditions).toEqual([]);
+  });
+});

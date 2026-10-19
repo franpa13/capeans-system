@@ -79,7 +79,13 @@ export default async function DashboardPage() {
         appointments={appointmentsToday}
         reminderAppointments={reminderAppointments}
         clinicName={clinic?.name ?? ""}
-        patients={patients.map((p) => ({ id: p.id, name: p.name, phone: p.phone }))}
+        patients={patients.map((p) => ({
+          id: p.id,
+          name: p.name,
+          phone: p.phone,
+          allergies: p.allergies,
+          medicalConditions: p.medicalConditions,
+        }))}
         debts={debts}
         supplies={supplies}
         insuranceOptions={insuranceOptionRows.map((o) => o.label)}

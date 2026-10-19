@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Patient, Prisma } from "@prisma/client";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
+import { sanitizeConditions } from "@/features/clinic/lib/medical";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -12,7 +13,11 @@ export type NewPatientInput = {
   birthDate?: Date;
   address?: string;
   insurance?: string;
+  insuranceNumber?: string;
   allergies?: string;
+  /** Keys from MEDICAL_CONDITIONS; anything else is dropped. */
+  medicalConditions?: string[];
+  medications?: string;
 };
 
 export type PatientListFilters = {
@@ -60,7 +65,10 @@ function toPatientWriteData(input: NewPatientInput) {
     birthDate: input.birthDate ?? null,
     address: input.address ?? null,
     insurance: input.insurance ?? null,
+    insuranceNumber: input.insuranceNumber ?? null,
     allergies: input.allergies ?? null,
+    medicalConditions: sanitizeConditions(input.medicalConditions ?? []),
+    medications: input.medications ?? null,
   };
 }
 

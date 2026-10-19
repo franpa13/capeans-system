@@ -30,7 +30,13 @@ import { ReminderButton } from "@/features/appointments/components/reminder-butt
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
-type PatientOption = { id: string; name: string; phone: string };
+type PatientOption = {
+  id: string;
+  name: string;
+  phone: string;
+  allergies: string | null;
+  medicalConditions: string[];
+};
 type Debt = { patientId: string; name: string; amount: number };
 
 const MAX_DEBTS = 5;
@@ -121,7 +127,7 @@ export function TodayPanel({
   const remindable = reminderAppointments.filter((a) => a.patientId);
   const todayKey = new Date().toDateString();
   const [registering, setRegistering] = useState<{
-    patient: PatientOption;
+    patient: { id: string; name: string };
     appointment: Appointment;
   } | null>(null);
 
@@ -194,7 +200,6 @@ export function TodayPanel({
                               patient: {
                                 id: appointment.patientId!,
                                 name: patientName,
-                                phone: phonesById.get(appointment.patientId!) ?? "",
                               },
                               appointment,
                             })

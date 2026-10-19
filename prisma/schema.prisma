@@ -33,7 +33,12 @@ model Patient {
   birthDate DateTime?
   address   String?
   insurance String?
+  // N° de afiliado de la obra social, needed to bill it.
+  insuranceNumber String?
   allergies String?
+  // Keys from MEDICAL_CONDITIONS (lib/medical.ts), e.g. "anticoagulantes".
+  medicalConditions String[] @default([])
+  medications String?
 
   consultations Consultation[]
   appointments  Appointment[]

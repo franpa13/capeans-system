@@ -13,6 +13,8 @@ import { NewConsultationDialog } from "@/features/consultations/components/new-c
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { isValidToothFdi } from "@/features/clinic/lib/odontogram";
+import { medicalAlerts } from "@/features/clinic/lib/medical";
+import { MedicalAlert } from "@/features/patients/components/medical-alert";
 
 function InfoField({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -79,7 +81,10 @@ export function PatientDetailView({
     !!patient.birthDate ||
     !!patient.address ||
     !!patient.insurance ||
-    !!patient.allergies;
+    !!patient.insuranceNumber ||
+    !!patient.allergies ||
+    !!patient.medications;
+  const alerts = medicalAlerts(patient);
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,12 +108,14 @@ export function PatientDetailView({
               treatmentPrices={treatmentPrices}
               supplyOptions={supplyOptions}
               toothHistory={toothHistory}
+              fixedPatientAlerts={alerts}
             />
           }
         />
         {balance > 0 && (
           <p className="text-sm font-medium text-destructive">Debe: {formatCurrency(balance)}</p>
         )}
+        <MedicalAlert alerts={alerts} />
       </div>
 
       <Card>
@@ -122,7 +129,9 @@ export function PatientDetailView({
             />
             <InfoField label="Dirección" value={patient.address} />
             <InfoField label="Obra social" value={patient.insurance} />
-            <InfoField label="Alergias / antecedentes" value={patient.allergies} />
+            <InfoField label="N° de afiliado" value={patient.insuranceNumber} />
+            <InfoField label="Alergias" value={patient.allergies} />
+            <InfoField label="Medicación habitual" value={patient.medications} />
           </CardContent>
         ) : (
           <CardContent className="flex flex-col items-center gap-2 py-4 text-center text-muted-foreground">

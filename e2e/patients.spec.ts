@@ -123,3 +123,57 @@ test("a minimal patient's detail page explains the info card is empty instead of
   await expect(page.getByText("Todavía no se cargaron más datos de este paciente.")).toHaveCount(0);
   await expect(page.getByText("30.123.456")).toBeVisible();
 });
+
+test("a patient's medical history is saved and warned about in the ficha and the consulta form", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Antecedentes E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  const dialog = page.getByRole("dialog", { name: "Nuevo paciente" });
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 0000-0000");
+  await page.fill("#insuranceNumber", "998877/02");
+  await page.fill("#allergies", "penicilina");
+  await dialog.getByRole("checkbox", { name: "Toma anticoagulantes" }).check();
+  await dialog.getByRole("checkbox", { name: "Diabetes" }).check();
+  await page.fill("#medications", "Sintrom 4mg");
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await expect(async () => {
+    await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+    await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10000 });
+  await page.getByRole("link", { name: patientName }).first().click();
+
+  // The ficha leads with the warning, and lists the rest of the data.
+  const alert = page.getByRole("alert").filter({ hasText: "Antecedentes" });
+  await expect(alert.getByText("Alergia: penicilina")).toBeVisible();
+  await expect(alert.getByText("Toma anticoagulantes")).toBeVisible();
+  await expect(alert.getByText("Diabetes")).toBeVisible();
+  await expect(page.getByText("998877/02")).toBeVisible();
+  await expect(page.getByText("Sintrom 4mg")).toBeVisible();
+
+  // Registering a consulta for them shows the same warning.
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  const consulta = page.getByRole("dialog", { name: "Nueva consulta" });
+  await expect(consulta.getByRole("alert").getByText("Toma anticoagulantes")).toBeVisible();
+  await consulta.getByRole("button", { name: "Close" }).click();
+
+  // Editing keeps the boxes checked, and unchecking one clears it.
+  await page.goto("/dashboard/pacientes");
+  await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
+  await page.getByRole("button", { name: `Acciones para ${patientName}` }).first().click();
+  await page.getByRole("menuitem", { name: "Editar" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar paciente" });
+  await expect(edit.getByRole("checkbox", { name: "Toma anticoagulantes" })).toBeChecked();
+  await edit.getByRole("checkbox", { name: "Diabetes" }).uncheck();
+  await edit.getByRole("button", { name: "Guardar" }).click();
+  await expect(edit).toHaveCount(0);
+  await page.getByRole("link", { name: patientName }).first().click();
+  await expect(page.getByRole("alert").filter({ hasText: "Antecedentes" }).getByText("Diabetes")).toHaveCount(0);
+});

@@ -15,9 +15,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { PatientFormFields } from "@/features/patients/components/patient-form-fields";
-import { patientSchema, type PatientValues } from "@/features/patients/lib/schema";
+import { patientSchema, toPatientInput, type PatientValues } from "@/features/patients/lib/schema";
 import { createPatientAction } from "@/features/patients/actions";
 import { unwrap } from "@/lib/action-result";
 import type { Patient } from "@prisma/client";
@@ -31,7 +30,10 @@ const emptyValues: PatientValues = {
   address: "",
   insurance: "",
   insuranceOther: "",
+  insuranceNumber: "",
   allergies: "",
+  medicalConditions: [],
+  medications: "",
 };
 
 export function NewPatientDialog({
@@ -56,19 +58,7 @@ export function NewPatientDialog({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const save = async (values: PatientValues) => {
-    const patient = await unwrap(createPatientAction({
-      name: values.name,
-      phone: values.phone,
-      email: values.email || undefined,
-      dni: values.dni || undefined,
-      birthDate: values.birthDate ? new Date(values.birthDate) : undefined,
-      address: values.address || undefined,
-      insurance:
-        values.insurance === OTHER_INSURANCE
-          ? values.insuranceOther?.trim()
-          : values.insurance || undefined,
-      allergies: values.allergies || undefined,
-    }));
+    const patient = await unwrap(createPatientAction(toPatientInput(values)));
     onCreated?.(patient);
     reset();
     setOpen(false);
