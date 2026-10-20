@@ -121,8 +121,7 @@ test("an insurance option can be added, renamed, and deleted from Configuración
   const anotherLabel = `Obra Social E2E ${Date.now()}`;
   await addClinicOption(page, "obra social", anotherLabel);
 
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.goto("/dashboard/pacientes/nuevo");
   await page.getByLabel("Obra social").click();
   await expect(page.getByRole("option", { name: anotherLabel })).toBeVisible();
 });

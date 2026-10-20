@@ -85,6 +85,7 @@ export default async function DashboardPage() {
           phone: p.phone,
           allergies: p.allergies,
           medicalConditions: p.medicalConditions,
+          acceptsReminders: p.acceptsReminders,
         }))}
         debts={debts}
         supplies={supplies}

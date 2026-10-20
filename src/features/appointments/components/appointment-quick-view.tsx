@@ -40,6 +40,7 @@ export type QuickViewPatient = {
   insurance?: string | null;
   allergies?: string | null;
   medicalConditions?: string[];
+  acceptsReminders?: boolean;
 };
 
 /** In the order a turno goes through them, then the two ways it doesn't. */
@@ -255,6 +256,7 @@ export function AppointmentQuickView({
               patientName={patientName}
               phone={patient.phone}
               clinicName={clinicName}
+              acceptsReminders={patient.acceptsReminders}
             />
           )}
         </PopoverContent>

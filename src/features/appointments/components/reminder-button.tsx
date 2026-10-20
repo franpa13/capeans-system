@@ -23,6 +23,7 @@ export function ReminderButton({
   patientName,
   phone,
   clinicName,
+  acceptsReminders = true,
 }: {
   appointmentId: string;
   startsAt: Date;
@@ -30,6 +31,8 @@ export function ReminderButton({
   patientName: string;
   phone: string;
   clinicName: string;
+  /** The patient's own choice on their ficha ("Acepta recordatorios"). */
+  acceptsReminders?: boolean;
 }) {
   const router = useRouter();
   // Shown right away: the dialogs that host this button keep their own copy
@@ -37,6 +40,10 @@ export function ReminderButton({
   const [sentNow, setSentNow] = useState(false);
   const sent = !!reminderSentAt || sentNow;
   const number = toWhatsAppNumber(phone);
+
+  if (!acceptsReminders) {
+    return <span className="text-sm text-muted-foreground">No acepta recordatorios</span>;
+  }
 
   if (!number) {
     return (

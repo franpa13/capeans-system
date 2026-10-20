@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+import { createPatient } from "./patient-form";
 
 test("a user from clinic A cannot see a patient created by clinic B", async ({
   browser,
@@ -14,11 +15,8 @@ test("a user from clinic A cannot see a patient created by clinic B", async ({
 
   const patientName = `Paciente Solo De Clinica A ${Date.now()}`;
 
+  await createPatient(clinicAPage, patientName, "11 2222-2222");
   await clinicAPage.goto("/dashboard/pacientes");
-  await clinicAPage.getByRole("button", { name: "Nuevo paciente" }).click();
-  await clinicAPage.fill("#name", patientName);
-  await clinicAPage.fill("#phone", "11 2222-2222");
-  await clinicAPage.getByRole("button", { name: "Guardar" }).click();
   // With pagination, a new patient isn't necessarily on the first page
   // (the list sorts alphabetically) — search for it like a real user would.
   // The server action's post-mutation refresh can land after the fill and

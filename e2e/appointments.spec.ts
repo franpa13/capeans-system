@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+import { createPatient } from "./patient-form";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -90,16 +91,13 @@ test("a created appointment appears on the calendar, and double-booking the same
 
   const patientName = `Paciente Turno E2E ${Date.now()}`;
 
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 3333-3333");
-  await page.getByRole("button", { name: "Guardar" }).click();
+  await createPatient(page, patientName, "11 3333-3333");
   // With pagination, a new patient isn't necessarily on the first page
   // (the list sorts alphabetically) — search for it like a real user would.
   // The server action's post-mutation refresh can land after the fill and
   // wipe the typed search text, so retry the fill until it sticks instead
   // of gambling on a fixed delay.
+  await page.goto("/dashboard/pacientes");
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
@@ -137,11 +135,8 @@ test("the Día view shows a created appointment as a row with the patient name",
   const patientName = `Paciente Dia E2E ${Date.now()}`;
   const today = new Date();
 
+  await createPatient(page, patientName, "11 1212-1212");
   await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 1212-1212");
-  await page.getByRole("button", { name: "Guardar" }).click();
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
@@ -206,11 +201,8 @@ test("a cancelled appointment is hidden from the grid by default, and the estado
 
   const patientName = `Paciente Cancelado E2E ${Date.now()}`;
 
+  await createPatient(page, patientName, "11 7777-7777");
   await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 7777-7777");
-  await page.getByRole("button", { name: "Guardar" }).click();
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
@@ -281,11 +273,8 @@ test("marking a turno as completed offers to log the consulta for that patient",
 
   const patientName = `Paciente Completado E2E ${Date.now()}`;
 
+  await createPatient(page, patientName, "11 9999-9999");
   await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 9999-9999");
-  await page.getByRole("button", { name: "Guardar" }).click();
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
@@ -349,11 +338,8 @@ test("a completed turno left without a consulta is flagged, and can be linked la
 
   const patientName = `Paciente Vincular E2E ${Date.now()}`;
 
+  await createPatient(page, patientName, "11 9999-8888");
   await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 9999-8888");
-  await page.getByRole("button", { name: "Guardar" }).click();
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
@@ -435,11 +421,8 @@ test("a cancelled turno no longer offers to cancel or complete it, only delete",
 
   const patientName = `Paciente Estados E2E ${Date.now()}`;
 
+  await createPatient(page, patientName, "11 1010-1010");
   await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 1010-1010");
-  await page.getByRole("button", { name: "Guardar" }).click();
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
@@ -485,12 +468,7 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const patientName = `Paciente Ausente E2E ${Date.now()}`;
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 7777-8888");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+  await createPatient(page, patientName, "11 7777-8888");
 
   await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
@@ -555,12 +533,7 @@ test("the week view shades closed hours, highlights today with its count, and ca
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const patientName = `Paciente Tarjeta E2E ${Date.now()}`;
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 5555-0000");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+  await createPatient(page, patientName, "11 5555-0000");
 
   await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
@@ -644,12 +617,7 @@ test("the Lista view lists the week's turnos by day, and a turno opens from ther
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const patientName = `Paciente Lista E2E ${Date.now()}`;
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 5555-1111");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+  await createPatient(page, patientName, "11 5555-1111");
 
   await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
@@ -673,15 +641,12 @@ test("tapping a turno opens a quick view: details, obra social, alerts and one-t
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const patientName = `Paciente Rapida E2E ${Date.now()}`;
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 5555-2222");
-  await page.locator("#insurance").click();
-  await page.getByRole("option", { name: "OSDE", exact: true }).click();
-  await page.fill("#allergies", "látex");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+  await createPatient(page, patientName, "11 5555-2222", async () => {
+    await page.locator("#insurance").click();
+    await page.getByRole("option", { name: "OSDE", exact: true }).click();
+    await page.getByRole("tab", { name: "Información médica" }).click();
+    await page.fill("#allergies", "látex");
+  });
 
   await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
@@ -723,12 +688,7 @@ test("the Mes view shows each day's turnos, opens one, and a day leads to its D�
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
   const patientName = `Paciente Mes E2E ${Date.now()}`;
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 5555-3333");
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+  await createPatient(page, patientName, "11 5555-3333");
 
   await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();

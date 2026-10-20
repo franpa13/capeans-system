@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+import { createPatient } from "./patient-form";
 
 test("the odontogram on a patient page is read-only: clicking it does nothing", async ({
   page,
@@ -12,16 +13,13 @@ test("the odontogram on a patient page is read-only: clicking it does nothing", 
 
   const patientName = `Paciente Odontograma E2E ${Date.now()}`;
 
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", patientName);
-  await page.fill("#phone", "11 5555-5555");
-  await page.getByRole("button", { name: "Guardar" }).click();
+  await createPatient(page, patientName, "11 5555-5555");
   // With pagination, a new patient isn't necessarily on the first page
   // (the list sorts alphabetically) — search for it like a real user would.
   // The server action's post-mutation refresh can land after the fill and
   // wipe the typed search text, so retry the fill until it sticks instead
   // of gambling on a fixed delay.
+  await page.goto("/dashboard/pacientes");
   await expect(async () => {
     await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });

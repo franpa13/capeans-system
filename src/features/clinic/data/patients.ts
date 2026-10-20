@@ -2,12 +2,43 @@ import { prisma } from "@/lib/prisma";
 import type { Patient, Prisma } from "@prisma/client";
 import { NO_INSURANCE, OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { sanitizeConditions } from "@/features/clinic/lib/medical";
+import { fullName, splitFullName } from "@/features/clinic/lib/names";
 import { removePatientFilesFromDisk } from "@/features/clinic/data/patient-files";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
+/** Optional text fields of the full profile (obra social, fiscal,
+ * emergency contact, medical and origin details) — stored as given. */
+const PROFILE_TEXT_FIELDS = [
+  "gender",
+  "city",
+  "province",
+  "insurancePlan",
+  "insuranceHolder",
+  "holderRelationship",
+  "familyGroup",
+  "holderWorkplace",
+  "taxId",
+  "taxName",
+  "ivaCondition",
+  "emergencyName",
+  "emergencyPhone",
+  "emergencyRelation",
+  "bloodType",
+  "bloodPressure",
+  "medicalHistory",
+  "referralSource",
+  "internalNotes",
+] as const;
+type ProfileTextField = (typeof PROFILE_TEXT_FIELDS)[number];
+
 export type NewPatientInput = {
-  name: string;
+  /** Either nombre + apellido (the patient form), or the full name in one
+   * field (a quick "paciente nuevo" from a turno, an import) — split with
+   * the last word as the apellido. */
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   phone: string;
   email?: string;
   dni?: string;
@@ -19,7 +50,9 @@ export type NewPatientInput = {
   /** Keys from MEDICAL_CONDITIONS; anything else is dropped. */
   medicalConditions?: string[];
   medications?: string;
-};
+  active?: boolean;
+  acceptsReminders?: boolean;
+} & Partial<Record<ProfileTextField, string>>;
 
 export type PatientListFilters = {
   query?: string;
@@ -57,9 +90,25 @@ export async function getPatient(clinicId: string, id: string): Promise<Patient 
   return prisma.patient.findFirst({ where: { id, clinicId } });
 }
 
+function resolveNames(input: NewPatientInput) {
+  const names =
+    input.firstName !== undefined || input.lastName !== undefined
+      ? { firstName: (input.firstName ?? "").trim(), lastName: (input.lastName ?? "").trim() }
+      : splitFullName(input.name ?? "");
+  const name = fullName(names.firstName, names.lastName);
+  if (!name) throw new Error("Ingresá el nombre del paciente");
+  return { name, ...names };
+}
+
 function toPatientWriteData(input: NewPatientInput) {
+  const profile = Object.fromEntries(
+    PROFILE_TEXT_FIELDS.map((field) => [field, input[field]?.trim() || null]),
+  ) as Record<ProfileTextField, string | null>;
   return {
-    name: input.name,
+    ...resolveNames(input),
+    ...profile,
+    active: input.active ?? true,
+    acceptsReminders: input.acceptsReminders ?? true,
     phone: input.phone,
     email: input.email ?? null,
     dni: input.dni ?? null,

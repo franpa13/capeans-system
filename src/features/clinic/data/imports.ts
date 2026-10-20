@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { createPatient, type NewPatientInput } from "@/features/clinic/data/patients";
+import { fullName } from "@/features/clinic/lib/names";
 import { createSupply, type NewSupplyInput } from "@/features/clinic/data/supplies";
 import { createClinicOption, updateClinicOption } from "@/features/clinic/data/clinic-options";
 import type { RowError } from "@/features/excel/lib/imports";
@@ -43,13 +44,14 @@ export async function importPatients(
 
   for (const { rowNumber, input } of items) {
     const dni = input.dni?.replace(/\D/g, "");
-    const key = personKey(input.name, input.phone);
+    const displayName = input.name ?? fullName(input.firstName ?? "", input.lastName ?? "");
+    const key = personKey(displayName, input.phone);
     if (dni && dnis.has(dni)) {
       result.skipped.push({ row: rowNumber, message: `Ya existe un paciente con el DNI ${input.dni}` });
       continue;
     }
     if (people.has(key)) {
-      result.skipped.push({ row: rowNumber, message: `Ya existe ${input.name} con ese teléfono` });
+      result.skipped.push({ row: rowNumber, message: `Ya existe ${displayName} con ese teléfono` });
       continue;
     }
     try {

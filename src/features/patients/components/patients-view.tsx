@@ -138,9 +138,14 @@ export function PatientsView({
                     <TableCell className="p-0">
                       <Link
                         href={`/dashboard/pacientes/${patient.id}`}
-                        className="block px-4 py-2.5 font-medium"
+                        className="flex items-center gap-2 px-4 py-2.5 font-medium"
                       >
                         {patient.name}
+                        {!patient.active && (
+                          <span className="rounded-full bg-muted px-2 py-px text-xs font-normal text-muted-foreground">
+                            Inactivo
+                          </span>
+                        )}
                       </Link>
                     </TableCell>
                     <TableCell>{patient.phone}</TableCell>
@@ -148,7 +153,7 @@ export function PatientsView({
                       {patient.insurance ?? "—"}
                     </TableCell>
                     <TableCell>
-                      <PatientActions patient={patient} insuranceOptions={insuranceOptions} />
+                      <PatientActions patient={patient} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -172,7 +177,7 @@ export function PatientsView({
                       Obra social: {patient.insurance ?? "—"}
                     </span>
                   </Link>
-                  <PatientActions patient={patient} insuranceOptions={insuranceOptions} />
+                  <PatientActions patient={patient} />
                 </CardContent>
               </Card>
             ))}

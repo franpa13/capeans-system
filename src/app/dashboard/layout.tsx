@@ -44,7 +44,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar clinicName={clinic.name} />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-2 md:px-4">
           <div className="flex items-center gap-2">
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-5" />
@@ -58,7 +58,7 @@ export default async function DashboardLayout({
             />
           </div>
         </header>
-        <main className="flex min-w-0 flex-1 flex-col gap-4 p-6">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col gap-4 p-2 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

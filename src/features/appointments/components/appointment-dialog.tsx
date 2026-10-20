@@ -51,7 +51,7 @@ import { unwrap } from "@/lib/action-result";
 import type { Appointment } from "@prisma/client";
 import { ReminderButton } from "@/features/appointments/components/reminder-button";
 
-type PatientOption = { id: string; name: string; phone?: string };
+type PatientOption = { id: string; name: string; phone?: string; acceptsReminders?: boolean };
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -477,6 +477,7 @@ export function AppointmentDialog({
                 patientName={reminderPatient.name}
                 phone={reminderPatient.phone!}
                 clinicName={clinicName!}
+                acceptsReminders={reminderPatient.acceptsReminders}
               />
             )}
           </div>

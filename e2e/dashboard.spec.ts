@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
+import { createPatient } from "./patient-form";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -68,15 +69,6 @@ async function bookTurnoIn(
     if (outcome === "success") return { dateStr, timeStr };
   }
   throw new Error("No free slot left among the candidates");
-}
-
-async function createPatient(page: Page, name: string, phone: string) {
-  await page.goto("/dashboard/pacientes");
-  await page.getByRole("button", { name: "Nuevo paciente" }).click();
-  await page.fill("#name", name);
-  await page.fill("#phone", phone);
-  await page.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
 }
 
 test("Inicio shows today's turnos, lets a consulta be registered from there, and lists debts and low stock", async ({

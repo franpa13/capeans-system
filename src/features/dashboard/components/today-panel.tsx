@@ -37,6 +37,7 @@ type PatientOption = {
   phone: string;
   allergies: string | null;
   medicalConditions: string[];
+  acceptsReminders: boolean;
 };
 type Debt = { patientId: string; name: string; amount: number };
 
@@ -258,6 +259,9 @@ export function TodayPanel({
                       patientName={patientName}
                       phone={phonesById.get(appointment.patientId!) ?? ""}
                       clinicName={clinicName}
+                      acceptsReminders={
+                        patients.find((p) => p.id === appointment.patientId)?.acceptsReminders
+                      }
                     />
                   </li>
                 );

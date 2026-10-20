@@ -2,12 +2,11 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, Info, User } from "lucide-react";
+import { ArrowLeft, Pencil, User } from "lucide-react";
 import type { Consultation, Patient } from "@prisma/client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import { formatCurrency, formatDate } from "@/features/clinic/lib/format";
+import { formatCurrency } from "@/features/clinic/lib/format";
 import { ConsultationsList } from "@/features/consultations/components/consultations-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
@@ -15,18 +14,11 @@ import type { ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { isValidToothFdi } from "@/features/clinic/lib/odontogram";
 import { medicalAlerts } from "@/features/clinic/lib/medical";
 import { MedicalAlert } from "@/features/patients/components/medical-alert";
+import { PatientInfoCard } from "@/features/patients/components/patient-info-card";
+import { Button } from "@/components/ui/button";
 import { OdontogramCard } from "@/features/patients/components/odontogram-card";
 import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
 
-function InfoField({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value}</p>
-    </div>
-  );
-}
 
 export function PatientDetailView({
   patient,
@@ -83,19 +75,6 @@ export function PatientDetailView({
     );
   }
 
-  // Patients booked in a hurry (e.g. from "Agregar paciente nuevo" while
-  // scheduling a turno) only ever get a name and phone — without this,
-  // the card below renders as an empty white box with nothing in it,
-  // which reads as broken rather than as "nothing filled in yet".
-  const hasAdditionalInfo =
-    !!patient.email ||
-    !!patient.dni ||
-    !!patient.birthDate ||
-    !!patient.address ||
-    !!patient.insurance ||
-    !!patient.insuranceNumber ||
-    !!patient.allergies ||
-    !!patient.medications;
   const alerts = medicalAlerts(patient);
 
   return (
@@ -113,6 +92,13 @@ export function PatientDetailView({
           description={patient.phone}
           icon={User}
           action={
+            <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/pacientes/${patient.id}/editar`}>
+                <Pencil />
+                Editar datos
+              </Link>
+            </Button>
             <NewConsultationDialog
               fixedPatientId={patient.id}
               fixedPatientName={patient.name}
@@ -122,8 +108,14 @@ export function PatientDetailView({
               toothHistory={toothHistory}
               fixedPatientAlerts={alerts}
             />
+            </div>
           }
         />
+        {!patient.active && (
+          <p className="w-fit rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+            Inactivo: ya no se atiende
+          </p>
+        )}
         {balance > 0 && (
           <p className="text-sm font-medium text-destructive">Debe: {formatCurrency(balance)}</p>
         )}
@@ -135,28 +127,7 @@ export function PatientDetailView({
         <MedicalAlert alerts={alerts} />
       </div>
 
-      <Card>
-        {hasAdditionalInfo ? (
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <InfoField label="Email" value={patient.email} />
-            <InfoField label="DNI" value={patient.dni} />
-            <InfoField
-              label="Fecha de nacimiento"
-              value={formatDate(patient.birthDate?.toISOString().slice(0, 10))}
-            />
-            <InfoField label="Dirección" value={patient.address} />
-            <InfoField label="Obra social" value={patient.insurance} />
-            <InfoField label="N° de afiliado" value={patient.insuranceNumber} />
-            <InfoField label="Alergias" value={patient.allergies} />
-            <InfoField label="Medicación habitual" value={patient.medications} />
-          </CardContent>
-        ) : (
-          <CardContent className="flex flex-col items-center gap-2 py-4 text-center text-muted-foreground">
-            <Info className="size-5" />
-            Todavía no se cargaron más datos de este paciente.
-          </CardContent>
-        )}
-      </Card>
+      <PatientInfoCard patient={patient} />
 
       <OdontogramCard
         history={toothHistory}

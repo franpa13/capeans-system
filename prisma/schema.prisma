@@ -29,7 +29,11 @@ model Patient {
   clinicId  String
   clinic    Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
+  // `name` is the full name every list, search and export shows; it's kept
+  // equal to firstName + lastName by the data layer.
   name      String
+  firstName String    @default("")
+  lastName  String    @default("")
   phone     String
   email     String?
   dni       String?
@@ -42,6 +46,39 @@ model Patient {
   // Keys from MEDICAL_CONDITIONS (lib/medical.ts), e.g. "anticoagulantes".
   medicalConditions String[] @default([])
   medications String?
+
+  // Datos personales
+  gender    String?
+  active    Boolean @default(true)
+  city      String?
+  province  String?
+
+  // Obra social (beyond insurance / insuranceNumber)
+  insurancePlan       String?
+  insuranceHolder     String? // titular, when it isn't the patient
+  holderRelationship  String? // parentesco con el titular
+  familyGroup         String?
+  holderWorkplace     String?
+
+  // Datos fiscales (to invoice)
+  taxId        String? // CUIT / CUIL
+  taxName      String? // razón social, if different from the patient's name
+  ivaCondition String?
+
+  // Contacto de emergencia
+  emergencyName     String?
+  emergencyPhone    String?
+  emergencyRelation String?
+
+  // Información médica (beyond allergies / conditions / medications)
+  bloodType      String?
+  bloodPressure  String?
+  medicalHistory String? // antecedentes, free text
+
+  // Notas y origen
+  referralSource   String?
+  acceptsReminders Boolean @default(true)
+  internalNotes    String?
 
   consultations Consultation[]
   appointments  Appointment[]

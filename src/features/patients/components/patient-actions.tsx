@@ -22,20 +22,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EditPatientDialog } from "@/features/patients/components/edit-patient-dialog";
 import { deletePatientAction } from "@/features/patients/actions";
 import { unwrap } from "@/lib/action-result";
 import type { Patient } from "@prisma/client";
 
-export function PatientActions({
-  patient,
-  insuranceOptions,
-}: {
-  patient: Patient;
-  insuranceOptions: string[];
-}) {
+export function PatientActions({ patient }: { patient: Patient }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
@@ -58,15 +50,11 @@ export function PatientActions({
               Ver detalle
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setMenuOpen(false);
-              setEditOpen(true);
-            }}
-          >
-            <Pencil />
-            Editar
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/pacientes/${patient.id}/editar`}>
+              <Pencil />
+              Editar
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -82,13 +70,6 @@ export function PatientActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <EditPatientDialog
-        patient={patient}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        insuranceOptions={insuranceOptions}
-      />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

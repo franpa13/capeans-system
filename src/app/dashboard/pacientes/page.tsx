@@ -3,7 +3,9 @@ import { PageHeader } from "@/components/page-header";
 import { ExcelDownloadButton } from "@/features/excel/components/excel-download-button";
 import { ImportExcelDialog } from "@/features/excel/components/import-excel-dialog";
 import { PatientsView } from "@/features/patients/components/patients-view";
-import { NewPatientDialog } from "@/features/patients/components/new-patient-dialog";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
@@ -34,7 +36,12 @@ export default async function PacientesPage({
           <div className="flex flex-wrap gap-2">
             <ImportExcelDialog kind="pacientes" />
             <ExcelDownloadButton path="/api/excel/pacientes" />
-            <NewPatientDialog insuranceOptions={insuranceLabels} />
+            <Button asChild>
+              <Link href="/dashboard/pacientes/nuevo">
+                <Plus />
+                Nuevo paciente
+              </Link>
+            </Button>
           </div>
         }
       />
