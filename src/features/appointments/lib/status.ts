@@ -6,3 +6,11 @@
 // here instead of from each other.
 export const ALL_STATUSES = "ALL";
 export const DEFAULT_STATUS = "CONFIRMED";
+
+/** How each turno status reads on screen. */
+export const APPOINTMENT_STATUS_LABELS = {
+  CONFIRMED: "Confirmado",
+  CANCELLED: "Cancelado",
+  COMPLETED: "Completado",
+  NO_SHOW: "No vino",
+} as const;

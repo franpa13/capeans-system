@@ -15,14 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, formatTime, toLocalDateString } from "@/features/clinic/lib/format";
 import type { Appointment } from "@prisma/client";
+import { APPOINTMENT_STATUS_LABELS } from "@/features/appointments/lib/status";
 import { ReminderButton } from "@/features/appointments/components/reminder-button";
 
-const STATUS_LABELS: Record<Appointment["status"], string> = {
-  CONFIRMED: "Confirmado",
-  CANCELLED: "Cancelado",
-  COMPLETED: "Completado",
-  NO_SHOW: "No vino",
-};
+const STATUS_LABELS = APPOINTMENT_STATUS_LABELS;
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

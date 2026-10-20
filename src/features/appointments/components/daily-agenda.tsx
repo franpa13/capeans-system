@@ -22,6 +22,7 @@ import { AppointmentDialog } from "@/features/appointments/components/appointmen
 import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle } from "@/features/appointments/components/view-toggle";
+import { StatusChip } from "@/features/appointments/components/status-chip";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
   CONSULTA_STATUS_LABELS,
@@ -47,35 +48,6 @@ const TIMELINE_WIDTH = HOUR_WIDTH * 24;
 
 function minutesFromMidnight(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
-}
-
-type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
-
-const BOUNDARY_COLORS: Record<Boundary["label"], { line: string; text: string }> = {
-  // Soft on purpose: a reference line, not something competing with the
-  // turnos themselves.
-  "Hora inicio": {
-    line: "border-green-500/60 dark:border-green-400/50",
-    text: "text-green-600 dark:text-green-400",
-  },
-  "Hora fin": {
-    line: "border-red-500/60 dark:border-red-400/50",
-    text: "text-red-600 dark:text-red-400",
-  },
-};
-
-/** The open/close boundaries worth drawing a line at, each labeled by
- * which kind of transition it is — the start and end of the full day (0
- * and 1440) aren't real transitions, so they're excluded. A closed
- * range's end is when business hours start (open), and its start is
- * when they end (close) — see business-hours.ts's closedRanges. */
-function boundaries(ranges: { startMinutes: number; endMinutes: number }[]): Boundary[] {
-  const byMinute = new Map<number, Boundary["label"]>();
-  for (const range of ranges) {
-    if (range.endMinutes < 24 * 60) byMinute.set(range.endMinutes, "Hora inicio");
-    if (range.startMinutes > 0) byMinute.set(range.startMinutes, "Hora fin");
-  }
-  return [...byMinute.entries()].map(([minutes, label]) => ({ minutes, label }));
 }
 
 const STATUS_STYLES: Record<Appointment["status"], string> = {
@@ -132,8 +104,9 @@ export function DailyAgenda({
     [appointments],
   );
   const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
-  const hourBoundaries = boundaries(ranges);
-  const openMinutes = hourBoundaries.find((b) => b.label === "Hora inicio")?.minutes;
+  // A closed range starting at midnight ends when the clinic opens.
+  const morning = ranges.find((r) => r.startMinutes === 0);
+  const openMinutes = morning && morning.endMinutes < 24 * 60 ? morning.endMinutes : undefined;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
@@ -189,18 +162,20 @@ export function DailyAgenda({
           <ViewToggle isDayView={isDayView} semanalHref={semanalHref} diarioHref={diarioHref} />
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" asChild>
               <Link href={hrefForDay(addDays(day, -1))} aria-label="Día anterior">
                 <ChevronLeft />
-              </Link>
-            </Button>
-            <Button variant="outline" size="icon" asChild>
-              <Link href={hrefForDay(addDays(day, 1))} aria-label="Día siguiente">
-                <ChevronRight />
+                Anterior
               </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href={hrefForDay(new Date())}>Hoy</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={hrefForDay(addDays(day, 1))} aria-label="Día siguiente">
+                Siguiente
+                <ChevronRight />
+              </Link>
             </Button>
             <span className="ml-2 text-sm font-medium">{formatDayLabel(day)}</span>
           </div>
@@ -209,23 +184,6 @@ export function DailyAgenda({
           <Plus />
           Nuevo turno
         </Button>
-      </div>
-
-      {/* A text label inside the grid risked sitting right under an
-          appointment that happens to start at that exact time — a legend
-          here explains the two dashed lines once, so the grid itself only
-          needs the color, never the words. */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span
-            className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
-          />
-          Hora inicio
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
-          Hora fin
-        </span>
       </div>
 
       <div ref={scrollContainerRef} className="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border">
@@ -247,13 +205,21 @@ export function DailyAgenda({
                 {String(hour).padStart(2, "0")}:00
               </div>
             ))}
-            {hourBoundaries.map(({ minutes, label }) => (
+{ranges.map(({ startMinutes, endMinutes }) => (
               <div
-                key={minutes}
+                key={startMinutes}
                 aria-hidden
-                className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
-                style={{ left: (minutes / 60) * HOUR_WIDTH }}
-              />
+                className="hatch-closed pointer-events-none absolute bottom-0 flex items-center justify-center"
+                style={{
+                  top: 24,
+                  left: (startMinutes / 60) * HOUR_WIDTH,
+                  width: ((endMinutes - startMinutes) / 60) * HOUR_WIDTH,
+                }}
+              >
+                {endMinutes - startMinutes >= 120 && (
+                  <span className="text-[11px] text-muted-foreground">Cerrado</span>
+                )}
+              </div>
             ))}
           </div>
 
@@ -276,21 +242,25 @@ export function DailyAgenda({
               return (
                 <Fragment key={appointment.id}>
                   <div
-                    className="sticky left-0 z-10 flex items-center border-t border-r bg-card px-2 text-sm font-medium"
+                    className="sticky left-0 z-10 flex flex-col items-start justify-center gap-0.5 border-t border-r bg-card px-2 text-sm font-medium"
                     style={{ height: ROW_HEIGHT }}
                   >
-                    <span className="truncate">{patientName}</span>
+                    <span className="max-w-full truncate">{patientName}</span>
+                    <StatusChip status={appointment.status} />
                   </div>
                   <div
                     className="relative border-t"
                     style={{ height: ROW_HEIGHT, width: TIMELINE_WIDTH }}
                   >
-                    {hourBoundaries.map(({ minutes, label }) => (
+                    {ranges.map(({ startMinutes, endMinutes }) => (
                       <div
-                        key={minutes}
+                        key={startMinutes}
                         aria-hidden
-                        className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
-                        style={{ left: (minutes / 60) * HOUR_WIDTH }}
+                        className="hatch-closed pointer-events-none absolute top-0 bottom-0"
+                        style={{
+                          left: (startMinutes / 60) * HOUR_WIDTH,
+                          width: ((endMinutes - startMinutes) / 60) * HOUR_WIDTH,
+                        }}
                       />
                     ))}
                     <Tooltip>

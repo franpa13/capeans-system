@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ClipboardList, Plus, X } from "lucide-react";
@@ -21,6 +21,7 @@ import {
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle } from "@/features/appointments/components/view-toggle";
+import { StatusChip } from "@/features/appointments/components/status-chip";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
   CONSULTA_STATUS_LABELS,
@@ -35,52 +36,21 @@ import {
   isSameDay,
   toWeekParam,
 } from "@/features/appointments/lib/week";
-import {
-  boundarySegments,
-  businessHoursForWeekday,
-  closedRanges,
-} from "@/features/appointments/lib/business-hours";
-import { formatDate } from "@/features/clinic/lib/format";
+import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
+import { formatDate, formatTime } from "@/features/clinic/lib/format";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
 type PatientOption = { id: string; name: string; phone?: string };
 type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
-const HOUR_HEIGHT = 48; // px
+// Tall enough for a 30-minute turno to show its time, name, state and
+// motivo on two lines.
+const HOUR_HEIGHT = 96; // px
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function minutesFromMidnight(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
-}
-
-type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
-
-const BOUNDARY_COLORS: Record<Boundary["label"], { line: string; text: string }> = {
-  // Soft on purpose: a reference line, not something competing with the
-  // turnos themselves.
-  "Hora inicio": {
-    line: "border-green-500/60 dark:border-green-400/50",
-    text: "text-green-600 dark:text-green-400",
-  },
-  "Hora fin": {
-    line: "border-red-500/60 dark:border-red-400/50",
-    text: "text-red-600 dark:text-red-400",
-  },
-};
-
-/** The open/close boundaries worth drawing a line at, each labeled by
- * which kind of transition it is — the start and end of the full day (0
- * and 1440) aren't real transitions, so they're excluded. A closed
- * range's end is when business hours start (open), and its start is
- * when they end (close) — see business-hours.ts's closedRanges. */
-function boundaries(ranges: { startMinutes: number; endMinutes: number }[]): Boundary[] {
-  const byMinute = new Map<number, Boundary["label"]>();
-  for (const range of ranges) {
-    if (range.endMinutes < 24 * 60) byMinute.set(range.endMinutes, "Hora inicio");
-    if (range.startMinutes > 0) byMinute.set(range.startMinutes, "Hora fin");
-  }
-  return [...byMinute.entries()].map(([minutes, label]) => ({ minutes, label }));
 }
 
 const STATUS_STYLES: Record<Appointment["status"], string> = {
@@ -161,9 +131,28 @@ export function AppointmentsCalendar({
   const nextWeek = toWeekParam(addDays(weekStart, 7));
   const weekEnd = addDays(weekStart, 6);
 
-  const lineSegments = boundarySegments(
-    days.map((day) => boundaries(closedRanges(businessHoursForWeekday(businessHours, day.getDay())))),
+  const closedByDay = days.map((day) =>
+    closedRanges(businessHoursForWeekday(businessHours, day.getDay())),
   );
+  // The earliest the clinic opens on any day of the week (a closed range
+  // that starts at midnight ends at the opening time); 8:00 if it never opens.
+  const firstOpening = Math.min(
+    ...closedByDay.map((ranges) => {
+      const morning = ranges.find((r) => r.startMinutes === 0);
+      return morning ? (morning.endMinutes < 24 * 60 ? morning.endMinutes : Infinity) : 0;
+    }),
+  );
+  const openingMinutes = Number.isFinite(firstOpening) ? firstOpening : 8 * 60;
+  const todayKey = new Date().toDateString();
+  const weekKey = weekStart.getTime();
+
+  // Lands the grid on the opening hour instead of midnight (before paint,
+  // so it doesn't visibly jump), the same way the Día view does.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = Math.max(0, (openingMinutes / 60) * HOUR_HEIGHT - 8);
+  }, [weekKey, openingMinutes]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -172,35 +161,23 @@ export function AppointmentsCalendar({
           <ViewToggle isDayView={isDayView} semanalHref={semanalHref} diarioHref={diarioHref} />
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" asChild>
               <Link href={`/dashboard/turnos?week=${prevWeek}&view=week&estado=${estado}`} aria-label="Semana anterior">
                 <ChevronLeft />
+                Anterior
               </Link>
             </Button>
-            <span className="text-sm font-medium">
-              Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
-            </span>
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/turnos?view=week&estado=${estado}`}>Hoy</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link href={`/dashboard/turnos?week=${nextWeek}&view=week&estado=${estado}`} aria-label="Semana siguiente">
+                Siguiente
                 <ChevronRight />
               </Link>
             </Button>
-          </div>
-
-          {/* A text label inside the grid risked sitting right under an
-          appointment that happens to start at that exact time — a legend
-          here explains the two dashed lines once, so the grid itself only
-          needs the color, never the words. */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span
-                className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
-              />
-              Hora inicio
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
-              Hora fin
+            <span className="ml-2 text-sm font-medium">
+              Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
             </span>
           </div>
         </div>
@@ -226,17 +203,34 @@ export function AppointmentsCalendar({
       </div>
 
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-        <div className="grid grid-cols-[64px_repeat(7,minmax(140px,1fr))]">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md border">
+        <div className="grid grid-cols-[64px_repeat(7,minmax(150px,1fr))]">
           <div className="sticky top-0 z-10 border-b bg-card" />
-          {days.map((day) => (
-            <div
-              key={day.toISOString()}
-              className="sticky top-0 z-10 border-b border-l bg-card px-2 py-2 text-center text-sm font-medium"
-            >
-              {formatDayLabel(day)}
-            </div>
-          ))}
+          {days.map((day) => {
+            const isToday = day.toDateString() === todayKey;
+            const count = appointments.filter((a) => isSameDay(a.startsAt, day)).length;
+            return (
+              <div
+                key={day.toISOString()}
+                data-today={isToday}
+                className={`sticky top-0 z-10 flex flex-col items-center border-b border-l px-2 py-1.5 ${
+                  isToday
+                    ? // Opaque on purpose: the header is sticky, and turnos
+                      // scrolling under a see-through tint showed through it.
+                      "bg-[color-mix(in_oklch,var(--primary)_15%,var(--card))] text-primary"
+                    : "bg-card"
+                }`}
+              >
+                <span className="text-xs text-muted-foreground capitalize">
+                  {day.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", "")}
+                </span>
+                <span className="text-xl leading-tight font-semibold">{day.getDate()}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {count} {count === 1 ? "turno" : "turnos"}
+                </span>
+              </div>
+            );
+          })}
 
           <div className="border-r">
             {HOURS.map((hour) => (
@@ -252,29 +246,32 @@ export function AppointmentsCalendar({
 
           {days.map((day, dayIndex) => {
             const dayAppointments = appointments.filter((a) => isSameDay(a.startsAt, day));
+            const isToday = day.toDateString() === todayKey;
             return (
               <div
                 key={day.toISOString()}
-                className="relative border-l"
+                className={`relative border-l ${isToday ? "bg-primary/[0.04]" : ""}`}
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
-                {/* All the week's lines live in the first column, sized in
-                    multiples of its width (every day column is the same
-                    width), so a line shared by several days is drawn once. */}
-                {dayIndex === 0 &&
-                  lineSegments.map(({ minutes, label, startDay, dayCount }) => (
+                {/* Closed hours: shaded, and labeled when there's room. */}
+                {closedByDay[dayIndex].map(({ startMinutes, endMinutes }) => {
+                  const top = (startMinutes / 60) * HOUR_HEIGHT;
+                  const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
+                  return (
                     <div
-                      key={`${minutes}-${label}-${startDay}`}
+                      key={startMinutes}
                       aria-hidden
-                      className={`pointer-events-none absolute z-1 border-t-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
-                      style={{
-                        top: (minutes / 60) * HOUR_HEIGHT,
-                        left: `${startDay * 100}%`,
-                        width: `${dayCount * 100}%`,
-                      }}
-                    />
-                  ))}
-
+                      className="hatch-closed pointer-events-none absolute right-0 left-0 flex items-center justify-center"
+                      style={{ top, height }}
+                    >
+                      {endMinutes - startMinutes >= 60 && (
+                        <span className="rounded-full border bg-card px-2.5 py-0.5 text-xs text-muted-foreground shadow-xs">
+                          Cerrado
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
                 {HOURS.map((hour) => (
                   <button
                     key={hour}
@@ -283,7 +280,13 @@ export function AppointmentsCalendar({
                     className="absolute left-0 right-0 border-t hover:bg-accent/40"
                     onClick={() => openCreateAt(day, hour)}
                     aria-label={`Nuevo turno ${formatDayLabel(day)} ${hour}:00`}
-                  />
+                  >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute right-0 left-0 border-t border-dashed border-border/50"
+                      style={{ top: HOUR_HEIGHT / 2 }}
+                    />
+                  </button>
                 ))}
 
                 {dayAppointments.map((appointment) => {
@@ -307,15 +310,21 @@ export function AppointmentsCalendar({
                             openEdit(appointment);
                           }}
                           style={{ top, height }}
-                          className={`absolute left-1 right-1 z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
+                          className={`absolute left-1 right-1 z-1 flex flex-col justify-start gap-0.5 overflow-hidden rounded-md border px-1.5 py-1 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
                         >
-                          <div className="flex items-center gap-1 font-medium">
+                          <div className="flex items-center gap-1 text-sm font-semibold">
                             <ConsultaStatusIcon appointment={appointment} />
-                            <span className="truncate">{patientName}</span>
+                            <span className="truncate">
+                              <span className="tabular-nums">{formatTime(appointment.startsAt)}</span>{" "}
+                              {patientName}
+                            </span>
                           </div>
-                          {appointment.reason && (
-                            <div className="truncate opacity-90">{appointment.reason}</div>
-                          )}
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <StatusChip status={appointment.status} />
+                            {appointment.reason && (
+                              <span className="truncate opacity-90">{appointment.reason}</span>
+                            )}
+                          </div>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent className="flex-col items-start gap-0.5 text-left">

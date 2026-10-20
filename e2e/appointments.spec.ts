@@ -541,3 +541,43 @@ test("Turnos opens on today's Día view by default, and the week view stays week
   await expect(page).toHaveURL(/view=week/);
   await expect(page.getByRole("link", { name: "Semana anterior" })).toBeVisible();
 });
+
+test("the week view shades closed hours, highlights today with its count, and cards show time, name and state", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Tarjeta E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 5555-0000");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+
+  await page.goto("/dashboard/turnos?view=week");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  const { timeStr } = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsOn(new Date()));
+
+  // Text navigation, not bare arrows.
+  await expect(page.getByRole("link", { name: "Semana anterior" })).toContainText("Anterior");
+  await expect(page.getByRole("link", { name: "Semana siguiente" })).toContainText("Siguiente");
+  await expect(page.getByRole("link", { name: "Hoy", exact: true })).toBeVisible();
+
+  // Closed hours are shaded and labeled instead of drawn as lines.
+  await expect(page.getByText("Cerrado").first()).toBeAttached();
+  await expect(page.getByText("Hora inicio")).toHaveCount(0);
+
+  // Today's column header is highlighted and counts its turnos.
+  const today = page.locator('[data-today="true"]');
+  await expect(today).toHaveCount(1);
+  await expect(today).toContainText(/\d+ turnos?/);
+
+  // The card reads "HH:MM Name" and its state in words.
+  const card = page.getByRole("button", { name: new RegExp(`${timeStr} ${patientName}`) });
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Confirmado")).toBeVisible();
+});

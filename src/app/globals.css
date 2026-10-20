@@ -128,3 +128,13 @@
     @apply font-sans;
   }
 }
+/* Agenda: the hours the clinic is closed, as a soft diagonal hatch (instead
+   of start/end lines) — readable at a glance, light and dark. */
+@utility hatch-closed {
+  background-color: color-mix(in oklch, var(--muted) 45%, transparent);
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--muted-foreground) 16%, transparent) 0 1px,
+    transparent 1px 9px
+  );
+}
