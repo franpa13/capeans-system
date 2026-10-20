@@ -313,7 +313,7 @@ export function AppointmentsCalendar({
             return (
               <div
                 key={day.toISOString()}
-                className={`relative border-l ${isToday ? "bg-primary/[0.04]" : ""}`}
+                className={`relative border-l ${isToday ? "bg-primary/4" : ""}`}
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
                 {/* Blocked periods (vacaciones, feriado…), clipped to this day. The
