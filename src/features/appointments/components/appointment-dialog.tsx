@@ -135,7 +135,7 @@ export function AppointmentDialog({
   // Completar/cancelar are transitions out of CONFIRMED — offering them
   // on a turno that's already cancelled or completed suggested you could
   // still change its mind for it, which isn't true once it's settled.
-  const canChangeStatus = appointment?.status === "CONFIRMED";
+  const canChangeStatus = appointment?.status === "CONFIRMED" || appointment?.status === "WAITING";
   const reminderPatient =
     canChangeStatus && clinicName !== undefined
       ? patients.find((p) => p.id === appointment.patientId && p.phone !== undefined)

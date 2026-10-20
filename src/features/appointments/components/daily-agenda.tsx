@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, ClipboardList, Plus, X } from "lucide-react"
 import type { Appointment, BusinessHours, TimeBlock } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,24 +18,29 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
-import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
+import {
+  AppointmentQuickView,
+  type QuickViewPatient,
+} from "@/features/appointments/components/appointment-quick-view";
+import { insuranceColor, INSURANCE_DOT } from "@/features/clinic/lib/insurance-color";
+
 import { BlockTimeDialog } from "@/features/appointments/components/block-time-dialog";
 import { TimeBlockBadge } from "@/features/appointments/components/time-block-badge";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
-  CONSULTA_STATUS_LABELS,
   ConsultaStatusIcon,
-  consultaStatus,
 } from "@/features/appointments/components/consulta-status";
 import { addDays, formatDayLabel, getWeekStart, toWeekParam } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
-type PatientOption = { id: string; name: string; phone?: string };
+/** The turnos page passes full Patient rows; the quick view uses the
+ * optional fields (obra social, alerts, phone for reminders). */
+type PatientOption = QuickViewPatient;
 type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
 const HOUR_WIDTH = 80; // px
@@ -64,6 +68,8 @@ const STATUS_STYLES: Record<Appointment["status"], string> = {
   COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
   NO_SHOW:
     "bg-[color-mix(in_oklch,var(--destructive)_12%,var(--card))] text-destructive border-destructive/30",
+  WAITING:
+    "bg-[color-mix(in_oklch,var(--color-amber-500)_20%,var(--card))] text-foreground border-amber-500/50",
 };
 
 /** The day view: hours on the X axis, one row per appointment (not per
@@ -133,13 +139,34 @@ export function DailyAgenda({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
   const [newStart, setNewStart] = useState<Date | undefined>(undefined);
-  const [viewing, setViewing] = useState<Appointment | null>(null);
 
   // After marking a turno completed, offer to log the consulta for it —
   // see appointments-calendar.tsx for why this is two separate pieces of
   // state instead of one reused across both dialogs.
   const [completed, setCompleted] = useState<CompletedTurno | null>(null);
   const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
+
+  const patientRecords = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
+  function offerConsulta(appointment: Appointment) {
+    if (!appointment.patientId) return;
+    setCompleted({
+      patient: {
+        id: appointment.patientId,
+        name: patientsById.get(appointment.patientId) ?? "Paciente",
+      },
+      appointment,
+    });
+  }
+  function registerConsulta(appointment: Appointment) {
+    if (!appointment.patientId) return;
+    setConsultationFor({
+      patient: {
+        id: appointment.patientId,
+        name: patientsById.get(appointment.patientId) ?? "Paciente",
+      },
+      appointment,
+    });
+  }
 
   // Lands the view on the clinic's opening time instead of midnight — a
   // day with few/no turnos before "Hora inicio" would otherwise open on
@@ -161,12 +188,7 @@ export function DailyAgenda({
     setDialogOpen(true);
   }
 
-  function openView(appointment: Appointment) {
-    setViewing(appointment);
-  }
-
   function openEdit(appointment: Appointment) {
-    setViewing(null);
     setEditing(appointment);
     setNewStart(undefined);
     setDialogOpen(true);
@@ -271,7 +293,9 @@ export function DailyAgenda({
                 (appointment.durationMinutes / 60) * HOUR_WIDTH,
                 40,
               );
-              const status = consultaStatus(appointment);
+              const patient = appointment.patientId
+                ? patientRecords.get(appointment.patientId)
+                : undefined;
 
               return (
                 <Fragment key={appointment.id}>
@@ -279,7 +303,13 @@ export function DailyAgenda({
                     className="sticky left-0 z-10 flex flex-col items-start justify-center gap-0.5 border-t border-r bg-card px-2 text-sm font-medium"
                     style={{ height: ROW_HEIGHT }}
                   >
-                    <span className="max-w-full truncate">{patientName}</span>
+                    <span className="flex max-w-full items-center gap-1.5">
+                      <span
+                        aria-hidden
+                        className={`size-2 shrink-0 rounded-full ${INSURANCE_DOT[insuranceColor(patient?.insurance)]}`}
+                      />
+                      <span className="truncate">{patientName}</span>
+                    </span>
                     <StatusChip status={appointment.status} />
                   </div>
                   <div
@@ -305,11 +335,16 @@ export function DailyAgenda({
                         style={{ left, width }}
                       />
                     ))}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+                    <AppointmentQuickView
+                      appointment={appointment}
+                      patient={patient}
+                      clinicName={clinicName}
+                      onEdit={openEdit}
+                      onRegisterConsulta={registerConsulta}
+                      onCompleted={offerConsulta}
+                    >
                         <button
                           type="button"
-                          onClick={() => openView(appointment)}
                           style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
                           className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
                         >
@@ -324,13 +359,7 @@ export function DailyAgenda({
                             <div className="truncate opacity-90">{appointment.reason}</div>
                           )}
                         </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="flex-col items-start gap-0.5 text-left">
-                        <p className="font-medium">{patientName}</p>
-                        <p>{appointment.reason || "Sin motivo especificado"}</p>
-                        {status && <p>{CONSULTA_STATUS_LABELS[status]}</p>}
-                      </TooltipContent>
-                    </Tooltip>
+                    </AppointmentQuickView>
                   </div>
                 </Fragment>
               );
@@ -338,25 +367,6 @@ export function DailyAgenda({
           )}
         </div>
       </div>
-
-      {viewing && (
-        <ViewAppointmentDialog
-          key={`view-${viewing.id}`}
-          appointment={viewing}
-          patientName={
-            viewing.patientId
-              ? (patientsById.get(viewing.patientId) ?? "Paciente")
-              : "Sin paciente"
-          }
-          open
-          onOpenChange={(next) => {
-            if (!next) setViewing(null);
-          }}
-          onEdit={() => openEdit(viewing)}
-          patientPhone={patients.find((p) => p.id === viewing.patientId)?.phone}
-          clinicName={clinicName}
-        />
-      )}
 
       <AppointmentDialog
         key={editing?.id ?? newStart?.getTime() ?? "closed"}

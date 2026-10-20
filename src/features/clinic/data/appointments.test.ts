@@ -406,3 +406,38 @@ describe("no-shows", () => {
     await expect(countNoShows(clinicB.id, patient.id)).resolves.toBe(0);
   });
 });
+
+describe("en sala de espera", () => {
+  it("still takes up its slot", async () => {
+    const startsAt = new Date("2026-02-02T10:00:00Z");
+    const turno = await createAppointment(clinicA.id, { startsAt });
+    await updateAppointment(clinicA.id, turno.id, { status: "WAITING" });
+    await expect(createAppointment(clinicA.id, { startsAt })).rejects.toThrow(
+      "Ya hay un turno agendado en ese horario",
+    );
+  });
+
+  it("counts as confirmed in the agenda's default filter", async () => {
+    const waiting = await createAppointment(clinicA.id, { startsAt: new Date("2026-02-02T10:00:00Z") });
+    await updateAppointment(clinicA.id, waiting.id, { status: "WAITING" });
+    await createAppointment(clinicA.id, { startsAt: new Date("2026-02-02T11:00:00Z") });
+    const confirmed = await getAppointments(clinicA.id, undefined, "CONFIRMED");
+    expect(confirmed.map((a) => a.status).sort()).toEqual(["CONFIRMED", "WAITING"]);
+  });
+
+  it("is completed when its consulta is registered", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Ana", phone: "1" });
+    const turno = await createAppointment(clinicA.id, {
+      patientId: patient.id,
+      startsAt: new Date(2026, 1, 2, 10, 0),
+    });
+    await updateAppointment(clinicA.id, turno.id, { status: "WAITING" });
+    await createConsultation(clinicA.id, {
+      patientId: patient.id,
+      date: new Date(2026, 1, 2, 10, 0),
+      treatment: "Limpieza",
+      appointmentId: turno.id,
+    });
+    expect((await getAppointment(clinicA.id, turno.id))!.status).toBe("COMPLETED");
+  });
+});

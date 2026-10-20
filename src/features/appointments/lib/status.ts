@@ -13,4 +13,5 @@ export const APPOINTMENT_STATUS_LABELS = {
   CANCELLED: "Cancelado",
   COMPLETED: "Completado",
   NO_SHOW: "No vino",
+  WAITING: "En sala de espera",
 } as const;

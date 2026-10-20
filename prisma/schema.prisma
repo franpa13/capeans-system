@@ -85,6 +85,7 @@ enum AppointmentStatus {
   CANCELLED
   COMPLETED
   NO_SHOW // el paciente no vino
+  WAITING // llegó: en sala de espera
 }
 
 model Appointment {

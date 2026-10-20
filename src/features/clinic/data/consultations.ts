@@ -20,7 +20,7 @@ export type NewConsultationInput = {
 };
 
 /** Checks a consulta may be linked to this turno and, if the turno was
- * still CONFIRMED, marks it COMPLETED — registering what was done at a
+ * still CONFIRMED (or WAITING, in the waiting room), marks it COMPLETED — registering what was done at a
  * turno means the turno happened. `ownConsultationId` is the consulta
  * being edited, so re-saving it with its own turno isn't a "duplicate". */
 async function linkAppointment(
@@ -49,7 +49,7 @@ async function linkAppointment(
   if (appointment.consultation && appointment.consultation.id !== ownConsultationId) {
     throw new Error("Ese turno ya tiene una consulta registrada");
   }
-  if (appointment.status === "CONFIRMED") {
+  if (appointment.status === "CONFIRMED" || appointment.status === "WAITING") {
     await tx.appointment.update({ where: { id: appointmentId }, data: { status: "COMPLETED" } });
   }
 }

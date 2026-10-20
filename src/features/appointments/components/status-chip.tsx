@@ -6,6 +6,7 @@ const CHIP_STYLES: Record<AppointmentStatus, string> = {
   COMPLETED: "bg-emerald-600 text-white dark:bg-emerald-500",
   CANCELLED: "bg-muted-foreground/25 text-foreground",
   NO_SHOW: "bg-destructive text-white",
+  WAITING: "bg-amber-500 text-white",
 };
 
 /** "Confirmado" / "Completado" / "Cancelado" / "No vino" as a small solid

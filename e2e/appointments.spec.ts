@@ -164,12 +164,11 @@ test("the Día view shows a created appointment as a row with the patient name",
   await expect(page).toHaveURL(/view=day/);
   await expect(page.getByText(patientName)).toBeVisible();
 
-  // Clicking the appointment bar opens a read-only detail view first, not
-  // the edit form directly.
+  // Clicking the appointment bar opens the quick view first, not the edit
+  // form directly.
   await page.getByRole("button", { name: timeStr, exact: true }).click();
-  const viewDialog = page.getByRole("dialog", { name: "Detalle del turno" });
+  const viewDialog = page.getByRole("dialog", { name: `Turno de ${patientName}` });
   await expect(viewDialog).toBeVisible();
-  await expect(viewDialog.getByText(patientName)).toBeVisible();
   await expect(viewDialog.locator("#edit-notes")).toHaveCount(0);
 
   // "Editar" switches to the actual edit form.
@@ -187,9 +186,9 @@ test("the Día view shows a created appointment as a row with the patient name",
   const updatedBar = page.getByRole("button", { name: new RegExp(`^${timeStr}`) });
   await expect(updatedBar).toContainText("Control de rutina");
 
-  // Re-opening the detail view shows the saved change.
+  // Re-opening the quick view shows the saved change.
   await updatedBar.click();
-  const reopenedDialog = page.getByRole("dialog", { name: "Detalle del turno" });
+  const reopenedDialog = page.getByRole("dialog", { name: `Turno de ${patientName}` });
   await expect(reopenedDialog).toBeVisible();
   await expect(reopenedDialog.getByText("Control de rutina")).toBeVisible();
   await page.keyboard.press("Escape");
@@ -226,8 +225,9 @@ test("a cancelled appointment is hidden from the grid by default, and the estado
   await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 
-  // Cancel it — the weekly grid opens the edit form directly on click.
+  // Cancel it from the full form (the card opens the quick view first).
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "Cancelar turno" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
 
@@ -299,8 +299,9 @@ test("marking a turno as completed offers to log the consulta for that patient",
   const slot = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
   await expect(page.getByRole("button", { name: patientName })).toBeVisible();
 
-  // The weekly grid opens the edit form directly on click.
+  // The card opens the quick view; "Editar" opens the full form.
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   const editDialog = page.getByRole("dialog", { name: "Editar turno" });
   await editDialog.getByRole("button", { name: "Marcar como completado" }).click();
   await expect(editDialog).toHaveCount(0);
@@ -366,6 +367,7 @@ test("a completed turno left without a consulta is flagged, and can be linked la
   const slot = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
 
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   const editDialog = page.getByRole("dialog", { name: "Editar turno" });
   await editDialog.getByRole("button", { name: "Marcar como completado" }).click();
   await expect(editDialog).toHaveCount(0);
@@ -452,6 +454,7 @@ test("a cancelled turno no longer offers to cancel or complete it, only delete",
 
   // While CONFIRMED, both status-change actions are offered.
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   let dialog = page.getByRole("dialog", { name: "Editar turno" });
   await expect(dialog.getByRole("button", { name: "Marcar como completado" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Cancelar turno" })).toBeVisible();
@@ -468,6 +471,7 @@ test("a cancelled turno no longer offers to cancel or complete it, only delete",
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: "Todos los turnos", exact: true }).click();
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Editar turno" });
   await expect(dialog.getByRole("button", { name: "Marcar como completado" })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Cancelar turno" })).toHaveCount(0);
@@ -495,6 +499,7 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsInCurrentWeek());
 
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "No vino" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
   // Like a cancelled one, it leaves the default confirmed-only view…
@@ -515,6 +520,7 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   // A mistake can be undone: back to confirmed, and the count goes away.
   await page.goto("/dashboard/turnos?view=week&estado=NO_SHOW");
   await page.getByRole("button", { name: patientName }).click();
+  await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "Deshacer “No vino”" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
@@ -659,5 +665,53 @@ test("the Lista view lists the week's turnos by day, and a turno opens from ther
   await expect(row).toContainText("Confirmado");
 
   await row.click();
+  await expect(page.getByRole("dialog", { name: `Turno de ${patientName}` })).toBeVisible();
+});
+
+test("tapping a turno opens a quick view: details, obra social, alerts and one-tap states", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Rapida E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 5555-2222");
+  await page.locator("#insurance").click();
+  await page.getByRole("option", { name: "OSDE", exact: true }).click();
+  await page.fill("#allergies", "látex");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+
+  await page.goto("/dashboard/turnos?view=week");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  const { timeStr } = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsOn(new Date()));
+
+  const card = page.getByRole("button", { name: new RegExp(`${timeStr} ${patientName}`) });
+  await card.click();
+  const quick = page.getByRole("dialog", { name: `Turno de ${patientName}` });
+  await expect(quick).toContainText(timeStr);
+  await expect(quick).toContainText("30 min");
+  await expect(quick).toContainText("OSDE");
+  await expect(quick.getByRole("alert")).toContainText("Alergia: látex");
+  await expect(quick.getByRole("link", { name: patientName })).toHaveAttribute("href", /\/dashboard\/pacientes\//);
+
+  // One tap: the patient arrived.
+  await quick.getByRole("button", { name: "En sala de espera" }).click();
+  await expect(quick.getByRole("button", { name: "En sala de espera" })).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  await expect(card).toContainText("En sala de espera");
+
+  // Editar opens the full form.
+  await card.click();
+  await quick.getByRole("button", { name: "Editar" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // "No vino" takes it off the default (confirmed) view.
+  await card.click();
+  await quick.getByRole("button", { name: "No vino" }).click();
+  await expect(card).toHaveCount(0);
 });

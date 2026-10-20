@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
-import type { Appointment, TimeBlock } from "@prisma/client";
+import type { TimeBlock } from "@prisma/client";
 
 import { formatTime } from "@/features/clinic/lib/format";
 import { isSameDay } from "@/features/appointments/lib/week";
@@ -24,13 +24,14 @@ export function AgendaList({
   appointments,
   patientsById,
   timeBlocks,
-  onOpen,
+  renderTurno,
 }: {
   days: Date[];
   appointments: AppointmentWithConsultation[];
   patientsById: Map<string, string>;
   timeBlocks: TimeBlock[];
-  onOpen: (appointment: Appointment) => void;
+  /** Wraps each row (the quick view uses it as its trigger). */
+  renderTurno: (appointment: AppointmentWithConsultation, row: React.ReactNode) => React.ReactNode;
 }) {
   const todayKey = new Date().toDateString();
   const sections = days
@@ -97,9 +98,10 @@ export function AgendaList({
                     : "Sin paciente";
                   return (
                     <li key={appointment.id}>
+                      {renderTurno(
+                      appointment,
                       <button
                         type="button"
-                        onClick={() => onOpen(appointment)}
                         className="flex w-full flex-col gap-1 px-3 py-2.5 text-left hover:bg-accent/40 sm:flex-row sm:items-center sm:gap-4"
                       >
                         <span className="w-28 shrink-0 font-semibold tabular-nums">
@@ -113,7 +115,8 @@ export function AgendaList({
                           {appointment.reason || "Sin motivo"}
                         </span>
                         <StatusChip status={appointment.status} />
-                      </button>
+                      </button>,
+                      )}
                     </li>
                   );
                 })}

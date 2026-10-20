@@ -74,7 +74,13 @@ export async function getAppointments(
     where: {
       clinicId,
       ...(range ? { startsAt: { gte: range.from, lt: range.to } } : {}),
-      ...(status ? { status } : {}),
+      // "Confirmados" includes those already in the waiting room: both are
+      // turnos still happening today.
+      ...(status === "CONFIRMED"
+        ? { status: { in: ["CONFIRMED", "WAITING"] as AppointmentStatus[] } }
+        : status
+          ? { status }
+          : {}),
     },
     include: { consultation: { select: { id: true } } },
     orderBy: { startsAt: "asc" },

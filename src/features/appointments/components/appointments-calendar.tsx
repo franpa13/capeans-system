@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, ClipboardList, Plus, X } from "lucide-react"
 import type { Appointment, BusinessHours, TimeBlock } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,14 +21,18 @@ import { AppointmentDialog } from "@/features/appointments/components/appointmen
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
+import {
+  AppointmentQuickView,
+  type QuickViewPatient,
+} from "@/features/appointments/components/appointment-quick-view";
+import { insuranceColor, INSURANCE_EDGE } from "@/features/clinic/lib/insurance-color";
+
 import { BlockTimeDialog } from "@/features/appointments/components/block-time-dialog";
 import { TimeBlockBadge } from "@/features/appointments/components/time-block-badge";
 import { AgendaList } from "@/features/appointments/components/agenda-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
-  CONSULTA_STATUS_LABELS,
   ConsultaStatusIcon,
-  consultaStatus,
 } from "@/features/appointments/components/consulta-status";
 import {
   addDays,
@@ -44,7 +47,9 @@ import { formatDate, formatTime } from "@/features/clinic/lib/format";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
-type PatientOption = { id: string; name: string; phone?: string };
+/** The turnos page passes full Patient rows; the quick view uses the
+ * optional fields (obra social, alerts, phone for reminders). */
+type PatientOption = QuickViewPatient;
 type CompletedTurno = { patient: PatientOption; appointment: Appointment };
 
 // Tall enough for a 30-minute turno to show its time, name, state and
@@ -68,6 +73,8 @@ const STATUS_STYLES: Record<Appointment["status"], string> = {
   COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
   NO_SHOW:
     "bg-[color-mix(in_oklch,var(--destructive)_12%,var(--card))] text-destructive border-destructive/30",
+  WAITING:
+    "bg-[color-mix(in_oklch,var(--color-amber-500)_20%,var(--card))] text-foreground border-amber-500/50",
 };
 
 export function AppointmentsCalendar({
@@ -119,6 +126,28 @@ export function AppointmentsCalendar({
   // gets linked to it and prefilled with its date and motivo.
   const [completed, setCompleted] = useState<CompletedTurno | null>(null);
   const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
+
+  const patientRecords = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
+  function offerConsulta(appointment: Appointment) {
+    if (!appointment.patientId) return;
+    setCompleted({
+      patient: {
+        id: appointment.patientId,
+        name: patientsById.get(appointment.patientId) ?? "Paciente",
+      },
+      appointment,
+    });
+  }
+  function registerConsulta(appointment: Appointment) {
+    if (!appointment.patientId) return;
+    setConsultationFor({
+      patient: {
+        id: appointment.patientId,
+        name: patientsById.get(appointment.patientId) ?? "Paciente",
+      },
+      appointment,
+    });
+  }
 
   function openCreateAt(day: Date, hour: number) {
     const start = new Date(day);
@@ -221,7 +250,20 @@ export function AppointmentsCalendar({
           appointments={appointments}
           patientsById={patientsById}
           timeBlocks={timeBlocks}
-          onOpen={openEdit}
+          renderTurno={(appointment, row) => (
+            <AppointmentQuickView
+              appointment={appointment}
+              patient={
+                appointment.patientId ? patientRecords.get(appointment.patientId) : undefined
+              }
+              clinicName={clinicName}
+              onEdit={openEdit}
+              onRegisterConsulta={registerConsulta}
+              onCompleted={offerConsulta}
+            >
+              {row}
+            </AppointmentQuickView>
+          )}
         />
       ) : (
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md border">
@@ -341,19 +383,24 @@ export function AppointmentsCalendar({
                   const patientName = appointment.patientId
                     ? (patientsById.get(appointment.patientId) ?? "Paciente")
                     : "Sin paciente";
-                  const status = consultaStatus(appointment);
+                  const patient = appointment.patientId
+                    ? patientRecords.get(appointment.patientId)
+                    : undefined;
 
                   return (
-                    <Tooltip key={appointment.id}>
-                      <TooltipTrigger asChild>
+                    <AppointmentQuickView
+                      key={appointment.id}
+                      appointment={appointment}
+                      patient={patient}
+                      clinicName={clinicName}
+                      onEdit={openEdit}
+                      onRegisterConsulta={registerConsulta}
+                      onCompleted={offerConsulta}
+                    >
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(appointment);
-                          }}
                           style={{ top, height }}
-                          className={`absolute left-1 right-1 z-1 flex flex-col justify-start gap-0.5 overflow-hidden rounded-md border px-1.5 py-1 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
+                          className={`absolute left-1 right-1 z-1 flex flex-col justify-start gap-0.5 overflow-hidden rounded-md border border-l-4 px-1.5 py-1 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]} ${INSURANCE_EDGE[insuranceColor(patient?.insurance)]}`}
                         >
                           <div className="flex items-center gap-1 text-sm font-semibold">
                             <ConsultaStatusIcon appointment={appointment} />
@@ -369,13 +416,7 @@ export function AppointmentsCalendar({
                             )}
                           </div>
                         </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="flex-col items-start gap-0.5 text-left">
-                        <p className="font-medium">{patientName}</p>
-                        <p>{appointment.reason || "Sin motivo especificado"}</p>
-                        {status && <p>{CONSULTA_STATUS_LABELS[status]}</p>}
-                      </TooltipContent>
-                    </Tooltip>
+                    </AppointmentQuickView>
                   );
                 })}
               </div>
