@@ -142,6 +142,29 @@ function extractToothGeometries(scene: THREE.Object3D): Map<string, THREE.Buffer
 // rotating the mouth, not tapping a tooth.
 const MAX_CLICK_DRAG_PX = 5;
 
+// The GLB's three materials (Gums, Teeth, Tongue) carry no color or PBR
+// values, and glTF's default for a bare material is fully metallic — which,
+// with no environment to reflect, renders everything a flat dark gray. Give
+// each a natural, non-metallic look instead: ivory teeth, pink gums/tongue.
+const NATURAL_MATERIALS: Record<string, { color: string; roughness: number }> = {
+  Teeth: { color: "#f7f3ea", roughness: 0.35 },
+  Gums: { color: "#e8a0a6", roughness: 0.6 },
+  Tongue: { color: "#d9808b", roughness: 0.7 },
+};
+
+function applyNaturalMaterials(scene: THREE.Object3D) {
+  scene.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return;
+    const material = obj.material as THREE.MeshStandardMaterial;
+    const look = NATURAL_MATERIALS[material.name];
+    if (!look) return;
+    material.color.set(look.color);
+    material.metalness = 0;
+    material.roughness = look.roughness;
+    material.needsUpdate = true;
+  });
+}
+
 function MouthModel({
   paintedTeeth,
   onToothClick,
@@ -150,6 +173,7 @@ function MouthModel({
   onToothClick?: (fdi: string) => void;
 }) {
   const { scene } = useGLTF("/teeth/teeth.glb");
+  useMemo(() => applyNaturalMaterials(scene), [scene]);
   const toothGeometries = useMemo(() => extractToothGeometries(scene), [scene]);
 
   return (
@@ -270,7 +294,7 @@ export function ToothChart3D({
             the model to face it, since the real jaw curls back there — is
             still clearly lit instead of going dark on the side the two
             fixed directional lights don't reach. */}
-        <ambientLight intensity={1.8} />
+        <ambientLight intensity={1.1} />
         <directionalLight position={[2, 3, 2]} intensity={1} />
         <directionalLight position={[-2, 1, 1]} intensity={0.4} />
         <directionalLight position={[0, -2, -2]} intensity={0.5} />
