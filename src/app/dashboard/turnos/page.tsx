@@ -24,7 +24,9 @@ export default async function TurnosPage({
   searchParams: Promise<{ week?: string; view?: string; day?: string; estado?: string }>;
 }) {
   const { week, view, day, estado } = await searchParams;
-  const isDayView = view === "day";
+  // Día is the default — the dentist mostly wants today's agenda; the week
+  // is one tap away (and keeps view=week while navigating weeks).
+  const isDayView = view !== "week";
   const weekStart = getWeekStart(parseWeekParam(week));
   const weekEnd = addDays(weekStart, 7);
 
@@ -69,7 +71,7 @@ export default async function TurnosPage({
   );
 
   const weekParam = toWeekParam(weekStart);
-  const semanalHref = `/dashboard/turnos?week=${weekParam}&estado=${statusParam}`;
+  const semanalHref = `/dashboard/turnos?week=${weekParam}&view=week&estado=${statusParam}`;
   const diarioHref = `/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&estado=${statusParam}`;
 
   return (

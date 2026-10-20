@@ -50,3 +50,32 @@ export function businessHoursForWeekday<T extends BusinessHoursLike>(
 ): T | undefined {
   return hours.find((h) => h.weekday === weekday);
 }
+
+export type BoundaryLine = { minutes: number; label: "Hora inicio" | "Hora fin" };
+export type BoundarySegment = BoundaryLine & { startDay: number; dayCount: number };
+
+/** The week grid's open/close lines as continuous segments: consecutive
+ * days that share a line (same minute and kind) get ONE line across all
+ * of them, instead of one per day column that reads as a dashed line
+ * broken at every column. `perDay` is each visible day's lines, in order. */
+export function boundarySegments(perDay: BoundaryLine[][]): BoundarySegment[] {
+  const segments: BoundarySegment[] = [];
+  const open = new Map<string, BoundarySegment>();
+  perDay.forEach((lines, day) => {
+    const today = new Set<string>();
+    for (const line of lines) {
+      const key = `${line.minutes}|${line.label}`;
+      today.add(key);
+      const running = open.get(key);
+      if (running && running.startDay + running.dayCount === day) {
+        running.dayCount++;
+      } else {
+        const segment = { ...line, startDay: day, dayCount: 1 };
+        segments.push(segment);
+        open.set(key, segment);
+      }
+    }
+    for (const key of [...open.keys()]) if (!today.has(key)) open.delete(key);
+  });
+  return segments;
+}

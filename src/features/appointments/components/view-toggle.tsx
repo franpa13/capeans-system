@@ -19,10 +19,14 @@ export function ViewToggle({
   return (
     <div className="flex gap-1 rounded-md border p-1">
       <Button variant={isDayView ? "ghost" : "secondary"} size="sm" asChild>
-        <Link href={semanalHref}>Semanal</Link>
+        <Link href={semanalHref} data-active={!isDayView}>
+          Semanal
+        </Link>
       </Button>
       <Button variant={isDayView ? "secondary" : "ghost"} size="sm" asChild>
-        <Link href={diarioHref}>Diario</Link>
+        <Link href={diarioHref} data-active={isDayView}>
+          Diario
+        </Link>
       </Button>
     </div>
   );

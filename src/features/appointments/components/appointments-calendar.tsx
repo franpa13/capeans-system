@@ -35,7 +35,11 @@ import {
   isSameDay,
   toWeekParam,
 } from "@/features/appointments/lib/week";
-import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
+import {
+  boundarySegments,
+  businessHoursForWeekday,
+  closedRanges,
+} from "@/features/appointments/lib/business-hours";
 import { formatDate } from "@/features/clinic/lib/format";
 import type { AppointmentWithConsultation } from "@/features/clinic/data/appointments";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
@@ -53,12 +57,14 @@ function minutesFromMidnight(date: Date): number {
 type Boundary = { minutes: number; label: "Hora inicio" | "Hora fin" };
 
 const BOUNDARY_COLORS: Record<Boundary["label"], { line: string; text: string }> = {
+  // Soft on purpose: a reference line, not something competing with the
+  // turnos themselves.
   "Hora inicio": {
-    line: "border-green-500 dark:border-green-400",
+    line: "border-green-500/45 dark:border-green-400/35",
     text: "text-green-600 dark:text-green-400",
   },
   "Hora fin": {
-    line: "border-red-500 dark:border-red-400",
+    line: "border-red-500/45 dark:border-red-400/35",
     text: "text-red-600 dark:text-red-400",
   },
 };
@@ -155,6 +161,10 @@ export function AppointmentsCalendar({
   const nextWeek = toWeekParam(addDays(weekStart, 7));
   const weekEnd = addDays(weekStart, 6);
 
+  const lineSegments = boundarySegments(
+    days.map((day) => boundaries(closedRanges(businessHoursForWeekday(businessHours, day.getDay())))),
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -163,7 +173,7 @@ export function AppointmentsCalendar({
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" asChild>
-              <Link href={`/dashboard/turnos?week=${prevWeek}&estado=${estado}`} aria-label="Semana anterior">
+              <Link href={`/dashboard/turnos?week=${prevWeek}&view=week&estado=${estado}`} aria-label="Semana anterior">
                 <ChevronLeft />
               </Link>
             </Button>
@@ -171,7 +181,7 @@ export function AppointmentsCalendar({
               Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
             </span>
             <Button variant="outline" size="icon" asChild>
-              <Link href={`/dashboard/turnos?week=${nextWeek}&estado=${estado}`} aria-label="Semana siguiente">
+              <Link href={`/dashboard/turnos?week=${nextWeek}&view=week&estado=${estado}`} aria-label="Semana siguiente">
                 <ChevronRight />
               </Link>
             </Button>
@@ -184,12 +194,12 @@ export function AppointmentsCalendar({
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span
-                className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
+                className={`h-0 w-3 border-t border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
               />
               Hora inicio
             </span>
             <span className="flex items-center gap-1.5">
-              <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
+              <span className={`h-0 w-3 border-t border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
               Hora fin
             </span>
           </div>
@@ -240,23 +250,30 @@ export function AppointmentsCalendar({
             ))}
           </div>
 
-          {days.map((day) => {
+          {days.map((day, dayIndex) => {
             const dayAppointments = appointments.filter((a) => isSameDay(a.startsAt, day));
-            const ranges = closedRanges(businessHoursForWeekday(businessHours, day.getDay()));
             return (
               <div
                 key={day.toISOString()}
                 className="relative border-l"
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
-                {boundaries(ranges).map(({ minutes, label }) => (
-                  <div
-                    key={minutes}
-                    aria-hidden
-                    className={`pointer-events-none absolute left-0 right-0 z-1 border-t-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
-                    style={{ top: (minutes / 60) * HOUR_HEIGHT }}
-                  />
-                ))}
+                {/* All the week's lines live in the first column, sized in
+                    multiples of its width (every day column is the same
+                    width), so a line shared by several days is drawn once. */}
+                {dayIndex === 0 &&
+                  lineSegments.map(({ minutes, label, startDay, dayCount }) => (
+                    <div
+                      key={`${minutes}-${label}-${startDay}`}
+                      aria-hidden
+                      className={`pointer-events-none absolute z-1 border-t border-dashed ${BOUNDARY_COLORS[label].line}`}
+                      style={{
+                        top: (minutes / 60) * HOUR_HEIGHT,
+                        left: `${startDay * 100}%`,
+                        width: `${dayCount * 100}%`,
+                      }}
+                    />
+                  ))}
 
                 {HOURS.map((hour) => (
                   <button

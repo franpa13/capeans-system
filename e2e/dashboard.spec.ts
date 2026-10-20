@@ -49,7 +49,7 @@ async function bookTurnoIn(
   patientName: string,
   candidates: { dateStr: string; timeStr: string }[],
 ) {
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();

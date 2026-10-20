@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { businessHoursForWeekday, closedRanges } from "./business-hours";
+import { boundarySegments, businessHoursForWeekday, closedRanges } from "./business-hours";
 
 type Row = {
   weekday: number;
@@ -66,5 +66,32 @@ describe("businessHoursForWeekday", () => {
   it("returns undefined when no row matches", () => {
     const hours = [row({ weekday: 1 })];
     expect(businessHoursForWeekday(hours, 6)).toBeUndefined();
+  });
+});
+
+describe("boundarySegments", () => {
+  it("joins consecutive days with the same line into one segment", () => {
+    const weekday = [
+      { minutes: 540, label: "Hora inicio" as const },
+      { minutes: 1080, label: "Hora fin" as const },
+    ];
+    const saturday = [
+      { minutes: 540, label: "Hora inicio" as const },
+      { minutes: 720, label: "Hora fin" as const },
+    ];
+    const segments = boundarySegments([weekday, weekday, weekday, weekday, weekday, saturday, []]);
+    expect(segments).toEqual([
+      { minutes: 540, label: "Hora inicio", startDay: 0, dayCount: 6 },
+      { minutes: 1080, label: "Hora fin", startDay: 0, dayCount: 5 },
+      { minutes: 720, label: "Hora fin", startDay: 5, dayCount: 1 },
+    ]);
+  });
+
+  it("starts a new segment when a day in between doesn't have the line", () => {
+    const open = [{ minutes: 540, label: "Hora inicio" as const }];
+    expect(boundarySegments([open, [], open])).toEqual([
+      { minutes: 540, label: "Hora inicio", startDay: 0, dayCount: 1 },
+      { minutes: 540, label: "Hora inicio", startDay: 2, dayCount: 1 },
+    ]);
   });
 });

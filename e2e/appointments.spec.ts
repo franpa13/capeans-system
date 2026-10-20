@@ -105,7 +105,7 @@ test("a created appointment appears on the calendar, and double-booking the same
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10000 });
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -150,7 +150,7 @@ test("the Día view shows a created appointment as a row with the patient name",
   // Today, so that switching to Día view (which defaults to today when
   // today falls inside the week being viewed) shows it without having to
   // navigate to a specific day first.
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -217,7 +217,7 @@ test("a cancelled appointment is hidden from the grid by default, and the estado
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10000 });
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   // Default filter is "Turnos confirmados" — visible before cancelling.
   await expect(page.getByRole("combobox")).toHaveText("Turnos confirmados");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
@@ -255,7 +255,7 @@ test("a turno can be booked for a brand-new patient without leaving the dialog",
 
   const patientName = `Paciente Turno Nuevo E2E ${Date.now()}`;
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: "Agregar paciente nuevo" }).click();
@@ -291,7 +291,7 @@ test("marking a turno as completed offers to log the consulta for that patient",
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10000 });
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -358,7 +358,7 @@ test("a completed turno left without a consulta is flagged, and can be linked la
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10000 });
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -400,7 +400,7 @@ test("a completed turno left without a consulta is flagged, and can be linked la
   await dialog.getByRole("button", { name: "Guardar" }).click();
   await expect(dialog).toHaveCount(0);
 
-  await page.goto("/dashboard/turnos?estado=COMPLETED");
+  await page.goto("/dashboard/turnos?view=week&estado=COMPLETED");
   await expect(
     page.getByRole("button", { name: patientName }).getByRole("img", { name: "Consulta registrada" }),
   ).toBeVisible();
@@ -412,7 +412,7 @@ test("Nuevo turno from the weekly header defaults to a date within the viewed we
   await page.goto("/sign-in");
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   // Jump two weeks ahead so "today" is never the default by coincidence.
   await page.getByRole("link", { name: "Semana siguiente" }).click();
   await page.getByRole("link", { name: "Semana siguiente" }).click();
@@ -443,7 +443,7 @@ test("a cancelled turno no longer offers to cancel or complete it, only delete",
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10000 });
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -488,7 +488,7 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   await page.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
 
-  await page.goto("/dashboard/turnos");
+  await page.goto("/dashboard/turnos?view=week");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -513,7 +513,7 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   await expect(page.getByText("Faltó a 1 turno")).toBeVisible();
 
   // A mistake can be undone: back to confirmed, and the count goes away.
-  await page.goto("/dashboard/turnos?estado=NO_SHOW");
+  await page.goto("/dashboard/turnos?view=week&estado=NO_SHOW");
   await page.getByRole("button", { name: patientName }).click();
   await page.getByRole("button", { name: "Deshacer “No vino”" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
@@ -523,4 +523,21 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   await page.getByPlaceholder("Buscar por nombre...").fill(patientName);
   await page.getByRole("link", { name: patientName }).first().click();
   await expect(page.getByText(/Faltó a/)).toHaveCount(0);
+});
+
+test("Turnos opens on today's Día view by default, and the week view stays weekly while navigating", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  await page.goto("/dashboard/turnos");
+  await expect(page.getByRole("link", { name: "Día anterior" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Diario", exact: true })).toHaveAttribute("data-active", "true");
+
+  await page.getByRole("link", { name: "Semanal", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Semana anterior" })).toBeVisible();
+  await page.getByRole("link", { name: "Semana siguiente" }).click();
+  await expect(page).toHaveURL(/view=week/);
+  await expect(page.getByRole("link", { name: "Semana anterior" })).toBeVisible();
 });
