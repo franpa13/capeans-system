@@ -55,11 +55,11 @@ const BOUNDARY_COLORS: Record<Boundary["label"], { line: string; text: string }>
   // Soft on purpose: a reference line, not something competing with the
   // turnos themselves.
   "Hora inicio": {
-    line: "border-green-500/45 dark:border-green-400/35",
+    line: "border-green-500/60 dark:border-green-400/50",
     text: "text-green-600 dark:text-green-400",
   },
   "Hora fin": {
-    line: "border-red-500/45 dark:border-red-400/35",
+    line: "border-red-500/60 dark:border-red-400/50",
     text: "text-red-600 dark:text-red-400",
   },
 };
@@ -218,12 +218,12 @@ export function DailyAgenda({
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span
-            className={`h-0 w-3 border-t border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
+            className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora inicio"].line}`}
           />
           Hora inicio
         </span>
         <span className="flex items-center gap-1.5">
-          <span className={`h-0 w-3 border-t border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
+          <span className={`h-0 w-3 border-t-2 border-dashed ${BOUNDARY_COLORS["Hora fin"].line}`} />
           Hora fin
         </span>
       </div>
@@ -251,7 +251,7 @@ export function DailyAgenda({
               <div
                 key={minutes}
                 aria-hidden
-                className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l border-dashed ${BOUNDARY_COLORS[label].line}`}
+                className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                 style={{ left: (minutes / 60) * HOUR_WIDTH }}
               />
             ))}
@@ -289,7 +289,7 @@ export function DailyAgenda({
                       <div
                         key={minutes}
                         aria-hidden
-                        className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l border-dashed ${BOUNDARY_COLORS[label].line}`}
+                        className={`pointer-events-none absolute top-0 bottom-0 z-1 border-l-2 border-dashed ${BOUNDARY_COLORS[label].line}`}
                         style={{ left: (minutes / 60) * HOUR_WIDTH }}
                       />
                     ))}
