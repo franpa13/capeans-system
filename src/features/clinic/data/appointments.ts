@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Appointment, AppointmentStatus, Prisma } from "@prisma/client";
 import { assertNotBlocked } from "@/features/clinic/data/time-blocks";
+import { ACTIVE_STATUSES } from "@/features/appointments/lib/status";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -68,7 +69,7 @@ export type AppointmentWithConsultation = Appointment & { consultation: { id: st
 export async function getAppointments(
   clinicId: string,
   range?: { from: Date; to: Date },
-  status?: AppointmentStatus,
+  status?: AppointmentStatus | typeof ACTIVE_STATUSES,
 ): Promise<AppointmentWithConsultation[]> {
   return prisma.appointment.findMany({
     where: {
@@ -76,11 +77,13 @@ export async function getAppointments(
       ...(range ? { startsAt: { gte: range.from, lt: range.to } } : {}),
       // "Confirmados" includes those already in the waiting room: both are
       // turnos still happening today.
-      ...(status === "CONFIRMED"
-        ? { status: { in: ["CONFIRMED", "WAITING"] as AppointmentStatus[] } }
-        : status
-          ? { status }
-          : {}),
+      ...(status === ACTIVE_STATUSES
+        ? { status: { not: "CANCELLED" as const } }
+        : status === "CONFIRMED"
+          ? { status: { in: ["CONFIRMED", "WAITING"] as AppointmentStatus[] } }
+          : status
+            ? { status }
+            : {}),
     },
     include: { consultation: { select: { id: true } } },
     orderBy: { startsAt: "asc" },

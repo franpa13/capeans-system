@@ -21,6 +21,7 @@ import { AppointmentDialog } from "@/features/appointments/components/appointmen
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
+import { formatTime } from "@/features/clinic/lib/format";
 import {
   AppointmentQuickView,
   type QuickViewPatient,
@@ -345,6 +346,9 @@ export function DailyAgenda({
                     >
                         <button
                           type="button"
+                          // Time and patient: the bar alone only shows the time,
+                          // and two turnos can share one (a "No vino" stays).
+                          aria-label={`${formatTime(appointment.startsAt)} ${patientName}${appointment.reason ? ` · ${appointment.reason}` : ""}`}
                           style={{ left, width, top: 6, height: ROW_HEIGHT - 12 }}
                           className={`absolute z-1 overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]}`}
                         >

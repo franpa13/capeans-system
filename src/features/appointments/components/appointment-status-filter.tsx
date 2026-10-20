@@ -9,9 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ALL_STATUSES } from "@/features/appointments/lib/status";
+import { ACTIVE_STATUSES, ALL_STATUSES } from "@/features/appointments/lib/status";
 
 const OPTIONS = [
+  { value: ACTIVE_STATUSES, label: "Todos menos cancelados" },
   { value: "CONFIRMED", label: "Turnos confirmados" },
   { value: "CANCELLED", label: "Turnos cancelados" },
   { value: "COMPLETED", label: "Turnos completados" },

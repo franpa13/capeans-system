@@ -441,3 +441,15 @@ describe("en sala de espera", () => {
     expect((await getAppointment(clinicA.id, turno.id))!.status).toBe("COMPLETED");
   });
 });
+
+describe("the agenda's default filter", () => {
+  it("shows every turno except cancelled ones — a done or missed turno stays", async () => {
+    const statuses = ["CONFIRMED", "WAITING", "COMPLETED", "NO_SHOW", "CANCELLED"] as const;
+    for (const [i, status] of statuses.entries()) {
+      const a = await createAppointment(clinicA.id, { startsAt: new Date(2026, 1, 2, 9 + i, 0) });
+      if (status !== "CONFIRMED") await updateAppointment(clinicA.id, a.id, { status });
+    }
+    const shown = await getAppointments(clinicA.id, undefined, "ACTIVE");
+    expect(shown.map((a) => a.status)).toEqual(["CONFIRMED", "WAITING", "COMPLETED", "NO_SHOW"]);
+  });
+});

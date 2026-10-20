@@ -61,3 +61,42 @@ export function parseWeekParam(value?: string): Date {
   const parsed = new Date(`${value}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
+
+/** Side-by-side columns for turnos that overlap in time (e.g. a "No vino"
+ * that stays on the agenda and the turno given in its freed slot): each
+ * item gets a lane, and `lanes` is how many columns its group of
+ * overlapping items needs. Items are minutes from midnight, in the order
+ * to draw them; results come back in the same order. */
+export function layoutLanes(items: { start: number; end: number }[]): { lane: number; lanes: number }[] {
+  const order = items.map((_, i) => i).sort((a, b) => items[a].start - items[b].start || items[a].end - items[b].end);
+  const result: { lane: number; lanes: number }[] = items.map(() => ({ lane: 0, lanes: 1 }));
+  let group: number[] = [];
+  let groupEnd = -Infinity;
+  let laneEnds: number[] = [];
+
+  const closeGroup = () => {
+    for (const i of group) result[i].lanes = laneEnds.length;
+    group = [];
+    laneEnds = [];
+  };
+
+  for (const i of order) {
+    const { start, end } = items[i];
+    if (start >= groupEnd) {
+      closeGroup();
+      groupEnd = -Infinity;
+    }
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(end);
+    } else {
+      laneEnds[lane] = end;
+    }
+    result[i].lane = lane;
+    group.push(i);
+    groupEnd = Math.max(groupEnd, end);
+  }
+  closeGroup();
+  return result;
+}

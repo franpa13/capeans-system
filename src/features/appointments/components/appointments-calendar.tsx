@@ -40,6 +40,7 @@ import {
   getWeekDays,
   getWeekStart,
   isSameDay,
+  layoutLanes,
   toWeekParam,
 } from "@/features/appointments/lib/week";
 import { businessHoursForWeekday, closedRanges } from "@/features/appointments/lib/business-hours";
@@ -310,6 +311,14 @@ export function AppointmentsCalendar({
           {days.map((day, dayIndex) => {
             const dayAppointments = appointments.filter((a) => isSameDay(a.startsAt, day));
             const isToday = day.toDateString() === todayKey;
+            // Overlapping turnos (e.g. a "No vino" and the one given in its
+            // slot) sit side by side instead of on top of each other.
+            const lanes = layoutLanes(
+              dayAppointments.map((a) => {
+                const start = minutesFromMidnight(a.startsAt);
+                return { start, end: start + a.durationMinutes };
+              }),
+            );
             return (
               <div
                 key={day.toISOString()}
@@ -374,7 +383,8 @@ export function AppointmentsCalendar({
                   </button>
                 ))}
 
-                {dayAppointments.map((appointment) => {
+                {dayAppointments.map((appointment, index) => {
+                  const { lane, lanes: laneCount } = lanes[index];
                   const top = (minutesFromMidnight(appointment.startsAt) / 60) * HOUR_HEIGHT;
                   const height = Math.max(
                     (appointment.durationMinutes / 60) * HOUR_HEIGHT,
@@ -399,8 +409,13 @@ export function AppointmentsCalendar({
                     >
                         <button
                           type="button"
-                          style={{ top, height }}
-                          className={`absolute left-1 right-1 z-1 flex flex-col justify-start gap-0.5 overflow-hidden rounded-md border border-l-4 px-1.5 py-1 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]} ${INSURANCE_EDGE[insuranceColor(patient?.insurance)]}`}
+                          style={{
+                            top,
+                            height,
+                            left: `calc(${(lane / laneCount) * 100}% + 4px)`,
+                            width: `calc(${100 / laneCount}% - 8px)`,
+                          }}
+                          className={`absolute z-1 flex flex-col justify-start gap-0.5 overflow-hidden rounded-md border border-l-4 px-1.5 py-1 text-left text-xs shadow-sm ${STATUS_STYLES[appointment.status]} ${INSURANCE_EDGE[insuranceColor(patient?.insurance)]}`}
                         >
                           <div className="flex items-center gap-1 text-sm font-semibold">
                             <ConsultaStatusIcon appointment={appointment} />

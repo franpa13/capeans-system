@@ -2,7 +2,7 @@ import { CalendarDays } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { AppointmentsCalendar } from "@/features/appointments/components/appointments-calendar";
 import { DailyAgenda } from "@/features/appointments/components/daily-agenda";
-import { ALL_STATUSES, DEFAULT_STATUS } from "@/features/appointments/lib/status";
+import { ACTIVE_STATUSES, ALL_STATUSES, DEFAULT_STATUS } from "@/features/appointments/lib/status";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getAppointments } from "@/features/clinic/data/appointments";
 import { getPatients } from "@/features/clinic/data/patients";
@@ -37,7 +37,9 @@ export default async function TurnosPage({
   // changed deliberately instead.
   const statusParam = estado ?? DEFAULT_STATUS;
   const statusFilter =
-    statusParam === ALL_STATUSES ? undefined : (statusParam as AppointmentStatus);
+    statusParam === ALL_STATUSES
+      ? undefined
+      : (statusParam as AppointmentStatus | typeof ACTIVE_STATUSES);
 
   // Defaults the day view to today when today falls inside the week
   // already being viewed, otherwise to that week's Monday.

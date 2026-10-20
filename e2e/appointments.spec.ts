@@ -166,7 +166,7 @@ test("the Día view shows a created appointment as a row with the patient name",
 
   // Clicking the appointment bar opens the quick view first, not the edit
   // form directly.
-  await page.getByRole("button", { name: timeStr, exact: true }).click();
+  await page.getByRole("button", { name: `${timeStr} ${patientName}` }).click();
   const viewDialog = page.getByRole("dialog", { name: `Turno de ${patientName}` });
   await expect(viewDialog).toBeVisible();
   await expect(viewDialog.locator("#edit-notes")).toHaveCount(0);
@@ -183,7 +183,7 @@ test("the Día view shows a created appointment as a row with the patient name",
   // onSaved's router.refresh() is fire-and-forget — re-reading the bar
   // immediately would race it and see the pre-edit data. Wait for the
   // bar's own text to pick up the new reason before trusting it.
-  const updatedBar = page.getByRole("button", { name: new RegExp(`^${timeStr}`) });
+  const updatedBar = page.getByRole("button", { name: new RegExp(`^${timeStr} ${patientName}`) });
   await expect(updatedBar).toContainText("Control de rutina");
 
   // Re-opening the quick view shows the saved change.
@@ -217,8 +217,8 @@ test("a cancelled appointment is hidden from the grid by default, and the estado
   }).toPass({ timeout: 10000 });
 
   await page.goto("/dashboard/turnos?view=week");
-  // Default filter is "Turnos confirmados" — visible before cancelling.
-  await expect(page.getByRole("combobox")).toHaveText("Turnos confirmados");
+  // Default filter is everything but cancelled — visible before cancelling.
+  await expect(page.getByRole("combobox")).toHaveText("Todos menos cancelados");
   await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
   await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: patientName }).click();
@@ -231,7 +231,7 @@ test("a cancelled appointment is hidden from the grid by default, and the estado
   await page.getByRole("button", { name: "Cancelar turno" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
 
-  // Hidden from the default (confirmed-only) view now.
+  // Hidden from the default view (everything but cancelled) now.
   await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
 
   // Switching the filter to "Turnos cancelados" brings it back.
@@ -329,10 +329,10 @@ test("marking a turno as completed offers to log the consulta for that patient",
   await consultationDialog.getByRole("button", { name: "Guardar" }).click();
   await expect(consultationDialog).toHaveCount(0);
 
-  // The turno itself is now completed — gone from the default
-  // confirmed-only filter, visible under "Turnos completados", and marked
-  // as having its consulta.
-  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+  // The turno itself is now completed — it stays on the agenda with its new
+  // state (only its state changes), shows under "Turnos completados" too,
+  // and is marked as having its consulta.
+  await expect(page.getByRole("button", { name: patientName })).toContainText("Completado");
   await page.getByRole("combobox").click();
   await page.getByRole("option", { name: "Turnos completados", exact: true }).click();
   await expect(page).toHaveURL(/estado=COMPLETED/);
@@ -464,7 +464,7 @@ test("a cancelled turno no longer offers to cancel or complete it, only delete",
 
   // onSaved's router.refresh() is fire-and-forget — confirm the
   // cancellation actually landed (the bar disappears from the default
-  // confirmed-only filter) before trusting the data is fresh.
+  // default view, which leaves cancelled turnos out) before trusting the data is fresh.
   await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
 
   // Show cancelled turnos, then reopen it.
@@ -502,8 +502,8 @@ test("a turno can be marked 'No vino' (and undone), and the ficha counts the abs
   await page.getByRole("dialog", { name: /^Turno de / }).getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByRole("button", { name: "No vino" }).click();
   await expect(page.getByRole("dialog", { name: "Editar turno" })).toHaveCount(0);
-  // Like a cancelled one, it leaves the default confirmed-only view…
-  await expect(page.getByRole("button", { name: patientName })).toHaveCount(0);
+  // It stays on the agenda, marked as such (only cancelled turnos leave it)…
+  await expect(page.getByRole("button", { name: patientName })).toContainText("No vino");
 
   // …and has its own filter.
   await page.getByRole("combobox").click();
@@ -712,6 +712,8 @@ test("tapping a turno opens a quick view: details, obra social, alerts and one-t
 
   // "No vino" takes it off the default (confirmed) view.
   await card.click();
+  // "No vino" just changes its state: it stays on the agenda.
   await quick.getByRole("button", { name: "No vino" }).click();
-  await expect(card).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(card).toContainText("No vino");
 });
