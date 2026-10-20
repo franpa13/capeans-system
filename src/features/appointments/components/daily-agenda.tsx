@@ -4,7 +4,7 @@ import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ClipboardList, Plus, X } from "lucide-react";
-import type { Appointment, BusinessHours } from "@prisma/client";
+import type { Appointment, BusinessHours, TimeBlock } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,8 +21,10 @@ import {
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { ViewAppointmentDialog } from "@/features/appointments/components/view-appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
-import { ViewToggle } from "@/features/appointments/components/view-toggle";
+import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
+import { BlockTimeDialog } from "@/features/appointments/components/block-time-dialog";
+import { TimeBlockBadge } from "@/features/appointments/components/time-block-badge";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
   CONSULTA_STATUS_LABELS,
@@ -54,10 +56,14 @@ const STATUS_STYLES: Record<Appointment["status"], string> = {
   // A solid, near-opaque fill read as too heavy against the grid — a
   // light tinted wash with a soft border (the same look CANCELLED/
   // COMPLETED already had) keeps it readable without dominating the page.
-  CONFIRMED: "bg-primary/15 text-accent-foreground border-primary/30 dark:bg-primary/25 dark:border-primary/40",
+  // Opaque tints (mixed with the card color): blocked periods and the
+  // closed-hours hatch behind a turno must not show through its text.
+  CONFIRMED:
+    "bg-[color-mix(in_oklch,var(--primary)_15%,var(--card))] text-accent-foreground border-primary/30 dark:bg-[color-mix(in_oklch,var(--primary)_25%,var(--card))] dark:border-primary/40",
   CANCELLED: "bg-muted text-muted-foreground border-border line-through opacity-60",
   COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
-  NO_SHOW: "bg-destructive/10 text-destructive border-destructive/30 opacity-80",
+  NO_SHOW:
+    "bg-[color-mix(in_oklch,var(--destructive)_12%,var(--card))] text-destructive border-destructive/30",
 };
 
 /** The day view: hours on the X axis, one row per appointment (not per
@@ -71,28 +77,28 @@ export function DailyAgenda({
   patients,
   businessHours,
   estado,
-  isDayView,
-  semanalHref,
-  diarioHref,
+  view,
+  viewHrefs,
   insuranceOptions,
   treatmentOptions,
   treatmentPrices,
   supplyOptions,
   clinicName,
+  timeBlocks,
 }: {
   day: Date;
   appointments: AppointmentWithConsultation[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
-  isDayView: boolean;
-  semanalHref: string;
-  diarioHref: string;
+  view: AgendaView;
+  viewHrefs: { diarioHref: string; semanalHref: string; listaHref: string };
   insuranceOptions: string[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
   supplyOptions: SupplyOption[];
   clinicName: string;
+  timeBlocks: TimeBlock[];
 }) {
   const router = useRouter();
   const patientsById = useMemo(
@@ -107,6 +113,22 @@ export function DailyAgenda({
   // A closed range starting at midnight ends when the clinic opens.
   const morning = ranges.find((r) => r.startMinutes === 0);
   const openMinutes = morning && morning.endMinutes < 24 * 60 ? morning.endMinutes : undefined;
+
+  // Blocked periods (vacaciones, feriado…) clipped to this day, as x offsets.
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayBlocks = timeBlocks.flatMap((block) => {
+    const start = Math.max(block.startsAt.getTime(), dayStart.getTime());
+    const end = Math.min(block.endsAt.getTime(), dayStart.getTime() + 24 * 3_600_000);
+    if (end <= start) return [];
+    return [
+      {
+        block,
+        left: ((start - dayStart.getTime()) / 3_600_000) * HOUR_WIDTH,
+        width: ((end - start) / 3_600_000) * HOUR_WIDTH,
+      },
+    ];
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | undefined>(undefined);
@@ -159,7 +181,7 @@ export function DailyAgenda({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <ViewToggle isDayView={isDayView} semanalHref={semanalHref} diarioHref={diarioHref} />
+          <ViewToggle view={view} {...viewHrefs} />
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
             <Button variant="outline" asChild>
@@ -180,10 +202,13 @@ export function DailyAgenda({
             <span className="ml-2 text-sm font-medium">{formatDayLabel(day)}</span>
           </div>
         </div>
-        <Button onClick={openCreate}>
-          <Plus />
-          Nuevo turno
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <BlockTimeDialog defaultDay={day} />
+          <Button onClick={openCreate}>
+            <Plus />
+            Nuevo turno
+          </Button>
+        </div>
       </div>
 
       <div ref={scrollContainerRef} className="min-h-0 min-w-0 flex-1 overflow-auto rounded-md border">
@@ -219,6 +244,15 @@ export function DailyAgenda({
                 {endMinutes - startMinutes >= 120 && (
                   <span className="text-[11px] text-muted-foreground">Cerrado</span>
                 )}
+              </div>
+            ))}
+            {dayBlocks.map(({ block, left, width }) => (
+              <div
+                key={block.id}
+                className="pointer-events-none absolute bottom-0 z-1 flex items-center justify-start border-x border-amber-500/40 bg-amber-500/10 px-2"
+                style={{ top: 24, left, width }}
+              >
+                <TimeBlockBadge block={block} />
               </div>
             ))}
           </div>
@@ -261,6 +295,14 @@ export function DailyAgenda({
                           left: (startMinutes / 60) * HOUR_WIDTH,
                           width: ((endMinutes - startMinutes) / 60) * HOUR_WIDTH,
                         }}
+                      />
+                    ))}
+                    {dayBlocks.map(({ block, left, width }) => (
+                      <div
+                        key={block.id}
+                        aria-hidden
+                        className="pointer-events-none absolute top-0 bottom-0 border-x border-amber-500/40 bg-amber-500/10"
+                        style={{ left, width }}
                       />
                     ))}
                     <Tooltip>

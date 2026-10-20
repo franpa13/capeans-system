@@ -13,6 +13,11 @@ import {
   type UpdateAppointmentInput,
 } from "@/features/clinic/data/appointments";
 import { createPatient, type NewPatientInput } from "@/features/clinic/data/patients";
+import {
+  createTimeBlock,
+  deleteTimeBlock,
+  type NewTimeBlockInput,
+} from "@/features/clinic/data/time-blocks";
 
 async function requireClinicId(): Promise<string> {
   const clinic = await getCurrentClinic();
@@ -91,5 +96,24 @@ export async function markReminderSentAction(id: string) {
     await markReminderSent(clinicId, id);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/turnos");
+  });
+}
+
+export async function createTimeBlockAction(input: NewTimeBlockInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const { affectedTurnos } = await createTimeBlock(clinicId, input);
+    revalidatePath("/dashboard/turnos");
+    revalidatePath("/dashboard");
+    return { affectedTurnos };
+  });
+}
+
+export async function deleteTimeBlockAction(id: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deleteTimeBlock(clinicId, id);
+    revalidatePath("/dashboard/turnos");
+    revalidatePath("/dashboard");
   });
 }

@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ClipboardList, Plus, X } from "lucide-react";
-import type { Appointment, BusinessHours } from "@prisma/client";
+import type { Appointment, BusinessHours, TimeBlock } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,8 +20,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
-import { ViewToggle } from "@/features/appointments/components/view-toggle";
+import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
+import { BlockTimeDialog } from "@/features/appointments/components/block-time-dialog";
+import { TimeBlockBadge } from "@/features/appointments/components/time-block-badge";
+import { AgendaList } from "@/features/appointments/components/agenda-list";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
   CONSULTA_STATUS_LABELS,
@@ -57,10 +60,14 @@ const STATUS_STYLES: Record<Appointment["status"], string> = {
   // A solid, near-opaque fill read as too heavy against the grid — a
   // light tinted wash with a soft border (the same look CANCELLED/
   // COMPLETED already had) keeps it readable without dominating the page.
-  CONFIRMED: "bg-primary/15 text-accent-foreground border-primary/30 dark:bg-primary/25 dark:border-primary/40",
+  // Opaque tints (mixed with the card color): blocked periods and the
+  // closed-hours hatch behind a turno must not show through its text.
+  CONFIRMED:
+    "bg-[color-mix(in_oklch,var(--primary)_15%,var(--card))] text-accent-foreground border-primary/30 dark:bg-[color-mix(in_oklch,var(--primary)_25%,var(--card))] dark:border-primary/40",
   CANCELLED: "bg-muted text-muted-foreground border-border line-through opacity-60",
   COMPLETED: "bg-accent text-accent-foreground border-accent-foreground/30",
-  NO_SHOW: "bg-destructive/10 text-destructive border-destructive/30 opacity-80",
+  NO_SHOW:
+    "bg-[color-mix(in_oklch,var(--destructive)_12%,var(--card))] text-destructive border-destructive/30",
 };
 
 export function AppointmentsCalendar({
@@ -69,28 +76,28 @@ export function AppointmentsCalendar({
   patients,
   businessHours,
   estado,
-  isDayView,
-  semanalHref,
-  diarioHref,
+  view,
+  viewHrefs,
   insuranceOptions,
   treatmentOptions,
   treatmentPrices,
   supplyOptions,
   clinicName,
+  timeBlocks,
 }: {
   weekStart: Date;
   appointments: AppointmentWithConsultation[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
-  isDayView: boolean;
-  semanalHref: string;
-  diarioHref: string;
+  view: AgendaView;
+  viewHrefs: { diarioHref: string; semanalHref: string; listaHref: string };
   insuranceOptions: string[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
   supplyOptions: SupplyOption[];
   clinicName: string;
+  timeBlocks: TimeBlock[];
 }) {
   const router = useRouter();
   const days = getWeekDays(weekStart);
@@ -158,20 +165,20 @@ export function AppointmentsCalendar({
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <ViewToggle isDayView={isDayView} semanalHref={semanalHref} diarioHref={diarioHref} />
+          <ViewToggle view={view} {...viewHrefs} />
           <AppointmentStatusFilter value={estado} />
           <div className="flex items-center gap-1">
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?week=${prevWeek}&view=week&estado=${estado}`} aria-label="Semana anterior">
+              <Link href={`/dashboard/turnos?week=${prevWeek}&view=${view}&estado=${estado}`} aria-label="Semana anterior">
                 <ChevronLeft />
                 Anterior
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?view=week&estado=${estado}`}>Hoy</Link>
+              <Link href={`/dashboard/turnos?view=${view}&estado=${estado}`}>Hoy</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?week=${nextWeek}&view=week&estado=${estado}`} aria-label="Semana siguiente">
+              <Link href={`/dashboard/turnos?week=${nextWeek}&view=${view}&estado=${estado}`} aria-label="Semana siguiente">
                 Siguiente
                 <ChevronRight />
               </Link>
@@ -181,6 +188,10 @@ export function AppointmentsCalendar({
             </span>
           </div>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <BlockTimeDialog
+          defaultDay={getWeekStart(new Date()).getTime() === weekStart.getTime() ? new Date() : weekStart}
+        />
         <Button
           onClick={() => {
             setEditing(undefined);
@@ -200,9 +211,19 @@ export function AppointmentsCalendar({
           <Plus />
           Nuevo turno
         </Button>
+        </div>
       </div>
 
 
+      {view === "list" ? (
+        <AgendaList
+          days={days}
+          appointments={appointments}
+          patientsById={patientsById}
+          timeBlocks={timeBlocks}
+          onOpen={openEdit}
+        />
+      ) : (
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto rounded-md border">
         <div className="grid grid-cols-[64px_repeat(7,minmax(150px,1fr))]">
           <div className="sticky top-0 z-10 border-b bg-card" />
@@ -253,6 +274,28 @@ export function AppointmentsCalendar({
                 className={`relative border-l ${isToday ? "bg-primary/[0.04]" : ""}`}
                 style={{ height: HOUR_HEIGHT * 24 }}
               >
+                {/* Blocked periods (vacaciones, feriado…), clipped to this day. The
+                    label sits at the bottom: turnos tend to be at the top. */}
+                {timeBlocks.map((block) => {
+                  const dayStart = new Date(day);
+                  dayStart.setHours(0, 0, 0, 0);
+                  const dayEnd = addDays(dayStart, 1);
+                  const start = Math.max(block.startsAt.getTime(), dayStart.getTime());
+                  const end = Math.min(block.endsAt.getTime(), dayEnd.getTime());
+                  if (end <= start) return null;
+                  const top = ((start - dayStart.getTime()) / 3_600_000) * HOUR_HEIGHT;
+                  const height = ((end - start) / 3_600_000) * HOUR_HEIGHT;
+                  return (
+                    <div
+                      key={block.id}
+                      className="pointer-events-none absolute right-0 left-0 z-1 flex items-end justify-center border-y border-amber-500/40 bg-amber-500/10 px-1 pb-2"
+                      style={{ top, height }}
+                    >
+                      <TimeBlockBadge block={block} />
+                    </div>
+                  );
+                })}
+
                 {/* Closed hours: shaded, and labeled when there's room. */}
                 {closedByDay[dayIndex].map(({ startMinutes, endMinutes }) => {
                   const top = (startMinutes / 60) * HOUR_HEIGHT;
@@ -340,6 +383,7 @@ export function AppointmentsCalendar({
           })}
         </div>
       </div>
+      )}
 
       <AppointmentDialog
         key={editing?.id ?? newStart?.getTime() ?? "closed"}

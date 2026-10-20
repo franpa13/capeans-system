@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Appointment, AppointmentStatus, Prisma } from "@prisma/client";
+import { assertNotBlocked } from "@/features/clinic/data/time-blocks";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -137,6 +138,7 @@ export async function createAppointment(
   if (conflict) {
     throw new Error("Ya hay un turno agendado en ese horario");
   }
+  await assertNotBlocked(db, clinicId, input.startsAt, durationMinutes);
 
   return db.appointment.create({
     data: {
@@ -180,6 +182,12 @@ export async function updateAppointment(
     if (conflict) {
       throw new Error("Ya hay un turno agendado en ese horario");
     }
+    // Only when the turno moves: one already inside a block (booked before
+    // the block existed) can still be edited, cancelled or marked.
+    const moved =
+      startsAt.getTime() !== existing.startsAt.getTime() ||
+      durationMinutes !== existing.durationMinutes;
+    if (moved) await assertNotBlocked(db, clinicId, startsAt, durationMinutes);
   }
 
   return db.appointment.update({

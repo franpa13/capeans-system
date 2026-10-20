@@ -581,3 +581,83 @@ test("the week view shades closed hours, highlights today with its count, and ca
   await expect(card).toBeVisible();
   await expect(card.getByText("Confirmado")).toBeVisible();
 });
+
+test("a period can be blocked (no turnos can be booked in it) and unblocked", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  // A week far ahead, so a block left behind by a failed run can't get in
+  // the way of the other tests' random slots.
+  const day = new Date();
+  day.setFullYear(day.getFullYear() + 3);
+  day.setDate(day.getDate() + ((3 - day.getDay() + 7) % 7)); // a Wednesday
+  const dateStr = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+  const reason = `Congreso E2E ${Date.now()}`;
+
+  await page.goto(`/dashboard/turnos?view=week&week=${dateStr}`);
+  await page.getByRole("button", { name: "Bloquear" }).click();
+  const dialog = page.getByRole("dialog", { name: "Bloquear horario" });
+  await expect(dialog.getByRole("checkbox", { name: "Todo el día" })).toBeChecked();
+  await dialog.getByLabel("Desde").fill(dateStr);
+  await dialog.getByLabel("Hasta").fill(dateStr);
+  await dialog.getByLabel("Motivo (opcional)").fill(reason);
+  await dialog.getByRole("button", { name: "Bloquear" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  const badge = page.getByRole("button", { name: `Bloqueado · ${reason}` });
+  await expect(badge).toBeVisible();
+
+  // Booking inside it is refused, with the reason.
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option").first().click();
+  await page.fill("#date", dateStr);
+  await page.fill("#time", "10:00");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  // (Any reason: a block left behind by an earlier failed run on this same
+  // day would be the one named.)
+  await expect(page.getByText(/Ese horario está bloqueado \(Congreso E2E \d+\)/)).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Unblocking clears it.
+  await badge.click();
+  await page.getByRole("button", { name: "Desbloquear" }).click();
+  await expect(badge).toHaveCount(0);
+
+  // Leave the day clean of any earlier run's leftovers too.
+  const leftovers = page.getByRole("button", { name: /^Bloqueado · Congreso E2E/ });
+  while ((await leftovers.count()) > 0) {
+    await leftovers.first().click();
+    await page.getByRole("button", { name: "Desbloquear" }).click();
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  }
+});
+
+test("the Lista view lists the week's turnos by day, and a turno opens from there", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Lista E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 5555-1111");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+
+  await page.goto("/dashboard/turnos?view=week");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  const { timeStr } = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsOn(new Date()));
+
+  await page.getByRole("link", { name: "Lista", exact: true }).click();
+  await expect(page).toHaveURL(/view=list/);
+  const today = page.getByRole("region", { name: /Hoy/ });
+  const row = today.getByRole("button", { name: new RegExp(patientName) });
+  await expect(row).toContainText(timeStr);
+  await expect(row).toContainText("Confirmado");
+
+  await row.click();
+  await expect(page.getByRole("dialog", { name: "Editar turno" })).toBeVisible();
+});

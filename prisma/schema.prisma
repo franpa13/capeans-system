@@ -21,6 +21,7 @@ model Clinic {
   supplies      Supply[]
   payments      Payment[]
   patientFiles  PatientFile[]
+  timeBlocks    TimeBlock[]
 }
 
 model Patient {
@@ -218,4 +219,18 @@ model PatientFile {
   createdAt  DateTime @default(now())
 
   @@index([clinicId, patientId])
+}
+
+/// A period with no turnos (vacaciones, feriado, congreso…): shown on the
+/// agenda, and turnos can't be booked inside it.
+model TimeBlock {
+  id        String   @id @default(cuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([clinicId, startsAt])
 }

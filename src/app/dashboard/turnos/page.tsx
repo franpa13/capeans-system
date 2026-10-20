@@ -9,6 +9,7 @@ import { getPatients } from "@/features/clinic/data/patients";
 import { getBusinessHours } from "@/features/clinic/data/business-hours";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 import { getSupplies } from "@/features/clinic/data/supplies";
+import { getTimeBlocks } from "@/features/clinic/data/time-blocks";
 import {
   addDays,
   getWeekStart,
@@ -26,7 +27,8 @@ export default async function TurnosPage({
   const { week, view, day, estado } = await searchParams;
   // Día is the default — the dentist mostly wants today's agenda; the week
   // is one tap away (and keeps view=week while navigating weeks).
-  const isDayView = view !== "week";
+  const agendaView = view === "week" || view === "list" ? view : "day";
+  const isDayView = agendaView === "day";
   const weekStart = getWeekStart(parseWeekParam(week));
   const weekEnd = addDays(weekStart, 7);
 
@@ -47,6 +49,10 @@ export default async function TurnosPage({
       : weekStart;
 
   const clinic = await getCurrentClinic();
+  const range = isDayView
+    ? { from: selectedDay, to: addDays(selectedDay, 1) }
+    : { from: weekStart, to: weekEnd };
+  const timeBlocks = clinic ? await getTimeBlocks(clinic.id, range) : [];
   const [appointments, patients, businessHours, insuranceOptionRows, treatmentOptionRows, supplies] = clinic
     ? await Promise.all([
         isDayView
@@ -73,6 +79,8 @@ export default async function TurnosPage({
   const weekParam = toWeekParam(weekStart);
   const semanalHref = `/dashboard/turnos?week=${weekParam}&view=week&estado=${statusParam}`;
   const diarioHref = `/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&estado=${statusParam}`;
+  const listaHref = `/dashboard/turnos?week=${weekParam}&view=list&estado=${statusParam}`;
+  const viewHrefs = { diarioHref, semanalHref, listaHref };
 
   return (
     // Capped to the viewport (minus the 56px header + its border and the
@@ -81,7 +89,13 @@ export default async function TurnosPage({
     <div className="flex h-[calc(100svh-105px)] min-w-0 flex-col gap-6">
       <PageHeader
         title="Turnos"
-        description={isDayView ? "Agenda diaria del consultorio." : "Agenda semanal del consultorio."}
+        description={
+          agendaView === "day"
+            ? "Agenda diaria del consultorio."
+            : agendaView === "list"
+              ? "Los turnos de la semana, en lista."
+              : "Agenda semanal del consultorio."
+        }
         icon={CalendarDays}
       />
       {isDayView ? (
@@ -91,14 +105,14 @@ export default async function TurnosPage({
           patients={patients}
           businessHours={businessHours}
           estado={statusParam}
-          isDayView={isDayView}
-          semanalHref={semanalHref}
-          diarioHref={diarioHref}
+          view={agendaView}
+          viewHrefs={viewHrefs}
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
           supplyOptions={supplyOptions}
           clinicName={clinic?.name ?? ""}
+          timeBlocks={timeBlocks}
         />
       ) : (
         <AppointmentsCalendar
@@ -107,14 +121,14 @@ export default async function TurnosPage({
           patients={patients}
           businessHours={businessHours}
           estado={statusParam}
-          isDayView={isDayView}
-          semanalHref={semanalHref}
-          diarioHref={diarioHref}
+          view={agendaView}
+          viewHrefs={viewHrefs}
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
           supplyOptions={supplyOptions}
           clinicName={clinic?.name ?? ""}
+          timeBlocks={timeBlocks}
         />
       )}
     </div>
