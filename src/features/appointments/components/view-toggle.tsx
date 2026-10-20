@@ -2,9 +2,9 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-export type AgendaView = "day" | "week" | "list";
+export type AgendaView = "day" | "week" | "month" | "list";
 
-/** The Diario/Semanal/Lista switcher, factored out so every view renders
+/** The Diario/Semanal/Mes/Lista switcher, factored out so every view renders
  * it inline in its own control row (date navigation + this toggle + the
  * status filter + "Nuevo turno"), instead of it living in a separate row
  * above. */
@@ -12,16 +12,19 @@ export function ViewToggle({
   view,
   diarioHref,
   semanalHref,
+  mesHref,
   listaHref,
 }: {
   view: AgendaView;
   diarioHref: string;
   semanalHref: string;
+  mesHref: string;
   listaHref: string;
 }) {
   const options: { value: AgendaView; label: string; href: string }[] = [
     { value: "day", label: "Diario", href: diarioHref },
     { value: "week", label: "Semanal", href: semanalHref },
+    { value: "month", label: "Mes", href: mesHref },
     { value: "list", label: "Lista", href: listaHref },
   ];
   return (

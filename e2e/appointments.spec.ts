@@ -717,3 +717,47 @@ test("tapping a turno opens a quick view: details, obra social, alerts and one-t
   await page.keyboard.press("Escape");
   await expect(card).toContainText("No vino");
 });
+
+test("the Mes view shows each day's turnos, opens one, and a day leads to its Día view", async ({ page }) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Mes E2E ${Date.now()}`;
+  await page.goto("/dashboard/pacientes");
+  await page.getByRole("button", { name: "Nuevo paciente" }).click();
+  await page.fill("#name", patientName);
+  await page.fill("#phone", "11 5555-3333");
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("dialog", { name: "Nuevo paciente" })).toHaveCount(0);
+
+  await page.goto("/dashboard/turnos?view=week");
+  await page.getByRole("button", { name: "Nuevo turno", exact: true }).click();
+  await page.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: patientName }).click();
+  const { timeStr } = await saveAppointmentAvoidingConflicts(page, shuffledHalfHourSlotsOn(new Date()));
+
+  await page.getByRole("link", { name: "Mes", exact: true }).click();
+  await expect(page).toHaveURL(/view=month/);
+  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const now = new Date();
+  await expect(page.getByText(`${months[now.getMonth()]} ${now.getFullYear()}`)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mes anterior" })).toContainText("Anterior");
+
+  // Today's cell lists the turno (or, on a busy day, counts it in "+N más").
+  const today = page.locator('[data-today="true"]');
+  await expect(today).toHaveCount(1);
+  const turno = today.getByRole("button", { name: new RegExp(`${timeStr} ${patientName}`) });
+  const more = today.getByRole("link", { name: /^\+\d+ más$/ });
+  await expect(turno.or(more).first()).toBeVisible();
+
+  if (await turno.count()) {
+    await turno.click();
+    await expect(page.getByRole("dialog", { name: `Turno de ${patientName}` })).toBeVisible();
+    await page.keyboard.press("Escape");
+  }
+
+  // The day number opens that day in the Día view.
+  await today.getByRole("link", { name: String(now.getDate()), exact: true }).click();
+  await expect(page).toHaveURL(/view=day/);
+  await expect(page.getByRole("link", { name: "Día anterior" })).toBeVisible();
+});

@@ -30,6 +30,8 @@ import { insuranceColor, INSURANCE_EDGE } from "@/features/clinic/lib/insurance-
 import { BlockTimeDialog } from "@/features/appointments/components/block-time-dialog";
 import { TimeBlockBadge } from "@/features/appointments/components/time-block-badge";
 import { AgendaList } from "@/features/appointments/components/agenda-list";
+import { AgendaMonth } from "@/features/appointments/components/agenda-month";
+import { addMonths, formatMonth, toMonthParam } from "@/features/clinic/lib/month";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import {
   ConsultaStatusIcon,
@@ -80,6 +82,7 @@ const STATUS_STYLES: Record<Appointment["status"], string> = {
 
 export function AppointmentsCalendar({
   weekStart,
+  monthStart,
   appointments,
   patients,
   businessHours,
@@ -94,12 +97,13 @@ export function AppointmentsCalendar({
   timeBlocks,
 }: {
   weekStart: Date;
+  monthStart: Date;
   appointments: AppointmentWithConsultation[];
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
   view: AgendaView;
-  viewHrefs: { diarioHref: string; semanalHref: string; listaHref: string };
+  viewHrefs: { diarioHref: string; semanalHref: string; mesHref: string; listaHref: string };
   insuranceOptions: string[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
@@ -197,6 +201,32 @@ export function AppointmentsCalendar({
         <div className="flex flex-wrap items-center gap-2">
           <ViewToggle view={view} {...viewHrefs} />
           <AppointmentStatusFilter value={estado} />
+          {view === "month" ? (
+          <div className="flex items-center gap-1">
+            <Button variant="outline" asChild>
+              <Link
+                href={`/dashboard/turnos?view=month&mes=${toMonthParam(addMonths(monthStart, -1))}&estado=${estado}`}
+                aria-label="Mes anterior"
+              >
+                <ChevronLeft />
+                Anterior
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/turnos?view=month&estado=${estado}`}>Hoy</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link
+                href={`/dashboard/turnos?view=month&mes=${toMonthParam(addMonths(monthStart, 1))}&estado=${estado}`}
+                aria-label="Mes siguiente"
+              >
+                Siguiente
+                <ChevronRight />
+              </Link>
+            </Button>
+            <span className="ml-2 text-sm font-medium">{formatMonth(monthStart)}</span>
+          </div>
+          ) : (
           <div className="flex items-center gap-1">
             <Button variant="outline" asChild>
               <Link href={`/dashboard/turnos?week=${prevWeek}&view=${view}&estado=${estado}`} aria-label="Semana anterior">
@@ -217,6 +247,7 @@ export function AppointmentsCalendar({
               Semana del {formatDate(toWeekParam(weekStart))} al {formatDate(toWeekParam(weekEnd))}
             </span>
           </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
         <BlockTimeDialog
@@ -245,7 +276,32 @@ export function AppointmentsCalendar({
       </div>
 
 
-      {view === "list" ? (
+      {view === "month" ? (
+        <AgendaMonth
+          monthStart={monthStart}
+          appointments={appointments}
+          patientsById={patientsById}
+          timeBlocks={timeBlocks}
+          businessHours={businessHours}
+          dayHref={(d) =>
+            `/dashboard/turnos?week=${toWeekParam(getWeekStart(d))}&view=day&day=${toWeekParam(d)}&estado=${estado}`
+          }
+          renderTurno={(appointment, row) => (
+            <AppointmentQuickView
+              appointment={appointment}
+              patient={
+                appointment.patientId ? patientRecords.get(appointment.patientId) : undefined
+              }
+              clinicName={clinicName}
+              onEdit={openEdit}
+              onRegisterConsulta={registerConsulta}
+              onCompleted={offerConsulta}
+            >
+              {row}
+            </AppointmentQuickView>
+          )}
+        />
+      ) : view === "list" ? (
         <AgendaList
           days={days}
           appointments={appointments}

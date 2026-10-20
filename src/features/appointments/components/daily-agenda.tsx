@@ -99,7 +99,7 @@ export function DailyAgenda({
   businessHours: BusinessHours[];
   estado: string;
   view: AgendaView;
-  viewHrefs: { diarioHref: string; semanalHref: string; listaHref: string };
+  viewHrefs: { diarioHref: string; semanalHref: string; mesHref: string; listaHref: string };
   insuranceOptions: string[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;

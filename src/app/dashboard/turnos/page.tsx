@@ -18,16 +18,24 @@ import {
   toWeekParam,
 } from "@/features/appointments/lib/week";
 import type { AppointmentStatus } from "@prisma/client";
+import { addMonths, parseMonthParam, toMonthParam } from "@/features/clinic/lib/month";
 
 export default async function TurnosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; view?: string; day?: string; estado?: string }>;
+  searchParams: Promise<{
+    week?: string;
+    view?: string;
+    day?: string;
+    mes?: string;
+    estado?: string;
+  }>;
 }) {
-  const { week, view, day, estado } = await searchParams;
+  const { week, view, day, mes, estado } = await searchParams;
   // Día is the default — the dentist mostly wants today's agenda; the week
   // is one tap away (and keeps view=week while navigating weeks).
-  const agendaView = view === "week" || view === "list" ? view : "day";
+  const agendaView =
+    view === "week" || view === "list" || view === "month" ? view : "day";
   const isDayView = agendaView === "day";
   const weekStart = getWeekStart(parseWeekParam(week));
   const weekEnd = addDays(weekStart, 7);
@@ -50,20 +58,27 @@ export default async function TurnosPage({
       ? startOfDay(today)
       : weekStart;
 
+  // Mes: the month named by ?mes= (or the one being looked at), drawn as
+  // whole Mon–Sun weeks — so its range starts and ends on week bounds.
+  const monthStart =
+    agendaView === "month"
+      ? parseMonthParam(mes)
+      : new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1);
+  const monthGrid = {
+    from: getWeekStart(monthStart),
+    to: addDays(getWeekStart(addDays(addMonths(monthStart, 1), -1)), 7),
+  };
+
   const clinic = await getCurrentClinic();
   const range = isDayView
     ? { from: selectedDay, to: addDays(selectedDay, 1) }
-    : { from: weekStart, to: weekEnd };
+    : agendaView === "month"
+      ? monthGrid
+      : { from: weekStart, to: weekEnd };
   const timeBlocks = clinic ? await getTimeBlocks(clinic.id, range) : [];
   const [appointments, patients, businessHours, insuranceOptionRows, treatmentOptionRows, supplies] = clinic
     ? await Promise.all([
-        isDayView
-          ? getAppointments(
-              clinic.id,
-              { from: selectedDay, to: addDays(selectedDay, 1) },
-              statusFilter,
-            )
-          : getAppointments(clinic.id, { from: weekStart, to: weekEnd }, statusFilter),
+        getAppointments(clinic.id, range, statusFilter),
         getPatients(clinic.id),
         getBusinessHours(clinic.id),
         getClinicOptions(clinic.id, "insurance"),
@@ -82,7 +97,8 @@ export default async function TurnosPage({
   const semanalHref = `/dashboard/turnos?week=${weekParam}&view=week&estado=${statusParam}`;
   const diarioHref = `/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&estado=${statusParam}`;
   const listaHref = `/dashboard/turnos?week=${weekParam}&view=list&estado=${statusParam}`;
-  const viewHrefs = { diarioHref, semanalHref, listaHref };
+  const mesHref = `/dashboard/turnos?view=month&mes=${toMonthParam(monthStart)}&estado=${statusParam}`;
+  const viewHrefs = { diarioHref, semanalHref, mesHref, listaHref };
 
   return (
     // Capped to the viewport (minus the 56px header + its border and the
@@ -96,6 +112,8 @@ export default async function TurnosPage({
             ? "Agenda diaria del consultorio."
             : agendaView === "list"
               ? "Los turnos de la semana, en lista."
+              : agendaView === "month"
+              ? "Agenda mensual del consultorio."
               : "Agenda semanal del consultorio."
         }
         icon={CalendarDays}
@@ -119,6 +137,7 @@ export default async function TurnosPage({
       ) : (
         <AppointmentsCalendar
           weekStart={weekStart}
+          monthStart={monthStart}
           appointments={appointments}
           patients={patients}
           businessHours={businessHours}
