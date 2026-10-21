@@ -52,6 +52,7 @@ import {
   updateTreatmentAction,
 } from "@/features/settings/actions";
 import { unwrap } from "@/lib/action-result";
+import { ImportExcelDialog } from "@/features/excel/components/import-excel-dialog";
 
 const PAGE_SIZE = 15;
 const NO_SPECIALTY = "__none__";
@@ -73,12 +74,9 @@ function parseWhole(raw: string): { value: number | undefined } | { error: strin
 export function TreatmentCatalog({
   treatments,
   specialties,
-  actions,
 }: {
   treatments: ClinicOption[];
   specialties: string[];
-  /** Extra buttons next to "Nuevo tratamiento" (Importar Excel). */
-  actions?: React.ReactNode;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -145,7 +143,7 @@ export function TreatmentCatalog({
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {actions}
+            <ImportExcelDialog kind="tratamientos" />
             <Button
               type="button"
               onClick={() => {

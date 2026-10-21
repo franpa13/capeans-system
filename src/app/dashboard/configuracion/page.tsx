@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
 import { TreatmentCatalog } from "@/features/settings/components/treatment-catalog";
-import { ImportExcelDialog } from "@/features/excel/components/import-excel-dialog";
 import { BusinessHoursManager } from "@/features/settings/components/business-hours-manager";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
@@ -59,7 +58,6 @@ export default async function ConfiguracionPage() {
           <TreatmentCatalog
             treatments={treatmentOptions}
             specialties={specialtyOptions.map((o) => o.label)}
-            actions={<ImportExcelDialog kind="tratamientos" />}
           />
         </TabsContent>
         <TabsContent value="specialty">

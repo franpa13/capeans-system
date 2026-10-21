@@ -129,7 +129,7 @@ test("insumos and tratamientos can be imported, and Stock, Consultas and Ingreso
   await treatments.getByRole("button", { name: "Importar" }).click();
   await expect(treatments.getByText("Se cargó 1 tratamiento")).toBeVisible();
   await treatments.getByRole("button", { name: "Listo" }).click();
-  await page.getByPlaceholder("Buscar...").fill(`Import Trat ${stamp}`);
+  await page.getByPlaceholder("Buscar por nombre o código...").fill(`Import Trat ${stamp}`);
   await expect(page.getByText("7.777", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: `Eliminar Import Trat ${stamp}` }).click();
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
