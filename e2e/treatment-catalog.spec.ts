@@ -5,6 +5,8 @@ import { addClinicOption, searchClinicOption } from "./clinic-options";
 test("the treatment catalog counts by especialidad, filters, and feeds consultas and turnos", async ({
   page,
 }) => {
+  // Configuración, Consultas and Turnos in one go.
+  test.setTimeout(90_000);
   await page.goto("/sign-in");
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 
@@ -61,7 +63,7 @@ test("the treatment catalog counts by especialidad, filters, and feeds consultas
     // Nueva consulta: only the active one, and its cash price in one tap.
     await page.goto("/dashboard/consultas");
     await page.getByRole("button", { name: "Nueva consulta" }).click();
-    await page.getByRole("combobox").nth(3).click();
+    await page.getByText("Elegí un tratamiento").click();
     await expect(page.getByRole("option", { name: inactive })).toHaveCount(0);
     await page.getByRole("option", { name: active }).click();
     await expect(page.locator("#amountCharged")).toHaveValue("50000");

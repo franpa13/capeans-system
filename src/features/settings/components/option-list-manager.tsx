@@ -114,8 +114,11 @@ export function OptionListManager({
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await unwrap(deleteClinicOptionAction(deleteTarget.id));
+    // Close first: clearing it after the await would also close a dialog
+    // opened for another option in the meantime.
+    const target = deleteTarget;
     setDeleteTarget(null);
+    await unwrap(deleteClinicOptionAction(target.id));
     router.refresh();
   }
 

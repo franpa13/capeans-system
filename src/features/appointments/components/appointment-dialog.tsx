@@ -481,7 +481,9 @@ export function AppointmentDialog({
                 render={({ field }) => (
                   <Select
                     value={String(field.value)}
-                    onValueChange={(value) => field.onChange(Number(value))}
+                    // Radix reports "" when the item list changes under the
+                    // value (a tratamiento's own length being added): keep it.
+                    onValueChange={(value) => value && field.onChange(Number(value))}
                   >
                     <SelectTrigger id="durationMinutes" className="w-full">
                       <SelectValue />

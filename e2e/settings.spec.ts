@@ -229,6 +229,8 @@ test("Aplicar a todas copies one day's schedule onto the rest of the week", asyn
 });
 
 test("a long list of tratamientos gets pagination and a working search", async ({ page }) => {
+  // 16 tratamientos created and deleted through the UI.
+  test.setTimeout(90_000);
   await page.goto("/sign-in");
   await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
 

@@ -116,8 +116,11 @@ export function TreatmentCatalog({
 
   async function handleDelete() {
     if (!deleting) return;
-    await unwrap(deleteClinicOptionAction(deleting.id));
+    // Close first: clearing it after the await would also close a dialog
+    // opened for another tratamiento in the meantime.
+    const target = deleting;
     setDeleting(null);
+    await unwrap(deleteClinicOptionAction(target.id));
     router.refresh();
   }
 
