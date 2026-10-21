@@ -12,10 +12,10 @@ import {
 import { AppSidebar } from "@/features/dashboard/components/app-sidebar";
 import { UserMenu } from "@/features/dashboard/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  getCurrentClinic,
-  getDashboardAccessMessage,
-} from "@/features/clinic/data/current-clinic";
+import { getDashboardAccessMessage } from "@/features/clinic/data/current-clinic";
+import { getCurrentMember } from "@/features/clinic/data/current-member";
+import { PermissionsProvider } from "@/features/clinic/components/permissions-provider";
+import { ROLE_LABELS } from "@/features/clinic/lib/permissions";
 
 export default async function DashboardLayout({
   children,
@@ -25,9 +25,9 @@ export default async function DashboardLayout({
   const { userId, orgId } = await auth();
   if (!userId) redirect("/sign-in");
   const user = await currentUser();
-  const clinic = await getCurrentClinic();
+  const current = await getCurrentMember();
 
-  if (!clinic) {
+  if (!current) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-muted-foreground">
@@ -40,7 +40,10 @@ export default async function DashboardLayout({
     );
   }
 
+  const { clinic, member } = current;
+
   return (
+    <PermissionsProvider role={member.role}>
     <SidebarProvider>
       <AppSidebar clinicName={clinic.name} />
       <SidebarInset>
@@ -54,6 +57,7 @@ export default async function DashboardLayout({
             <ThemeToggle />
             <UserMenu
               name={user?.fullName ?? "Usuario"}
+              role={ROLE_LABELS[member.role]}
               email={user?.primaryEmailAddress?.emailAddress ?? ""}
             />
           </div>
@@ -61,5 +65,6 @@ export default async function DashboardLayout({
         <main className="flex min-w-0 flex-1 flex-col gap-4 p-2 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
+    </PermissionsProvider>
   );
 }

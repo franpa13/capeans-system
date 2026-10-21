@@ -3,11 +3,14 @@ import { getPrescription } from "@/features/clinic/data/prescriptions";
 import { prescriptionNumber } from "@/features/clinic/lib/prescriptions";
 import { PrescriptionSheet } from "@/features/prescriptions/components/prescription-sheet";
 import { PrintOnLoad } from "@/features/prescriptions/components/print-on-load";
+import { hasPermission } from "@/features/clinic/data/current-member";
+import { NoPermission } from "@/components/no-permission";
 
 /** The receta alone, outside the dashboard, sized to an A5 sheet: opens
  * the browser's print dialog, where it can also be saved as a PDF. */
 export default async function ImprimirRecetaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!(await hasPermission("clinical.view"))) return <NoPermission what="las recetas" />;
   const clinic = await getCurrentClinic();
   const prescription = clinic ? await getPrescription(clinic.id, id) : null;
 

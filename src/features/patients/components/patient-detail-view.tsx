@@ -34,9 +34,18 @@ import {
   type PrescriptionListItem,
 } from "@/features/prescriptions/components/patient-prescriptions";
 import type { ProfessionalOption } from "@/features/prescriptions/components/new-prescription-dialog";
-import { PatientOrders, type OrderListItem } from "@/features/orders/components/patient-orders";
-import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
-import { PatientNotes, type PatientNoteItem } from "@/features/patients/components/patient-notes";
+import {
+  PatientOrders,
+  type OrderListItem,
+} from "@/features/orders/components/patient-orders";
+import {
+  PatientFiles,
+  type PatientFileItem,
+} from "@/features/patients/components/patient-files";
+import {
+  PatientNotes,
+  type PatientNoteItem,
+} from "@/features/patients/components/patient-notes";
 import {
   PatientPayments,
   type PatientPaymentItem,
@@ -47,6 +56,7 @@ import {
 } from "@/features/patients/components/patient-summary";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ageOn, displayName, initials } from "@/features/patients/lib/profile";
+import { useCan } from "@/features/clinic/components/permissions-provider";
 
 const SECTIONS = [
   "resumen",
@@ -59,6 +69,8 @@ const SECTIONS = [
   "pagos",
 ] as const;
 type Section = (typeof SECTIONS)[number];
+/** What recepción sees of a ficha: no historia clínica. */
+const NON_CLINICAL: Section[] = ["resumen", "pagos"];
 
 /** One big tile of the ficha's section bar. A `flag` (e.g. "Debe
  * $30.000") sits on its top edge, a `count` in its corner. */
@@ -138,8 +150,12 @@ export function PatientDetailView({
   /** ?seccion=… — e.g. back from a receta to the Recetas section. */
   initialSection?: string;
 }) {
+  const clinical = useCan("clinical.view");
+  const sections = clinical ? SECTIONS : NON_CLINICAL;
   const [section, setSection] = useState<Section>(
-    SECTIONS.includes(initialSection as Section) ? (initialSection as Section) : "resumen",
+    sections.includes(initialSection as Section)
+      ? (initialSection as Section)
+      : "resumen",
   );
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
@@ -198,7 +214,9 @@ export function PatientDetailView({
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{displayName(patient)}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {displayName(patient)}
+              </h1>
               {patient.active ? (
                 <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                   Activo
@@ -209,7 +227,9 @@ export function PatientDetailView({
                 </span>
               )}
             </div>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+            {subtitle && (
+              <p className="text-sm text-muted-foreground">{subtitle}</p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -240,37 +260,82 @@ export function PatientDetailView({
 
       <MedicalAlert alerts={alerts} />
 
-      <Tabs value={section} onValueChange={(v) => setSection(v as Section)} className="gap-6">
+      <Tabs
+        value={section}
+        onValueChange={(v) => setSection(v as Section)}
+        className="gap-6"
+      >
         <TabsList
           aria-label="Secciones del paciente"
-          className="grid h-auto w-full grid-cols-3 items-stretch gap-3 bg-transparent p-0 pt-2.5 group-data-horizontal/tabs:h-auto sm:grid-cols-4 lg:grid-cols-8"
+          className={`grid h-auto w-full items-stretch gap-3 bg-transparent p-0 pt-2.5 group-data-horizontal/tabs:h-auto ${
+            clinical ? "grid-cols-3 sm:grid-cols-4 lg:grid-cols-8" : "max-w-md grid-cols-2"
+          }`}
         >
           <SectionTile value="resumen" icon={Home} label="Resumen" />
-          <SectionTile value="ficha" icon={FileHeart} label="Ficha médica" />
+          {clinical && (
+            <>
+              <SectionTile
+                value="ficha"
+                icon={FileHeart}
+                label="Ficha médica"
+              />
+              <SectionTile
+                value="consultas"
+                icon={ClipboardList}
+                label={
+                  <>
+                    Turnos/
+                    <wbr />
+                    Tratamientos
+                  </>
+                }
+                count={consultations.length}
+                flag={
+                  balance > 0 ? `Debe ${formatCurrency(balance)}` : undefined
+                }
+              />
+              <SectionTile
+                value="odontograma"
+                icon={Smile}
+                label="Odontograma"
+              />
+              <SectionTile
+                value="estudios"
+                icon={Images}
+                label="Estudios"
+                count={files.length}
+              />
+              <SectionTile
+                value="recetas"
+                icon={Pill}
+                label="Recetas"
+                count={prescriptions.length}
+              />
+              <SectionTile
+                value="ordenes"
+                icon={ClipboardPlus}
+                label="Órdenes"
+                count={orders.length}
+              />
+            </>
+          )}
           <SectionTile
-            value="consultas"
-            icon={ClipboardList}
-            label={
-              <>
-                Turnos/
-                <wbr />
-                Tratamientos
-              </>
-            }
-            count={consultations.length}
-            flag={balance > 0 ? `Debe ${formatCurrency(balance)}` : undefined}
+            value="pagos"
+            icon={Wallet}
+            label="Pagos"
+            count={payments.length}
+            // Without the consultas tile, the debt shows here.
+            flag={!clinical && balance > 0 ? `Debe ${formatCurrency(balance)}` : undefined}
           />
-          <SectionTile value="odontograma" icon={Smile} label="Odontograma" />
-          <SectionTile value="estudios" icon={Images} label="Estudios" count={files.length} />
-          <SectionTile value="recetas" icon={Pill} label="Recetas" count={prescriptions.length} />
-          <SectionTile value="ordenes" icon={ClipboardPlus} label="Órdenes" count={orders.length} />
-          <SectionTile value="pagos" icon={Wallet} label="Pagos" count={payments.length} />
         </TabsList>
 
         <TabsContent value="resumen" className="flex flex-col gap-6">
           <div className="grid gap-6 lg:grid-cols-2">
             <PersonalDataCard patient={patient} />
-            <RecentAppointmentsCard appointments={appointments} noShows={noShows} />
+            <RecentAppointmentsCard
+              appointments={appointments}
+              noShows={noShows}
+            />
           </div>
           <PatientNotes patientId={patient.id} notes={notes} />
         </TabsContent>
@@ -314,7 +379,10 @@ export function PatientDetailView({
             prescriptions={prescriptions}
             professionals={professionals}
             treatments={[...new Set(consultations.map((c) => c.treatment))]}
-            medicalHistory={{ allergies: patient.allergies, medicalConditions: patient.medicalConditions }}
+            medicalHistory={{
+              allergies: patient.allergies,
+              medicalConditions: patient.medicalConditions,
+            }}
           />
         </TabsContent>
 

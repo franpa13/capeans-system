@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -149,6 +150,7 @@ export function DailyAgenda({
   // After marking a turno completed, offer to log the consulta for it —
   // see appointments-calendar.tsx for why this is two separate pieces of
   // state instead of one reused across both dialogs.
+  const canRegister = useCan("clinical.edit");
   const [completed, setCompleted] = useState<CompletedTurno | null>(null);
   const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
 
@@ -401,7 +403,7 @@ export function DailyAgenda({
         }}
       />
 
-      <AlertDialog open={!!completed} onOpenChange={(next) => !next && setCompleted(null)}>
+      <AlertDialog open={!!completed && canRegister} onOpenChange={(next) => !next && setCompleted(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Turno completado</AlertDialogTitle>

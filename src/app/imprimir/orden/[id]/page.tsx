@@ -3,11 +3,14 @@ import { getMedicalOrder } from "@/features/clinic/data/medical-orders";
 import { orderNumber } from "@/features/clinic/lib/orders";
 import { OrderSheet } from "@/features/orders/components/order-sheet";
 import { PrintOnLoad } from "@/features/prescriptions/components/print-on-load";
+import { hasPermission } from "@/features/clinic/data/current-member";
+import { NoPermission } from "@/components/no-permission";
 
 /** The orden alone, sized to an A5 sheet: opens the print dialog, where
  * it can also be saved as a PDF. */
 export default async function ImprimirOrdenPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!(await hasPermission("clinical.view"))) return <NoPermission what="las órdenes" />;
   const clinic = await getCurrentClinic();
   const order = clinic ? await getMedicalOrder(clinic.id, id) : null;
 

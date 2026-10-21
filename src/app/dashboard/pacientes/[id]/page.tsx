@@ -11,6 +11,7 @@ import { getToothFindings } from "@/features/clinic/data/tooth-findings";
 import { getPatientPrescriptions } from "@/features/clinic/data/prescriptions";
 import { getProfessionals } from "@/features/clinic/data/professionals";
 import { getPatientMedicalOrders } from "@/features/clinic/data/medical-orders";
+import { hasPermission } from "@/features/clinic/data/current-member";
 import { getPatientPayments } from "@/features/clinic/data/payments";
 import { getPatientFiles } from "@/features/clinic/data/patient-files";
 
@@ -24,8 +25,17 @@ export default async function PacienteDetailPage({
   const { id } = await params;
   const { seccion } = await searchParams;
   const clinic = await getCurrentClinic();
-  const patient = clinic ? await getPatient(clinic.id, id) : null;
-  const consultations = clinic ? await getConsultationsForPatient(clinic.id, id) : [];
+  // Recepción gets the patient's data, alerts and cobros, but the
+  // historia clínica never leaves the server.
+  const clinical = await hasPermission("clinical.view");
+  const found = clinic ? await getPatient(clinic.id, id) : null;
+  const patient =
+    found && !clinical
+      ? { ...found, medicalHistory: null, medications: null, bloodType: null, bloodPressure: null }
+      : found;
+  const consultations = (clinic ? await getConsultationsForPatient(clinic.id, id) : []).map((c) =>
+    clinical ? c : { ...c, notes: null, teeth: [] },
+  );
   const treatmentOptions = clinic ? await getClinicOptions(clinic.id, "treatment") : [];
   const treatmentPrices = Object.fromEntries(
     treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
@@ -37,14 +47,14 @@ export default async function PacienteDetailPage({
   const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const balance = outstandingBalance(consultations);
   const noShows = clinic ? await countNoShows(clinic.id, id) : 0;
-  const files = clinic && patient ? await getPatientFiles(clinic.id, id) : [];
+  const files = clinic && patient && clinical ? await getPatientFiles(clinic.id, id) : [];
   const appointments = clinic && patient ? await getPatientAppointments(clinic.id, id) : [];
   const notes = clinic && patient ? await getPatientNotes(clinic.id, id) : [];
   const payments = clinic && patient ? await getPatientPayments(clinic.id, id) : [];
-  const findings = clinic && patient ? await getToothFindings(clinic.id, id) : [];
-  const prescriptions = clinic && patient ? await getPatientPrescriptions(clinic.id, id) : [];
+  const findings = clinic && patient && clinical ? await getToothFindings(clinic.id, id) : [];
+  const prescriptions = clinic && patient && clinical ? await getPatientPrescriptions(clinic.id, id) : [];
   const professionals = clinic ? await getProfessionals(clinic.id) : [];
-  const orders = clinic && patient ? await getPatientMedicalOrders(clinic.id, id) : [];
+  const orders = clinic && patient && clinical ? await getPatientMedicalOrders(clinic.id, id) : [];
 
   return (
     <PatientDetailView

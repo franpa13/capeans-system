@@ -28,15 +28,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useCan } from "@/features/clinic/components/permissions-provider";
+import type { Permission } from "@/features/clinic/lib/permissions";
 
-const navItems = [
+const navItems: { title: string; url: string; icon: typeof Users; permission?: Permission }[] = [
   { title: "Inicio", url: "/dashboard", icon: LayoutDashboard },
   { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
   { title: "Consultas/Tratamientos", url: "/dashboard/consultas", icon: ClipboardList },
-  { title: "Ingresos", url: "/dashboard/ingresos", icon: Banknote },
+  { title: "Ingresos", url: "/dashboard/ingresos", icon: Banknote, permission: "income.view" },
   { title: "Turnos", url: "/dashboard/turnos", icon: CalendarDays },
   { title: "Stock", url: "/dashboard/stock", icon: Boxes },
-  { title: "Configuración", url: "/dashboard/configuracion", icon: Settings },
+  { title: "Configuración", url: "/dashboard/configuracion", icon: Settings, permission: "settings.manage" },
 ];
 
 function isNavItemActive(pathname: string, url: string) {
@@ -44,6 +46,10 @@ function isNavItemActive(pathname: string, url: string) {
 }
 
 export function AppSidebar({ clinicName }: { clinicName?: string }) {
+  const canIncome = useCan("income.view");
+  const canSettings = useCan("settings.manage");
+  const allowed = (permission?: Permission) =>
+    !permission || (permission === "income.view" ? canIncome : canSettings);
   const pathname = usePathname();
   const { signOut } = useClerk();
 
@@ -72,7 +78,7 @@ export function AppSidebar({ clinicName }: { clinicName?: string }) {
           <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) =>
+              {navItems.filter((item) => allowed(item.permission)).map((item) =>
                 item.url ? (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton

@@ -4,6 +4,7 @@ import { ExcelDownloadButton } from "@/features/excel/components/excel-download-
 import { ConsultationsView } from "@/features/consultations/components/consultations-view";
 import { NewConsultationDialog } from "@/features/consultations/components/new-consultation-dialog";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
+import { hasPermission } from "@/features/clinic/data/current-member";
 import { getConsultations } from "@/features/clinic/data/consultations";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
@@ -29,7 +30,9 @@ export default async function ConsultasPage({
   };
 
   const clinic = await getCurrentClinic();
-  const [patients, treatmentOptions, insuranceOptions, supplies] = clinic
+  // Recepción sees what was done and charged, to cobrar — not the notes.
+  const clinical = await hasPermission("clinical.view");
+  const [allPatients, treatmentOptions, insuranceOptions, supplies] = clinic
     ? await Promise.all([
         getPatients(clinic.id),
         getClinicOptions(clinic.id, "treatment"),
@@ -37,6 +40,9 @@ export default async function ConsultasPage({
         getSupplies(clinic.id),
       ])
     : [[], [], [], []];
+  const patients = clinical
+    ? allPatients
+    : allPatients.map((p) => ({ ...p, medicalHistory: null, medications: null, bloodType: null, bloodPressure: null }));
   const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const treatmentLabels = treatmentOptions.map((o) => o.label);
   // A new consulta offers only active tratamientos; the list's filter keeps
@@ -49,9 +55,9 @@ export default async function ConsultasPage({
   const treatmentCashPrices = Object.fromEntries(
     treatmentOptions.filter((o) => o.cashPrice != null).map((o) => [o.label, o.cashPrice!]),
   );
-  const consultations = clinic
-    ? await getConsultations(clinic.id, filters, treatmentLabels)
-    : [];
+  const consultations = (clinic ? await getConsultations(clinic.id, filters, treatmentLabels) : []).map(
+    (c) => (clinical ? c : { ...c, notes: null }),
+  );
 
   return (
     <div className="flex flex-col gap-6">

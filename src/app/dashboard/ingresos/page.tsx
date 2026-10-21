@@ -6,6 +6,8 @@ import { getPayments } from "@/features/clinic/data/payments";
 import { addDays, startOfDay } from "@/features/appointments/lib/week";
 import { addMonths, parseMonthParam } from "@/features/clinic/lib/month";
 import { IncomeView } from "@/features/income/components/income-view";
+import { hasPermission } from "@/features/clinic/data/current-member";
+import { NoPermission } from "@/components/no-permission";
 
 export default async function IngresosPage({
   searchParams,
@@ -16,6 +18,7 @@ export default async function IngresosPage({
   const monthStart = parseMonthParam(mes);
   const today = startOfDay(new Date());
 
+  if (!(await hasPermission("income.view"))) return <NoPermission what="los ingresos" />;
   const clinic = await getCurrentClinic();
   const [monthPayments, todayPayments] = clinic
     ? await Promise.all([

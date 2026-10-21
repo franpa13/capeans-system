@@ -1,4 +1,5 @@
-import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
+import { getCurrentMember } from "@/features/clinic/data/current-member";
+import { can } from "@/features/clinic/lib/permissions";
 import { getPatients } from "@/features/clinic/data/patients";
 import { getConsultations } from "@/features/clinic/data/consultations";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
@@ -20,8 +21,10 @@ import { xlsxResponse } from "@/features/excel/lib/response";
  * and this needs Clerk to know the clinic.) */
 export async function GET(request: Request, ctx: { params: Promise<{ kind: string }> }) {
   const { kind } = await ctx.params;
-  const clinic = await getCurrentClinic();
-  if (!clinic) return new Response("No autorizado", { status: 401 });
+  const current = await getCurrentMember();
+  if (!current) return new Response("No autorizado", { status: 401 });
+  if (!can(current.member.role, "data.export")) return new Response("No tenés permiso", { status: 403 });
+  const { clinic } = current;
   const params = new URL(request.url).searchParams;
   const param = (name: string) => params.get(name) || undefined;
   const today = new Date().toISOString().slice(0, 10);

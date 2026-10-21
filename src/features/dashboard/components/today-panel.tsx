@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -130,6 +131,7 @@ export function TodayPanel({
   const phonesById = new Map(patients.map((p) => [p.id, p.phone]));
   const remindable = reminderAppointments.filter((a) => a.patientId);
   const todayKey = new Date().toDateString();
+  const canRegister = useCan("clinical.edit");
   const [registering, setRegistering] = useState<{
     patient: { id: string; name: string };
     appointment: Appointment;
@@ -199,6 +201,7 @@ export function TodayPanel({
                         Consulta registrada
                       </span>
                     ) : (
+                      canRegister &&
                       appointment.patientId && (
                         <Button
                           variant="outline"

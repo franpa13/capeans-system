@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { runAction } from "@/lib/action-result";
-import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
+import { requirePermission } from "@/features/clinic/data/current-member";
 import {
   importPatients,
   importSupplies,
@@ -23,8 +23,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
  * forms do, loads what's new and reports the rest by row number. */
 export async function importExcelAction(kind: TemplateKind, formData: FormData) {
   return runAction(async (): Promise<ImportResult> => {
-    const clinic = await getCurrentClinic();
-    if (!clinic) throw new Error("No hay un consultorio activo para este usuario");
+    const clinic = { id: await requirePermission("data.import") };
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) throw new Error("Elegí un archivo de Excel");
     if (file.size > MAX_BYTES) throw new Error("El archivo es muy grande (máximo 5 MB)");

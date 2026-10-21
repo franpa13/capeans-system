@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, FileText, Pencil, Trash2, X } from "lucide-react";
+import { Banknote, Eye, FileText, Pencil, Trash2, X } from "lucide-react";
 
 import {
   AlertDialog,
@@ -31,6 +31,15 @@ import { unwrap } from "@/lib/action-result";
 import { EditConsultationDialog } from "@/features/consultations/components/edit-consultation-dialog";
 import { ViewConsultationDialog } from "@/features/consultations/components/view-consultation-dialog";
 import { PaymentStatusBadge } from "@/features/consultations/components/payment-status-badge";
+import { PaymentsSection } from "@/features/consultations/components/payments-section";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import type { Consultation, Patient } from "@prisma/client";
 import type { SupplyOption } from "@/features/consultations/components/supplies-used-field";
 
@@ -56,6 +65,10 @@ export function ConsultationsTable({
   emptyMessage?: string;
 }) {
   const [viewing, setViewing] = useState<Consultation | null>(null);
+  const [charging, setCharging] = useState<Consultation | null>(null);
+  const canView = useCan("clinical.view");
+  const canEdit = useCan("clinical.edit");
+  const canCharge = useCan("payments.record");
   const [editing, setEditing] = useState<Consultation | null>(null);
   const [deleting, setDeleting] = useState<Consultation | null>(null);
 
@@ -73,34 +86,49 @@ export function ConsultationsTable({
 
   const actions = (c: Consultation) => (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Ver consulta"
-        onClick={() => setViewing(c)}
-      >
-        <Eye />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Editar consulta"
-        onClick={() => setEditing(c)}
-      >
-        <Pencil />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Eliminar consulta"
-        className="text-destructive hover:text-destructive"
-        onClick={() => setDeleting(c)}
-      >
-        <Trash2 />
-      </Button>
+      {canView && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Ver consulta"
+          onClick={() => setViewing(c)}
+        >
+          <Eye />
+        </Button>
+      )}
+      {canEdit ? (
+        <>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Editar consulta"
+            onClick={() => setEditing(c)}
+          >
+            <Pencil />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Eliminar consulta"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setDeleting(c)}
+          >
+            <Trash2 />
+          </Button>
+        </>
+      ) : (
+        // Recepción charges the consulta without touching what was done.
+        canCharge &&
+        c.amountCharged != null && (
+          <Button type="button" variant="outline" size="sm" onClick={() => setCharging(c)}>
+            <Banknote />
+            Cobrar
+          </Button>
+        )
+      )}
     </>
   );
 
@@ -126,7 +154,7 @@ export function ConsultationsTable({
                   {showPatient && <TableHead>Paciente</TableHead>}
                   <TableHead>Tratamiento</TableHead>
                   <TableHead>Pieza</TableHead>
-                  <TableHead>Observaciones</TableHead>
+                  {canView && <TableHead>Observaciones</TableHead>}
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -161,9 +189,11 @@ export function ConsultationsTable({
                     <TableCell className="text-muted-foreground">
                       {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate text-muted-foreground">
-                      {c.notes ?? "—"}
-                    </TableCell>
+                    {canView && (
+                      <TableCell className="max-w-xs truncate text-muted-foreground">
+                        {c.notes ?? "—"}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">{actions(c)}</div>
                     </TableCell>
@@ -208,7 +238,7 @@ export function ConsultationsTable({
                     <p className="text-muted-foreground">
                       Pieza: {c.teeth.length > 0 ? c.teeth.join(", ") : "—"}
                     </p>
-                    <p className="text-muted-foreground">Observaciones: {c.notes ?? "—"}</p>
+                    {canView && <p className="text-muted-foreground">Observaciones: {c.notes ?? "—"}</p>}
                   </div>
 
                   <div className="flex justify-end gap-1 border-t pt-2">{actions(c)}</div>
@@ -233,6 +263,20 @@ export function ConsultationsTable({
             setViewing(null);
           }}
         />
+      )}
+
+      {charging && (
+        <Dialog open onOpenChange={(next) => !next && setCharging(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Cobrar consulta</DialogTitle>
+              <DialogDescription>
+                {nameFor(charging)} · {charging.treatment}
+              </DialogDescription>
+            </DialogHeader>
+            <PaymentsSection consultationId={charging.id} amountCharged={charging.amountCharged} />
+          </DialogContent>
+        </Dialog>
       )}
 
       {editing && (

@@ -1,9 +1,9 @@
 "use server";
 
+import { requirePermission } from "@/features/clinic/data/current-member";
 import { runAction } from "@/lib/action-result";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
   createAppointment,
   deleteAppointment,
@@ -19,17 +19,12 @@ import {
   type NewTimeBlockInput,
 } from "@/features/clinic/data/time-blocks";
 
-async function requireClinicId(): Promise<string> {
-  const clinic = await getCurrentClinic();
-  if (!clinic) throw new Error("No hay un consultorio activo para este usuario");
-  return clinic.id;
-}
 
 export async function createAppointmentAction(
   input: NewAppointmentInput & { newPatient?: NewPatientInput },
 ) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("agenda.manage");
     const { newPatient, ...appointmentInput } = input;
 
     // A conflicting slot leaves the dialog open for the user to retry with
@@ -57,7 +52,7 @@ export async function updateAppointmentAction(
   input: UpdateAppointmentInput & { newPatient?: NewPatientInput },
 ) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("agenda.manage");
     const { newPatient, ...appointmentInput } = input;
 
     const { appointment, patientId } = await prisma.$transaction(async (tx) => {
@@ -83,7 +78,7 @@ export async function updateAppointmentAction(
 
 export async function deleteAppointmentAction(id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("agenda.manage");
     await deleteAppointment(clinicId, id);
     revalidatePath("/dashboard/turnos");
   });
@@ -92,7 +87,7 @@ export async function deleteAppointmentAction(id: string) {
 /** Called when the dentist opens the WhatsApp reminder for a turno. */
 export async function markReminderSentAction(id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("agenda.manage");
     await markReminderSent(clinicId, id);
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/turnos");
@@ -101,7 +96,7 @@ export async function markReminderSentAction(id: string) {
 
 export async function createTimeBlockAction(input: NewTimeBlockInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("agenda.manage");
     const { affectedTurnos } = await createTimeBlock(clinicId, input);
     revalidatePath("/dashboard/turnos");
     revalidatePath("/dashboard");
@@ -111,7 +106,7 @@ export async function createTimeBlockAction(input: NewTimeBlockInput) {
 
 export async function deleteTimeBlockAction(id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("agenda.manage");
     await deleteTimeBlock(clinicId, id);
     revalidatePath("/dashboard/turnos");
     revalidatePath("/dashboard");

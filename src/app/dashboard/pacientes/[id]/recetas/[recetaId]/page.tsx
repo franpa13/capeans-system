@@ -6,6 +6,8 @@ import { prescriptionMessage, prescriptionNumber } from "@/features/clinic/lib/p
 import { toWhatsAppNumber, whatsAppLink } from "@/features/appointments/lib/reminder";
 import { PrescriptionSheet } from "@/features/prescriptions/components/prescription-sheet";
 import { DocumentActions } from "@/features/documents/components/document-actions";
+import { hasPermission } from "@/features/clinic/data/current-member";
+import { NoPermission } from "@/components/no-permission";
 
 export default async function RecetaPage({
   params,
@@ -13,6 +15,7 @@ export default async function RecetaPage({
   params: Promise<{ id: string; recetaId: string }>;
 }) {
   const { id, recetaId } = await params;
+  if (!(await hasPermission("clinical.view"))) return <NoPermission what="las recetas" />;
   const clinic = await getCurrentClinic();
   const prescription = clinic ? await getPrescription(clinic.id, recetaId) : null;
 

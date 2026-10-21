@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, FileDown, FileUp, Upload } from "lucide-react";
@@ -35,6 +36,7 @@ function count(n: number, kind: TemplateKind) {
  * result says what was loaded, what already existed, and which rows had a
  * problem (by row number, as Excel shows them). */
 export function ImportExcelDialog({ kind }: { kind: TemplateKind }) {
+  const allowed = useCan("data.import");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -64,6 +66,7 @@ export function ImportExcelDialog({ kind }: { kind: TemplateKind }) {
     }
   }
 
+  if (!allowed) return null;
   return (
     <Dialog
       open={open}

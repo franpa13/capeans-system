@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -134,6 +135,7 @@ export function AppointmentsCalendar({
   // handler, instead of one dialog's close trying to infer whether the
   // other is about to open. Both carry the turno itself, so the consulta
   // gets linked to it and prefilled with its date and motivo.
+  const canRegister = useCan("clinical.edit");
   const [completed, setCompleted] = useState<CompletedTurno | null>(null);
   const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
 
@@ -526,7 +528,7 @@ export function AppointmentsCalendar({
         }}
       />
 
-      <AlertDialog open={!!completed} onOpenChange={(next) => !next && setCompleted(null)}>
+      <AlertDialog open={!!completed && canRegister} onOpenChange={(next) => !next && setCompleted(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Turno completado</AlertDialogTitle>

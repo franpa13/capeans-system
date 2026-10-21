@@ -31,6 +31,8 @@ model Clinic {
   professionals Professional[]
   prescriptions Prescription[]
   medicalOrders MedicalOrder[]
+  members       ClinicMember[]
+  invitations   ClinicInvitation[]
 }
 
 model Patient {
@@ -420,4 +422,41 @@ model MedicalOrder {
 
   @@unique([clinicId, number])
   @@index([clinicId, patientId])
+}
+
+enum MemberRole {
+  ADMIN // Administrador: everything, incl. ingresos, configuración, equipo
+  DENTIST // Odontólogo: the clinical work
+  RECEPTION // Recepción: agenda, patients' data, cobros, stock
+}
+
+/// Someone who works in the consultorio. Clerk signs them in (as a member
+/// of the clinic's organization); their role here decides what they can
+/// do — see lib/permissions.ts.
+model ClinicMember {
+  id          String     @id @default(cuid())
+  clinicId    String
+  clinic      Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clerkUserId String
+  role        MemberRole
+  name        String
+  email       String
+  createdAt   DateTime   @default(now())
+
+  @@unique([clinicId, clerkUserId])
+}
+
+/// Someone invited to the consultorio, with the role they'll get when
+/// they first come in.
+model ClinicInvitation {
+  id        String     @id @default(cuid())
+  clinicId  String
+  clinic    Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  email     String // lowercase
+  role      MemberRole
+  // Clerk's invitation, to revoke it.
+  clerkInvitationId String?
+  createdAt DateTime   @default(now())
+
+  @@unique([clinicId, email])
 }

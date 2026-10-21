@@ -6,6 +6,8 @@ import { isOrderKind, orderMessage, orderNumber } from "@/features/clinic/lib/or
 import { toWhatsAppNumber, whatsAppLink } from "@/features/appointments/lib/reminder";
 import { OrderSheet } from "@/features/orders/components/order-sheet";
 import { DocumentActions } from "@/features/documents/components/document-actions";
+import { hasPermission } from "@/features/clinic/data/current-member";
+import { NoPermission } from "@/components/no-permission";
 
 export default async function OrdenPage({
   params,
@@ -13,6 +15,7 @@ export default async function OrdenPage({
   params: Promise<{ id: string; ordenId: string }>;
 }) {
   const { id, ordenId } = await params;
+  if (!(await hasPermission("clinical.view"))) return <NoPermission what="las órdenes" />;
   const clinic = await getCurrentClinic();
   const order = clinic ? await getMedicalOrder(clinic.id, ordenId) : null;
 

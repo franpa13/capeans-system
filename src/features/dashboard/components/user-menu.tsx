@@ -25,7 +25,7 @@ function initials(name: string) {
     .join("");
 }
 
-export function UserMenu({ name, email }: { name: string; email: string }) {
+export function UserMenu({ name, email, role }: { name: string; email: string; role?: string }) {
   const { signOut } = useClerk();
 
   return (
@@ -46,6 +46,7 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
           <span className="text-xs font-normal text-muted-foreground">
             {email}
           </span>
+          {role && <span className="mt-1 w-fit rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{role}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem

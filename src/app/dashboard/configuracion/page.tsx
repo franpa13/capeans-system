@@ -1,4 +1,4 @@
-import { Clock, Layers, Settings, ShieldPlus, Stethoscope, UserRound } from "lucide-react";
+import { Clock, Layers, Settings, ShieldPlus, Stethoscope, UserRound, UsersRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
@@ -6,11 +6,16 @@ import { TreatmentCatalog } from "@/features/settings/components/treatment-catal
 import { BusinessHoursManager } from "@/features/settings/components/business-hours-manager";
 import { ProfessionalsManager } from "@/features/settings/components/professionals-manager";
 import { getProfessionals } from "@/features/clinic/data/professionals";
+import { TeamManager } from "@/features/settings/components/team-manager";
+import { getInvitations, getMembers } from "@/features/clinic/data/members";
+import { getCurrentMember } from "@/features/clinic/data/current-member";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 import { getBusinessHours } from "@/features/clinic/data/business-hours";
+import { hasPermission } from "@/features/clinic/data/current-member";
+import { NoPermission } from "@/components/no-permission";
 
-const TABS = ["insurance", "treatment", "specialty", "hours", "professionals"];
+const TABS = ["insurance", "treatment", "specialty", "hours", "professionals", "team"];
 
 export default async function ConfiguracionPage({
   searchParams,
@@ -18,6 +23,7 @@ export default async function ConfiguracionPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { tab } = await searchParams;
+  if (!(await hasPermission("settings.manage"))) return <NoPermission what="la configuración" />;
   const clinic = await getCurrentClinic();
   const [insuranceOptions, treatmentOptions, specialtyOptions, businessHours, professionals] = clinic
     ? await Promise.all([
@@ -28,6 +34,10 @@ export default async function ConfiguracionPage({
         getProfessionals(clinic.id),
       ])
     : [[], [], [], [], []];
+  const me = (await getCurrentMember())?.member;
+  const [members, invitations] = clinic
+    ? await Promise.all([getMembers(clinic.id), getInvitations(clinic.id)])
+    : [[], []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,6 +69,10 @@ export default async function ConfiguracionPage({
             <UserRound />
             Profesionales
           </TabsTrigger>
+          <TabsTrigger value="team">
+            <UsersRound />
+            Equipo
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="insurance">
           <OptionListManager
@@ -84,6 +98,15 @@ export default async function ConfiguracionPage({
         </TabsContent>
         <TabsContent value="hours">
           <BusinessHoursManager hours={businessHours} />
+        </TabsContent>
+        <TabsContent value="team">
+          {me && (
+            <TeamManager
+              meId={me.id}
+              members={members.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role }))}
+              invitations={invitations.map((i) => ({ id: i.id, email: i.email, role: i.role }))}
+            />
+          )}
         </TabsContent>
         <TabsContent value="professionals">
           {clinic && (

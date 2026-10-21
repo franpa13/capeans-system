@@ -1,8 +1,8 @@
 "use server";
 
+import { requirePermission } from "@/features/clinic/data/current-member";
 import { runAction, type ActionResult } from "@/lib/action-result";
 import { revalidatePath } from "next/cache";
-import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
   assertValidAmounts,
   assertValidSupplyUsages,
@@ -25,17 +25,12 @@ import {
 } from "@/features/clinic/data/payments";
 import type { Payment } from "@prisma/client";
 
-async function requireClinicId(): Promise<string> {
-  const clinic = await getCurrentClinic();
-  if (!clinic) throw new Error("No hay un consultorio activo para este usuario");
-  return clinic.id;
-}
 
 export async function createConsultationAction(
   input: NewConsultationInput & { newPatient?: NewPatientInput },
 ) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
 
     const { newPatient, ...consultationInput } = input;
     // Validated before createPatient runs, not after: createConsultation
@@ -68,7 +63,7 @@ export async function createConsultationAction(
 
 export async function updateConsultationAction(id: string, input: UpdateConsultationInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     const consultation = await updateConsultation(clinicId, id, input);
     revalidatePath("/dashboard/consultas");
     if (consultation.patientId) revalidatePath(`/dashboard/pacientes/${consultation.patientId}`);
@@ -82,7 +77,7 @@ export async function updateConsultationAction(id: string, input: UpdateConsulta
 
 export async function deleteConsultationAction(id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     const consultation = await getConsultation(clinicId, id);
     await deleteConsultation(clinicId, id);
     revalidatePath("/dashboard/consultas");
@@ -99,7 +94,7 @@ export async function getConsultationUsagesAction(
   consultationId: string,
 ): Promise<ActionResult<ConsultationUsage[]>> {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.view");
     return getConsultationUsages(clinicId, consultationId);
   });
 }
@@ -120,7 +115,7 @@ export async function getLinkableAppointmentsAction(
   excludeConsultationId?: string,
 ): Promise<ActionResult<LinkableAppointment[]>> {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     const appointments = await getLinkableAppointments(clinicId, patientId, day, excludeConsultationId);
     return appointments.map((a) => ({
       id: a.id,
@@ -141,7 +136,7 @@ function revalidatePaymentPages(patientId: string | null) {
 /** A later payment on a consulta — an installment or the rest owed. */
 export async function addPaymentAction(consultationId: string, input: NewPaymentInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("payments.record");
     await addPayment(clinicId, consultationId, input);
     const consultation = await getConsultation(clinicId, consultationId);
     revalidatePaymentPages(consultation?.patientId ?? null);
@@ -150,7 +145,7 @@ export async function addPaymentAction(consultationId: string, input: NewPayment
 
 export async function deletePaymentAction(consultationId: string, paymentId: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("payments.record");
     await deletePayment(clinicId, paymentId);
     const consultation = await getConsultation(clinicId, consultationId);
     revalidatePaymentPages(consultation?.patientId ?? null);
@@ -161,7 +156,7 @@ export async function getConsultationPaymentsAction(
   consultationId: string,
 ): Promise<ActionResult<Payment[]>> {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("payments.record");
     return getConsultationPayments(clinicId, consultationId);
   });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import { useState } from "react";
 import Link from "next/link";
 import { Eye, MoreHorizontal, Pencil, Trash2, X } from "lucide-react";
@@ -27,6 +28,7 @@ import { unwrap } from "@/lib/action-result";
 import type { Patient } from "@prisma/client";
 
 export function PatientActions({ patient }: { patient: Patient }) {
+  const canDelete = useCan("patients.delete");
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -56,18 +58,22 @@ export function PatientActions({ patient }: { patient: Patient }) {
               Editar
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={(e) => {
-              e.preventDefault();
-              setMenuOpen(false);
-              setDeleteOpen(true);
-            }}
-          >
-            <Trash2 />
-            Eliminar
-          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setMenuOpen(false);
+                  setDeleteOpen(true);
+                }}
+              >
+                <Trash2 />
+                Eliminar
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

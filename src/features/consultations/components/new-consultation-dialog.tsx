@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/clinic/components/permissions-provider";
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -119,6 +120,7 @@ export function NewConsultationDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const canRegister = useCan("clinical.edit");
   const isControlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? openProp : internalOpen;
@@ -320,6 +322,7 @@ export function NewConsultationDialog({
       setServerError(error instanceof Error ? error.message : "No se pudo guardar");
     }
   };
+  if (!canRegister) return null;
   return (
     <Dialog
       open={open}

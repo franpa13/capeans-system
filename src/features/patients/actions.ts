@@ -1,9 +1,9 @@
 "use server";
 
+import { requirePermission } from "@/features/clinic/data/current-member";
 import { runAction } from "@/lib/action-result";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
-import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
   createPatient,
   deletePatient,
@@ -31,15 +31,10 @@ import {
   type NewPrescriptionInput,
 } from "@/features/clinic/data/prescriptions";
 
-async function requireClinicId(): Promise<string> {
-  const clinic = await getCurrentClinic();
-  if (!clinic) throw new Error("No hay un consultorio activo para este usuario");
-  return clinic.id;
-}
 
 export async function createPatientAction(input: NewPatientInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("patients.edit");
     const patient = await createPatient(clinicId, input);
     revalidatePath("/dashboard/pacientes");
     return patient;
@@ -48,7 +43,7 @@ export async function createPatientAction(input: NewPatientInput) {
 
 export async function updatePatientAction(id: string, input: NewPatientInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("patients.edit");
     const patient = await updatePatient(clinicId, id, input);
     revalidatePath("/dashboard/pacientes");
     revalidatePath(`/dashboard/pacientes/${id}`);
@@ -58,7 +53,7 @@ export async function updatePatientAction(id: string, input: NewPatientInput) {
 
 export async function deletePatientAction(id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("patients.delete");
     await deletePatient(clinicId, id);
     revalidatePath("/dashboard/pacientes");
   });
@@ -68,7 +63,7 @@ export async function deletePatientAction(id: string) {
  * a single bad file doesn't sink the rest). */
 export async function uploadPatientFileAction(patientId: string, formData: FormData) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) throw new Error("Elegí un archivo");
     await addPatientFile(clinicId, patientId, {
@@ -81,7 +76,7 @@ export async function uploadPatientFileAction(patientId: string, formData: FormD
 
 export async function deletePatientFileAction(patientId: string, fileId: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     await deletePatientFile(clinicId, fileId);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -95,7 +90,7 @@ async function currentAuthorName(): Promise<string | null> {
 /** An observación on the ficha, signed with the logged-in user's name. */
 export async function addPatientNoteAction(patientId: string, text: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("patients.edit");
     const authorName = await currentAuthorName();
     await addPatientNote(clinicId, patientId, { text, authorName });
     revalidatePath(`/dashboard/pacientes/${patientId}`);
@@ -104,7 +99,7 @@ export async function addPatientNoteAction(patientId: string, text: string) {
 
 export async function deletePatientNoteAction(patientId: string, id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("patients.edit");
     await deletePatientNote(clinicId, id);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -116,7 +111,7 @@ export async function addToothFindingsAction(
   input: Omit<NewToothFindingInput, "authorName">,
 ) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     await addToothFindings(clinicId, patientId, { ...input, authorName: await currentAuthorName() });
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -124,7 +119,7 @@ export async function addToothFindingsAction(
 
 export async function setToothFindingStatusAction(patientId: string, id: string, status: FindingStatus) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     await setToothFindingStatus(clinicId, id, status);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -132,7 +127,7 @@ export async function setToothFindingStatusAction(patientId: string, id: string,
 
 export async function deleteToothFindingAction(patientId: string, id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.edit");
     await deleteToothFinding(clinicId, id);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -141,7 +136,7 @@ export async function deleteToothFindingAction(patientId: string, id: string) {
 /** The patient's pending hallazgos, for Nueva consulta to offer resolving. */
 export async function getPendingFindingsAction(patientId: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("clinical.view");
     const findings = await getToothFindings(clinicId, patientId);
     return findings
       .filter((f) => f.status === "PENDING")
@@ -152,7 +147,7 @@ export async function getPendingFindingsAction(patientId: string) {
 /** Issues a receta; returns its id to open it. */
 export async function createPrescriptionAction(patientId: string, input: NewPrescriptionInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("documents.issue");
     const prescription = await createPrescription(clinicId, patientId, input);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
     return { id: prescription.id };
@@ -161,7 +156,7 @@ export async function createPrescriptionAction(patientId: string, input: NewPres
 
 export async function deletePrescriptionAction(patientId: string, id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("documents.issue");
     await deletePrescription(clinicId, id);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -170,7 +165,7 @@ export async function deletePrescriptionAction(patientId: string, id: string) {
 /** Issues an orden; returns its id to open it. */
 export async function createMedicalOrderAction(patientId: string, input: NewMedicalOrderInput) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("documents.issue");
     const order = await createMedicalOrder(clinicId, patientId, input);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
     return { id: order.id };
@@ -179,7 +174,7 @@ export async function createMedicalOrderAction(patientId: string, input: NewMedi
 
 export async function deleteMedicalOrderAction(patientId: string, id: string) {
   return runAction(async () => {
-    const clinicId = await requireClinicId();
+    const clinicId = await requirePermission("documents.issue");
     await deleteMedicalOrder(clinicId, id);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
