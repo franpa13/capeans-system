@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CONDITIONS,
   findingCounts,
+  toothStatus,
   isSurfaceCondition,
   surfaceLabel,
   surfaceSide,
@@ -61,5 +62,16 @@ describe("conditions", () => {
       { tooth: "36", condition: "extraccion", status: "PENDING" },
     ]);
     expect(counts).toEqual({ pending: 2, done: 2, missingTeeth: 1 });
+  });
+});
+
+describe("toothStatus", () => {
+  const f = (condition: string, status: "PENDING" | "DONE") => ({ tooth: "16", condition, status });
+
+  it("sums up a whole tooth: missing, something still to do, or all done", () => {
+    expect(toothStatus([])).toBeNull();
+    expect(toothStatus([f("restauracion", "DONE"), f("caries", "PENDING")])).toBe("PENDING");
+    expect(toothStatus([f("restauracion", "DONE"), f("corona", "DONE")])).toBe("DONE");
+    expect(toothStatus([f("ausente", "DONE"), f("caries", "PENDING")])).toBe("MISSING");
   });
 });

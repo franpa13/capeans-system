@@ -175,11 +175,16 @@ function MouthModel({
   const { scene } = useGLTF("/teeth/teeth.glb");
   useMemo(() => applyNaturalMaterials(scene), [scene]);
   const toothGeometries = useMemo(() => extractToothGeometries(scene), [scene]);
+  // When teeth are tappable, every tooth is — an unpainted one through an
+  // invisible copy of its shape laid over it.
+  const shownTeeth: [string, string | null][] = onToothClick
+    ? ALL_TEETH.map((t) => [t.fdi, paintedTeeth.get(t.fdi) ?? null])
+    : [...paintedTeeth];
 
   return (
     <Center>
       <primitive object={scene} />
-      {[...paintedTeeth].map(([fdi, color]) => {
+      {shownTeeth.map(([fdi, color]) => {
         const geometry = toothGeometries.get(fdi);
         if (!geometry) return null;
         return (
@@ -197,7 +202,11 @@ function MouthModel({
             onPointerOver={onToothClick && (() => (document.body.style.cursor = "pointer"))}
             onPointerOut={onToothClick && (() => (document.body.style.cursor = ""))}
           >
-            <meshStandardMaterial color={color} />
+            {color ? (
+              <meshStandardMaterial color={color} />
+            ) : (
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            )}
           </mesh>
         );
       })}
@@ -264,13 +273,17 @@ export function ToothChart3D({
   autoFocus = true,
   className = "h-112",
   onToothClick,
+  toothColors,
 }: {
   history?: ToothHistory;
   selectedTeeth?: string[];
   autoFocus?: boolean;
   className?: string;
-  /** Makes the painted (treated/selected) teeth tappable. */
+  /** Makes every tooth tappable. */
   onToothClick?: (fdi: string) => void;
+  /** A color per tooth (the odontograma's hallazgos), over the green of
+   * treated teeth; a selected tooth is still light blue. */
+  toothColors?: Record<string, string>;
 }) {
   const focusFdi = autoFocus && selectedTeeth.length === 1 ? selectedTeeth[0] : null;
 
@@ -278,10 +291,11 @@ export function ToothChart3D({
     const map = new Map<string, string>();
     for (const tooth of ALL_TEETH) {
       if (selectedTeeth.includes(tooth.fdi)) map.set(tooth.fdi, COLOR_SELECTED);
+      else if (toothColors?.[tooth.fdi]) map.set(tooth.fdi, toothColors[tooth.fdi]);
       else if (history[tooth.fdi]?.length) map.set(tooth.fdi, COLOR_TREATED);
     }
     return map;
-  }, [selectedTeeth, history]);
+  }, [selectedTeeth, history, toothColors]);
 
   return (
     <div

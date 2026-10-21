@@ -106,6 +106,16 @@ export function findingLabel(f: { tooth: string; surface: string | null; conditi
   return f.surface && isSurface(f.surface) ? `${condition} · ${surfaceLabel(f.tooth, f.surface)}` : condition;
 }
 
+/** One color for a whole tooth (the 3D model can't paint faces): missing
+ * beats everything, then anything still to do, then all done. */
+export function toothStatus(
+  findings: { condition: string; status: FindingStatus }[],
+): FindingStatus | "MISSING" | null {
+  if (findings.length === 0) return null;
+  if (findings.some((f) => f.condition === "ausente")) return "MISSING";
+  return findings.some((f) => f.status === "PENDING") ? "PENDING" : "DONE";
+}
+
 type Countable = { tooth: string; condition: string; status: FindingStatus };
 
 /** The odontograma's counters. A missing tooth isn't "done" work. */

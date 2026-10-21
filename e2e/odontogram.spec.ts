@@ -3,7 +3,7 @@ import { clerk } from "@clerk/testing/playwright";
 import { createPatient } from "./patient-form";
 import { openFichaSection } from "./ficha";
 
-test("the ficha's odontograma can be switched to the 3D model, which loads without errors", async ({
+test("the ficha's odontograma can be switched to the 3D model, which loads without errors and opens any tapped tooth", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -37,6 +37,14 @@ test("the ficha's odontograma can be switched to the 3D model, which loads witho
   if (!box) throw new Error("3D odontogram canvas not found");
 
   expect(pageErrors).toHaveLength(0);
+
+  // Every tooth can be tapped, not only painted ones: an upper incisor of
+  // this patient with nothing charted opens its own window.
+  await page.mouse.click(box.x + box.width * 0.47, box.y + box.height * 0.38);
+  const tooth = page.getByRole("dialog", { name: /^Pieza \d\d$/ });
+  await expect(tooth).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tooth).toHaveCount(0);
 
   // And back to the five-face chart.
   await page.getByRole("button", { name: "Ver odontograma" }).click();

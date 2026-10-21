@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/table";
 import { ToothChart3D, type ToothHistory } from "@/features/clinic/components/tooth-chart-3d";
 import { formatDate, toLocalDateString } from "@/features/clinic/lib/format";
-import { CONDITIONS, findingCounts, findingLabel } from "@/features/clinic/lib/findings";
+import { CONDITIONS, findingCounts, findingLabel, toothStatus } from "@/features/clinic/lib/findings";
 import { ViewConsultationDialog } from "@/features/consultations/components/view-consultation-dialog";
 import {
+  MISSING_COLOR,
   Odontogram2D,
   STATUS_COLOR,
   type Dentition,
@@ -75,6 +76,17 @@ export function OdontogramCard({
     [consultations],
   );
   const counts = findingCounts(findings);
+  // The 3D model paints whole teeth, so each gets its overall status.
+  const toothColors = useMemo(() => {
+    const byTooth = new Map<string, FindingView[]>();
+    for (const f of findings) byTooth.set(f.tooth, [...(byTooth.get(f.tooth) ?? []), f]);
+    const colors: Record<string, string> = {};
+    for (const [tooth, list] of byTooth) {
+      const status = toothStatus(list);
+      if (status) colors[tooth] = status === "MISSING" ? MISSING_COLOR : STATUS_COLOR[status];
+    }
+    return colors;
+  }, [findings]);
 
   return (
     <section aria-labelledby="odontogram-title" className="flex flex-col gap-4">
@@ -91,7 +103,12 @@ export function OdontogramCard({
           hint="Tratamientos hechos o existentes"
           color={STATUS_COLOR.DONE}
         />
-        <Counter label="Piezas ausentes" value={counts.missingTeeth} hint="Marcadas como ausentes" color="#9ca3af" />
+        <Counter
+          label="Piezas ausentes"
+          value={counts.missingTeeth}
+          hint="Marcadas como ausentes"
+          color={MISSING_COLOR}
+        />
       </div>
 
       <Card>
@@ -132,6 +149,7 @@ export function OdontogramCard({
               history={history}
               selectedTeeth={selected ? [selected] : []}
               autoFocus={false}
+              toothColors={toothColors}
               onToothClick={(fdi) => setSelected(fdi)}
             />
           ) : (
@@ -155,6 +173,10 @@ export function OdontogramCard({
             <span className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-emerald-500" />
               Con consultas
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-3 rounded-sm" style={{ backgroundColor: MISSING_COLOR }} />
+              Ausente
             </span>
             {Object.values(CONDITIONS)
               .filter((c) => c.mark && c.mark !== "—")

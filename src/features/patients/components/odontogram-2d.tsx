@@ -35,7 +35,7 @@ export const STATUS_COLOR: Record<FindingStatus, string> = {
   PENDING: "#dc2626",
   DONE: "#2563eb",
 };
-const MISSING_COLOR = "#9ca3af";
+export const MISSING_COLOR = "#9ca3af";
 
 const SIDE_SHAPES = {
   top: "0,0 40,0 28,12 12,12",
