@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  professionalLabel,
+  useDefaultProfessionalId,
+  useProfessionals,
+} from "@/features/clinic/components/permissions-provider";
 import { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -87,9 +92,12 @@ const emptyNewPatientFields = {
   newPatientAllergies: "",
 };
 
+const NO_PROFESSIONAL = "__none__";
+
 function defaultsFor(
   appointment?: Appointment,
   initialStart?: Date,
+  defaultProfessionalId?: string | null,
 ): AppointmentValues {
   if (appointment) {
     return {
@@ -100,6 +108,7 @@ function defaultsFor(
       durationMinutes: appointment.durationMinutes,
       reason: appointment.reason ?? "",
       notes: appointment.notes ?? "",
+      professionalId: appointment.professionalId ?? "",
     };
   }
   const start = initialStart ?? new Date();
@@ -111,6 +120,7 @@ function defaultsFor(
     durationMinutes: 30,
     reason: "",
     notes: "",
+    professionalId: defaultProfessionalId ?? "",
   };
 }
 
@@ -157,6 +167,8 @@ export function AppointmentDialog({
         )
       : undefined;
 
+  const professionals = useProfessionals();
+  const defaultProfessionalId = useDefaultProfessionalId();
   const {
     register,
     handleSubmit,
@@ -166,7 +178,7 @@ export function AppointmentDialog({
     formState: { errors, isSubmitting },
   } = useForm<AppointmentValues>({
     resolver: zodResolver(appointmentSchema),
-    defaultValues: defaultsFor(appointment, initialStart),
+    defaultValues: defaultsFor(appointment, initialStart, defaultProfessionalId),
   });
 
   const patientId = watch("patientId");
@@ -202,6 +214,7 @@ export function AppointmentDialog({
             durationMinutes: values.durationMinutes,
             reason: values.reason || undefined,
             notes: values.notes || undefined,
+            professionalId: values.professionalId || null,
             newPatient,
           }),
         );
@@ -213,6 +226,7 @@ export function AppointmentDialog({
             durationMinutes: values.durationMinutes,
             reason: values.reason || undefined,
             notes: values.notes || undefined,
+            professionalId: values.professionalId || null,
             newPatient,
           }),
         );
@@ -503,6 +517,34 @@ export function AppointmentDialog({
                 )}
               />
             </div>
+
+            {professionals.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="appointmentProfessional">Profesional</Label>
+                <Controller
+                  control={control}
+                  name="professionalId"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || NO_PROFESSIONAL}
+                      onValueChange={(v) => field.onChange(v === NO_PROFESSIONAL ? "" : v)}
+                    >
+                      <SelectTrigger id="appointmentProfessional" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_PROFESSIONAL}>Sin asignar</SelectItem>
+                        {professionals.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {professionalLabel(p)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="reason">Motivo (opcional)</Label>

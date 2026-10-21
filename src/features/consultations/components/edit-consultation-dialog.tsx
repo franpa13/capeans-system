@@ -1,5 +1,6 @@
 "use client";
 
+import { ProfessionalPicker } from "@/features/consultations/components/professional-picker";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, Save } from "lucide-react";
@@ -140,6 +141,8 @@ export function EditConsultationDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treatment]);
 
+  const [professionalId, setProfessionalId] = useState(consultation.professionalId ?? "");
+
   const save = async (values: EditConsultationValues) => {
     if (supplyUsages === null) return;
     const chargedNum = values.amountCharged ? Number(values.amountCharged) : undefined;
@@ -152,6 +155,7 @@ export function EditConsultationDialog({
       amountCharged: chargedNum,
       appointmentId: values.appointmentId || null,
       supplies: supplyUsages.length ? supplyUsages : undefined,
+      professionalId: professionalId || null,
     }));
     onOpenChange(false);
   };
@@ -256,6 +260,8 @@ export function EditConsultationDialog({
                 )}
               </CardContent>
             </Card>
+
+            <ProfessionalPicker value={professionalId} onChange={setProfessionalId} />
 
             <div className="space-y-2">
               <Label>Tratamiento realizado</Label>

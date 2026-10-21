@@ -7,6 +7,7 @@ import {
   deleteInvitation,
   removeMember,
   setInvitationClerkId,
+  setMemberProfessional,
   setMemberRole,
 } from "@/features/clinic/data/members";
 import type { MemberRole } from "@/features/clinic/lib/permissions";
@@ -194,5 +195,14 @@ export async function removeMemberAction(id: string) {
       .deleteOrganizationMembership({ organizationId, userId: member.clerkUserId })
       .catch(() => {}); // already gone from Clerk
     revalidatePath("/dashboard/configuracion");
+  });
+}
+
+/** Links a team member to their professional profile (null unlinks). */
+export async function setMemberProfessionalAction(id: string, professionalId: string | null) {
+  return runAction(async () => {
+    const { clinicId } = await requireTeamAdmin();
+    await setMemberProfessional(clinicId, id, professionalId);
+    revalidatePath("/dashboard", "layout");
   });
 }

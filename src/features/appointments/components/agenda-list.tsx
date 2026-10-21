@@ -1,5 +1,6 @@
 "use client";
 
+import { useProfessionalShortName } from "@/features/clinic/components/permissions-provider";
 import { CalendarDays } from "lucide-react";
 import type { TimeBlock } from "@prisma/client";
 
@@ -33,6 +34,7 @@ export function AgendaList({
   /** Wraps each row (the quick view uses it as its trigger). */
   renderTurno: (appointment: AppointmentWithConsultation, row: React.ReactNode) => React.ReactNode;
 }) {
+  const professionalName = useProfessionalShortName();
   const todayKey = new Date().toDateString();
   const sections = days
     .map((day) => {
@@ -112,7 +114,9 @@ export function AgendaList({
                           <span className="truncate">{patientName}</span>
                         </span>
                         <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                          {appointment.reason || "Sin motivo"}
+                          {[appointment.reason || "Sin motivo", professionalName(appointment.professionalId)]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
                         <StatusChip status={appointment.status} />
                       </button>,

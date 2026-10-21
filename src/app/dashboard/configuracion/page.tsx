@@ -103,7 +103,13 @@ export default async function ConfiguracionPage({
           {me && (
             <TeamManager
               meId={me.id}
-              members={members.map((m) => ({ id: m.id, name: m.name, email: m.email, role: m.role }))}
+              members={members.map((m) => ({
+                id: m.id,
+                name: m.name,
+                email: m.email,
+                role: m.role,
+                professionalId: m.professionalId,
+              }))}
               invitations={invitations.map((i) => ({ id: i.id, email: i.email, role: i.role }))}
             />
           )}

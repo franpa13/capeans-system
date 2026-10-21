@@ -129,6 +129,9 @@ model Consultation {
   // their sum by the data layer, so balances and filters can read it alone.
   payments     Payment[]
   resolvedFindings ToothFinding[]
+  // Who attended it.
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
 
   @@index([clinicId])
   @@index([patientId])
@@ -160,6 +163,9 @@ model Appointment {
   reminderSentAt  DateTime?
 
   consultation    Consultation?
+  // Who attends it; null = not assigned yet.
+  professionalId  String?
+  professional    Professional?     @relation(fields: [professionalId], references: [id], onDelete: SetNull)
 
   @@index([clinicId])
   @@index([patientId])
@@ -359,6 +365,9 @@ model Professional {
 
   prescriptions Prescription[]
   medicalOrders MedicalOrder[]
+  appointments  Appointment[]
+  consultations Consultation[]
+  member        ClinicMember?
 
   @@index([clinicId])
 }
@@ -442,6 +451,10 @@ model ClinicMember {
   name        String
   email       String
   createdAt   DateTime   @default(now())
+  // Their own professional profile (a dentist): signs their recetas, and
+  // their turnos and consultas are theirs by default.
+  professionalId String?       @unique
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
 
   @@unique([clinicId, clerkUserId])
 }

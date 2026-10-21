@@ -1,5 +1,6 @@
 "use client";
 
+import { useProfessionalShortName } from "@/features/clinic/components/permissions-provider";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -77,6 +78,7 @@ export function AppointmentQuickView({
   onCompleted: (appointment: Appointment) => void;
   children: React.ReactNode;
 }) {
+  const professionalName = useProfessionalShortName();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -175,6 +177,9 @@ export function AppointmentQuickView({
 
           <div className="space-y-1 text-sm">
             <p>{appointment.reason || <span className="text-muted-foreground">Sin motivo</span>}</p>
+            {professionalName(appointment.professionalId) && (
+              <p className="text-muted-foreground">Atiende: {professionalName(appointment.professionalId)}</p>
+            )}
             {patient && (
               <p className="flex items-center gap-1.5 text-muted-foreground">
                 <span className={`size-2.5 rounded-full ${INSURANCE_DOT[insuranceColor(patient.insurance)]}`} />

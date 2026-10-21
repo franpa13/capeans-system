@@ -4,6 +4,7 @@ import type { Consultation, PaymentMethod, Prisma } from "@prisma/client";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { paymentStatus, type PaymentStatus } from "@/features/clinic/lib/billing";
 import { resolveFindings, unresolveFindings } from "@/features/clinic/data/tooth-findings";
+import { assertClinicProfessional } from "@/features/clinic/data/professionals";
 
 export type NewConsultationInput = {
   patientId: string;
@@ -20,6 +21,8 @@ export type NewConsultationInput = {
   supplies?: SupplyUsageInput[];
   /** Pending hallazgos of this patient that this consulta treated. */
   resolvedFindingIds?: string[];
+  /** Who attended; when not given, the linked turno's professional. */
+  professionalId?: string | null;
 };
 
 /** Checks a consulta may be linked to this turno and, if the turno was
@@ -247,8 +250,15 @@ export async function createConsultation(
     if (input.appointmentId) {
       await linkAppointment(tx, clinicId, input.appointmentId, input.patientId);
     }
+    let professionalId = input.professionalId ?? null;
+    if (input.professionalId === undefined && input.appointmentId) {
+      const turno = await tx.appointment.findFirst({ where: { id: input.appointmentId, clinicId } });
+      professionalId = turno?.professionalId ?? null;
+    }
+    if (professionalId) await assertClinicProfessional(tx, clinicId, professionalId);
     const consultation = await tx.consultation.create({
       data: {
+        professionalId,
         patientId: input.patientId,
         date: input.date,
         treatment: input.treatment,
@@ -285,7 +295,8 @@ export type UpdateConsultationInput = {
   appointmentId?: string | null;
   /** Also the full new list — omitting it means "no supplies used", and
    * the previous ones are put back into stock. */
-  supplies?: SupplyUsageInput[];
+  supplies?: SupplyUsageInput[];  /** Who attended; omitted keeps who it was, null clears it. */
+  professionalId?: string | null;
 };
 
 export async function updateConsultation(
@@ -309,6 +320,7 @@ export async function updateConsultation(
       await linkAppointment(tx, clinicId, input.appointmentId, existing.patientId, id);
     }
     await reverseSupplyUsages(tx, id);
+    if (input.professionalId) await assertClinicProfessional(tx, clinicId, input.professionalId);
     const updated = await tx.consultation.update({
       where: { id },
       data: {
@@ -318,6 +330,7 @@ export async function updateConsultation(
         notes: input.notes ?? null,
         amountCharged: input.amountCharged ?? null,
         appointmentId: input.appointmentId ?? null,
+        ...(input.professionalId !== undefined ? { professionalId: input.professionalId } : {}),
       },
     });
     await applySupplyUsages(tx, clinicId, id, input.supplies);

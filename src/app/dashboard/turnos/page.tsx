@@ -29,9 +29,10 @@ export default async function TurnosPage({
     day?: string;
     mes?: string;
     estado?: string;
+    prof?: string;
   }>;
 }) {
-  const { week, view, day, mes, estado } = await searchParams;
+  const { week, view, day, mes, estado, prof } = await searchParams;
   // Día is the default — the dentist mostly wants today's agenda; the week
   // is one tap away (and keeps view=week while navigating weeks).
   const agendaView =
@@ -48,6 +49,8 @@ export default async function TurnosPage({
     statusParam === ALL_STATUSES
       ? undefined
       : (statusParam as AppointmentStatus | typeof ACTIVE_STATUSES);
+  // Every link of the agenda keeps both filters.
+  const filterQuery = `estado=${statusParam}${prof ? `&prof=${encodeURIComponent(prof)}` : ""}`;
 
   // Defaults the day view to today when today falls inside the week
   // already being viewed, otherwise to that week's Monday.
@@ -78,7 +81,7 @@ export default async function TurnosPage({
   const timeBlocks = clinic ? await getTimeBlocks(clinic.id, range) : [];
   const [appointments, patients, businessHours, insuranceOptionRows, treatmentOptionRows, supplies] = clinic
     ? await Promise.all([
-        getAppointments(clinic.id, range, statusFilter),
+        getAppointments(clinic.id, range, statusFilter, prof || undefined),
         getPatients(clinic.id),
         getBusinessHours(clinic.id),
         getClinicOptions(clinic.id, "insurance"),
@@ -103,10 +106,10 @@ export default async function TurnosPage({
   );
 
   const weekParam = toWeekParam(weekStart);
-  const semanalHref = `/dashboard/turnos?week=${weekParam}&view=week&estado=${statusParam}`;
-  const diarioHref = `/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&estado=${statusParam}`;
-  const listaHref = `/dashboard/turnos?week=${weekParam}&view=list&estado=${statusParam}`;
-  const mesHref = `/dashboard/turnos?view=month&mes=${toMonthParam(monthStart)}&estado=${statusParam}`;
+  const semanalHref = `/dashboard/turnos?week=${weekParam}&view=week&${filterQuery}`;
+  const diarioHref = `/dashboard/turnos?week=${weekParam}&view=day&day=${toWeekParam(selectedDay)}&${filterQuery}`;
+  const listaHref = `/dashboard/turnos?week=${weekParam}&view=list&${filterQuery}`;
+  const mesHref = `/dashboard/turnos?view=month&mes=${toMonthParam(monthStart)}&${filterQuery}`;
   const viewHrefs = { diarioHref, semanalHref, mesHref, listaHref };
 
   return (
@@ -134,6 +137,8 @@ export default async function TurnosPage({
           patients={patients}
           businessHours={businessHours}
           estado={statusParam}
+          filterQuery={filterQuery}
+          professionalFilter={prof ?? ""}
           view={agendaView}
           viewHrefs={viewHrefs}
           insuranceOptions={insuranceOptions}
@@ -153,6 +158,8 @@ export default async function TurnosPage({
           patients={patients}
           businessHours={businessHours}
           estado={statusParam}
+          filterQuery={filterQuery}
+          professionalFilter={prof ?? ""}
           view={agendaView}
           viewHrefs={viewHrefs}
           insuranceOptions={insuranceOptions}

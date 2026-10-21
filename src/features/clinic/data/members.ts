@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { ClinicInvitation, ClinicMember, MemberRole } from "@prisma/client";
 import { resolveNewMemberRole } from "@/features/clinic/lib/permissions";
+import { assertClinicProfessional } from "@/features/clinic/data/professionals";
 
 const LAST_ADMIN = "Tiene que quedar al menos un administrador";
 
@@ -59,6 +60,22 @@ export async function setMemberRole(clinicId: string, id: string, role: MemberRo
   const member = await findMember(clinicId, id);
   if (member.role === "ADMIN" && role !== "ADMIN") await assertAnotherAdmin(clinicId, id);
   return prisma.clinicMember.update({ where: { id }, data: { role } });
+}
+
+/** Links a member to their professional profile (or unlinks with null).
+ * One person per professional. */
+export async function setMemberProfessional(
+  clinicId: string,
+  id: string,
+  professionalId: string | null,
+): Promise<ClinicMember> {
+  await findMember(clinicId, id);
+  if (professionalId) {
+    await assertClinicProfessional(prisma, clinicId, professionalId);
+    const taken = await prisma.clinicMember.findFirst({ where: { professionalId, id: { not: id } } });
+    if (taken) throw new Error("Ese profesional ya está vinculado a otra persona del equipo");
+  }
+  return prisma.clinicMember.update({ where: { id }, data: { professionalId } });
 }
 
 /** Takes someone off the team; returns them so their Clerk membership can

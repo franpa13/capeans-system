@@ -22,6 +22,8 @@ export const appointmentSchema = z
     durationMinutes: z.number().int().positive(),
     reason: z.string().optional(),
     notes: z.string().optional(),
+    /** "" = not assigned to a professional. */
+    professionalId: z.string(),
   })
   .superRefine((data, ctx) => {
     if (data.patientId === NEW_PATIENT_VALUE) {

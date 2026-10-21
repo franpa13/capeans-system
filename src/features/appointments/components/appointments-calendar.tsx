@@ -1,5 +1,6 @@
 "use client";
 
+import { useProfessionalShortName } from "@/features/clinic/components/permissions-provider";
 import { useCan } from "@/features/clinic/components/permissions-provider";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
+import { ProfessionalFilter } from "@/features/appointments/components/professional-filter";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
@@ -88,6 +90,8 @@ export function AppointmentsCalendar({
   patients,
   businessHours,
   estado,
+  filterQuery,
+  professionalFilter,
   view,
   viewHrefs,
   insuranceOptions,
@@ -105,6 +109,10 @@ export function AppointmentsCalendar({
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
+  /** The agenda's filters as a query string (estado, prof), for its links. */
+  filterQuery: string;
+  /** The professional whose agenda is shown; "" = everyone. */
+  professionalFilter: string;
   view: AgendaView;
   viewHrefs: { diarioHref: string; semanalHref: string; mesHref: string; listaHref: string };
   insuranceOptions: string[];
@@ -136,6 +144,7 @@ export function AppointmentsCalendar({
   // other is about to open. Both carry the turno itself, so the consulta
   // gets linked to it and prefilled with its date and motivo.
   const canRegister = useCan("clinical.edit");
+  const professionalName = useProfessionalShortName();
   const [completed, setCompleted] = useState<CompletedTurno | null>(null);
   const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
 
@@ -208,11 +217,12 @@ export function AppointmentsCalendar({
         <div className="flex flex-wrap items-center gap-2">
           <ViewToggle view={view} {...viewHrefs} />
           <AppointmentStatusFilter value={estado} />
+          <ProfessionalFilter value={professionalFilter} />
           {view === "month" ? (
           <div className="flex items-center gap-1">
             <Button variant="outline" asChild>
               <Link
-                href={`/dashboard/turnos?view=month&mes=${toMonthParam(addMonths(monthStart, -1))}&estado=${estado}`}
+                href={`/dashboard/turnos?view=month&mes=${toMonthParam(addMonths(monthStart, -1))}&${filterQuery}`}
                 aria-label="Mes anterior"
               >
                 <ChevronLeft />
@@ -220,11 +230,11 @@ export function AppointmentsCalendar({
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?view=month&estado=${estado}`}>Hoy</Link>
+              <Link href={`/dashboard/turnos?view=month&${filterQuery}`}>Hoy</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link
-                href={`/dashboard/turnos?view=month&mes=${toMonthParam(addMonths(monthStart, 1))}&estado=${estado}`}
+                href={`/dashboard/turnos?view=month&mes=${toMonthParam(addMonths(monthStart, 1))}&${filterQuery}`}
                 aria-label="Mes siguiente"
               >
                 Siguiente
@@ -236,16 +246,16 @@ export function AppointmentsCalendar({
           ) : (
           <div className="flex items-center gap-1">
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?week=${prevWeek}&view=${view}&estado=${estado}`} aria-label="Semana anterior">
+              <Link href={`/dashboard/turnos?week=${prevWeek}&view=${view}&${filterQuery}`} aria-label="Semana anterior">
                 <ChevronLeft />
                 Anterior
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?view=${view}&estado=${estado}`}>Hoy</Link>
+              <Link href={`/dashboard/turnos?view=${view}&${filterQuery}`}>Hoy</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/dashboard/turnos?week=${nextWeek}&view=${view}&estado=${estado}`} aria-label="Semana siguiente">
+              <Link href={`/dashboard/turnos?week=${nextWeek}&view=${view}&${filterQuery}`} aria-label="Semana siguiente">
                 Siguiente
                 <ChevronRight />
               </Link>
@@ -291,7 +301,7 @@ export function AppointmentsCalendar({
           timeBlocks={timeBlocks}
           businessHours={businessHours}
           dayHref={(d) =>
-            `/dashboard/turnos?week=${toWeekParam(getWeekStart(d))}&view=day&day=${toWeekParam(d)}&estado=${estado}`
+            `/dashboard/turnos?week=${toWeekParam(getWeekStart(d))}&view=day&day=${toWeekParam(d)}&${filterQuery}`
           }
           renderTurno={(appointment, row) => (
             <AppointmentQuickView
@@ -491,6 +501,11 @@ export function AppointmentsCalendar({
                             <StatusChip status={appointment.status} />
                             {appointment.reason && (
                               <span className="truncate opacity-90">{appointment.reason}</span>
+                            )}
+                            {professionalName(appointment.professionalId) && (
+                              <span className="shrink-0 truncate font-medium opacity-80">
+                                {professionalName(appointment.professionalId)}
+                              </span>
                             )}
                           </div>
                         </button>

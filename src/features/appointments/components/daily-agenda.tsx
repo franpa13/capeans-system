@@ -1,5 +1,6 @@
 "use client";
 
+import { useProfessionalShortName } from "@/features/clinic/components/permissions-provider";
 import { useCan } from "@/features/clinic/components/permissions-provider";
 import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AppointmentDialog } from "@/features/appointments/components/appointment-dialog";
+import { ProfessionalFilter } from "@/features/appointments/components/professional-filter";
 import { AppointmentStatusFilter } from "@/features/appointments/components/appointment-status-filter";
 import { ViewToggle, type AgendaView } from "@/features/appointments/components/view-toggle";
 import { StatusChip } from "@/features/appointments/components/status-chip";
@@ -85,6 +87,8 @@ export function DailyAgenda({
   patients,
   businessHours,
   estado,
+  filterQuery,
+  professionalFilter,
   view,
   viewHrefs,
   insuranceOptions,
@@ -101,6 +105,10 @@ export function DailyAgenda({
   patients: PatientOption[];
   businessHours: BusinessHours[];
   estado: string;
+  /** The agenda's filters as a query string (estado, prof), for its links. */
+  filterQuery: string;
+  /** The professional whose agenda is shown; "" = everyone. */
+  professionalFilter: string;
   view: AgendaView;
   viewHrefs: { diarioHref: string; semanalHref: string; mesHref: string; listaHref: string };
   insuranceOptions: string[];
@@ -151,6 +159,7 @@ export function DailyAgenda({
   // see appointments-calendar.tsx for why this is two separate pieces of
   // state instead of one reused across both dialogs.
   const canRegister = useCan("clinical.edit");
+  const professionalName = useProfessionalShortName();
   const [completed, setCompleted] = useState<CompletedTurno | null>(null);
   const [consultationFor, setConsultationFor] = useState<CompletedTurno | null>(null);
 
@@ -204,7 +213,7 @@ export function DailyAgenda({
 
   function hrefForDay(target: Date) {
     const targetWeek = toWeekParam(getWeekStart(target));
-    return `/dashboard/turnos?week=${targetWeek}&view=day&day=${toWeekParam(target)}&estado=${estado}`;
+    return `/dashboard/turnos?week=${targetWeek}&view=day&day=${toWeekParam(target)}&${filterQuery}`;
   }
 
   return (
@@ -213,6 +222,7 @@ export function DailyAgenda({
         <div className="flex flex-wrap items-center gap-2">
           <ViewToggle view={view} {...viewHrefs} />
           <AppointmentStatusFilter value={estado} />
+          <ProfessionalFilter value={professionalFilter} />
           <div className="flex items-center gap-1">
             <Button variant="outline" asChild>
               <Link href={hrefForDay(addDays(day, -1))} aria-label="Día anterior">
@@ -366,8 +376,12 @@ export function DailyAgenda({
                               {String(appointment.startsAt.getMinutes()).padStart(2, "0")}
                             </span>
                           </div>
-                          {appointment.reason && (
-                            <div className="truncate opacity-90">{appointment.reason}</div>
+                          {(appointment.reason || professionalName(appointment.professionalId)) && (
+                            <div className="truncate opacity-90">
+                              {[appointment.reason, professionalName(appointment.professionalId)]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </div>
                           )}
                         </button>
                     </AppointmentQuickView>

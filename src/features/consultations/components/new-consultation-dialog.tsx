@@ -1,6 +1,6 @@
 "use client";
 
-import { useCan } from "@/features/clinic/components/permissions-provider";
+import { useCan, useDefaultProfessionalId } from "@/features/clinic/components/permissions-provider";
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,6 +43,7 @@ import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
 import { getPendingFindingsAction } from "@/features/patients/actions";
 import { findingLabel } from "@/features/clinic/lib/findings";
+import { ProfessionalPicker } from "@/features/consultations/components/professional-picker";
 import { unwrap } from "@/lib/action-result";
 import { medicalAlerts } from "@/features/clinic/lib/medical";
 import { MedicalAlert } from "@/features/patients/components/medical-alert";
@@ -72,7 +73,12 @@ type PatientOption = {
 /** The turno this consulta is being registered for, when opened from the
  * agenda — prefills its date/time, links it, and carries its motivo over
  * into Observaciones. */
-type InitialAppointment = { id: string; startsAt: Date; reason: string | null };
+type InitialAppointment = {
+  id: string;
+  startsAt: Date;
+  reason: string | null;
+  professionalId?: string | null;
+};
 
 function todayISO() {
   // Not toISOString().slice(0, 10): that reads the UTC date, which is
@@ -121,6 +127,10 @@ export function NewConsultationDialog({
   onOpenChange?: (open: boolean) => void;
 }) {
   const canRegister = useCan("clinical.edit");
+  const defaultProfessionalId = useDefaultProfessionalId();
+  const [professionalId, setProfessionalId] = useState(
+    initialAppointment?.professionalId ?? defaultProfessionalId ?? "",
+  );
   const isControlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? openProp : internalOpen;
@@ -261,6 +271,7 @@ export function NewConsultationDialog({
       appointmentId: values.appointmentId || undefined,
       supplies: supplyUsages.length ? supplyUsages : undefined,
       resolvedFindingIds: resolvedFindingIds.length ? resolvedFindingIds : undefined,
+      professionalId: professionalId || null,
       newPatient: isNewPatient
         ? {
             name: values.newPatientName!.trim(),
@@ -304,6 +315,7 @@ export function NewConsultationDialog({
     });
     setDiscountPercent("");
     setKeptPending(new Set());
+    setProfessionalId(initialAppointment?.professionalId ?? defaultProfessionalId ?? "");
     setFindingsReload((n) => n + 1);
     setAmountTouched(false);
     setSupplyUsages([]);
@@ -599,6 +611,8 @@ export function NewConsultationDialog({
                 )}
               </CardContent>
             </Card>
+
+            <ProfessionalPicker value={professionalId} onChange={setProfessionalId} />
 
             <div className="space-y-2">
               <Label>Tratamiento realizado</Label>

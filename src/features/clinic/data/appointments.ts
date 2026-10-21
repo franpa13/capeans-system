@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Appointment, AppointmentStatus, Prisma } from "@prisma/client";
 import { assertNotBlocked } from "@/features/clinic/data/time-blocks";
 import { ACTIVE_STATUSES } from "@/features/appointments/lib/status";
+import { assertClinicProfessional } from "@/features/clinic/data/professionals";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -12,6 +13,8 @@ export type NewAppointmentInput = {
   reason?: string;
   status?: AppointmentStatus;
   notes?: string;
+  /** Who attends it; null = not assigned. */
+  professionalId?: string | null;
 };
 
 export type UpdateAppointmentInput = Partial<NewAppointmentInput>;
@@ -31,11 +34,14 @@ function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
 // overlap and is safe to exclude from the query itself.
 const MAX_CONFLICT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
+/** Another turno taking this slot. With several professionals each has
+ * their own agenda; an unassigned turno takes the slot for everyone. */
 async function findConflict(
   db: Db,
   clinicId: string,
   startsAt: Date,
   durationMinutes: number,
+  professionalId: string | null,
   excludeId?: string,
 ): Promise<Appointment | null> {
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
@@ -49,6 +55,7 @@ async function findConflict(
         lt: endsAt,
       },
       ...(excludeId ? { id: { not: excludeId } } : {}),
+      ...(professionalId ? { OR: [{ professionalId }, { professionalId: null }] } : {}),
     },
   });
 
@@ -70,10 +77,13 @@ export async function getAppointments(
   clinicId: string,
   range?: { from: Date; to: Date },
   status?: AppointmentStatus | typeof ACTIVE_STATUSES,
+  /** Only this professional's turnos. */
+  professionalId?: string,
 ): Promise<AppointmentWithConsultation[]> {
   return prisma.appointment.findMany({
     where: {
       clinicId,
+      ...(professionalId ? { professionalId } : {}),
       ...(range ? { startsAt: { gte: range.from, lt: range.to } } : {}),
       // "Confirmados" includes those already in the waiting room: both are
       // turnos still happening today.
@@ -142,8 +152,10 @@ export async function createAppointment(
     }
   }
 
+  const professionalId = input.professionalId ?? null;
+  if (professionalId) await assertClinicProfessional(db, clinicId, professionalId);
   const durationMinutes = input.durationMinutes ?? 30;
-  const conflict = await findConflict(db, clinicId, input.startsAt, durationMinutes);
+  const conflict = await findConflict(db, clinicId, input.startsAt, durationMinutes, professionalId);
   if (conflict) {
     throw new Error("Ya hay un turno agendado en ese horario");
   }
@@ -158,6 +170,7 @@ export async function createAppointment(
       reason: input.reason ?? null,
       status: input.status ?? "CONFIRMED",
       notes: input.notes ?? null,
+      professionalId,
     },
   });
 }
@@ -185,9 +198,14 @@ export async function updateAppointment(
   const startsAt = input.startsAt ?? existing.startsAt;
   const durationMinutes = input.durationMinutes ?? existing.durationMinutes;
   const status = input.status ?? existing.status;
+  const professionalId =
+    input.professionalId !== undefined ? input.professionalId : existing.professionalId;
+  if (professionalId && professionalId !== existing.professionalId) {
+    await assertClinicProfessional(db, clinicId, professionalId);
+  }
 
   if (!NOT_HAPPENING.includes(status)) {
-    const conflict = await findConflict(db, clinicId, startsAt, durationMinutes, id);
+    const conflict = await findConflict(db, clinicId, startsAt, durationMinutes, professionalId, id);
     if (conflict) {
       throw new Error("Ya hay un turno agendado en ese horario");
     }
@@ -208,6 +226,7 @@ export async function updateAppointment(
       reason: input.reason !== undefined ? input.reason : existing.reason,
       status,
       notes: input.notes !== undefined ? input.notes : existing.notes,
+      professionalId,
     },
   });
 }

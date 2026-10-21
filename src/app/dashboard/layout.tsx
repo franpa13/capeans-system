@@ -16,6 +16,7 @@ import { getDashboardAccessMessage } from "@/features/clinic/data/current-clinic
 import { getCurrentMember } from "@/features/clinic/data/current-member";
 import { PermissionsProvider } from "@/features/clinic/components/permissions-provider";
 import { ROLE_LABELS } from "@/features/clinic/lib/permissions";
+import { getProfessionals } from "@/features/clinic/data/professionals";
 
 export default async function DashboardLayout({
   children,
@@ -41,9 +42,18 @@ export default async function DashboardLayout({
   }
 
   const { clinic, member } = current;
+  const professionals = (await getProfessionals(clinic.id)).map((p) => ({
+    id: p.id,
+    title: p.title,
+    name: p.name,
+  }));
 
   return (
-    <PermissionsProvider role={member.role}>
+    <PermissionsProvider
+      role={member.role}
+      professionalId={member.professionalId}
+      professionals={professionals}
+    >
     <SidebarProvider>
       <AppSidebar clinicName={clinic.name} />
       <SidebarInset>

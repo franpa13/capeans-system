@@ -1,5 +1,6 @@
 "use client";
 
+import { useDefaultProfessionalId } from "@/features/clinic/components/permissions-provider";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -64,7 +65,10 @@ export function NewPrescriptionDialog({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [professionalId, setProfessionalId] = useState(professionals[0]?.id ?? "");
+  // The signed-in dentist signs by default.
+  const mine = useDefaultProfessionalId();
+  const firstChoice = professionals.find((p) => p.id === mine)?.id ?? professionals[0]?.id ?? "";
+  const [professionalId, setProfessionalId] = useState(firstChoice);
   const [treatment, setTreatment] = useState(NO_TREATMENT);
   const [items, setItems] = useState<PrescriptionItem[]>([]);
   const [instructions, setInstructions] = useState("");
@@ -81,7 +85,7 @@ export function NewPrescriptionDialog({
   }, [query]);
 
   function reset() {
-    setProfessionalId(professionals[0]?.id ?? "");
+    setProfessionalId(firstChoice);
     setTreatment(NO_TREATMENT);
     setItems([]);
     setInstructions("");

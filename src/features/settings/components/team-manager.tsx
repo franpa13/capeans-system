@@ -30,11 +30,15 @@ import {
   cancelInvitationAction,
   inviteMemberAction,
   removeMemberAction,
+  setMemberProfessionalAction,
   setMemberRoleAction,
 } from "@/features/settings/actions";
+import { professionalLabel, useProfessionals } from "@/features/clinic/components/permissions-provider";
 import { unwrap } from "@/lib/action-result";
 
-type Member = { id: string; name: string; email: string; role: MemberRole };
+type Member = { id: string; name: string; email: string; role: MemberRole; professionalId: string | null };
+
+const NO_PROFILE = "__none__";
 type Invitation = { id: string; email: string; role: MemberRole };
 
 function RoleSelect({
@@ -79,6 +83,7 @@ export function TeamManager({
   meId: string;
 }) {
   const router = useRouter();
+  const professionals = useProfessionals();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<MemberRole>("DENTIST");
   const [sending, setSending] = useState(false);
@@ -154,7 +159,10 @@ export function TeamManager({
       <Card>
         <CardHeader>
           <CardTitle>Equipo</CardTitle>
-          <CardDescription>Quiénes usan el sistema en el consultorio.</CardDescription>
+          <CardDescription>
+            Quiénes usan el sistema. A cada odontólogo vinculalo con su perfil profesional: sus turnos,
+            consultas y recetas salen a su nombre.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ul aria-label="Equipo" className="divide-y rounded-md border">
@@ -169,6 +177,26 @@ export function TeamManager({
                   </p>
                   <p className="text-sm text-muted-foreground">{m.email}</p>
                 </div>
+                {professionals.length > 0 && m.role !== "RECEPTION" && (
+                  <Select
+                    value={m.professionalId ?? NO_PROFILE}
+                    onValueChange={(v) =>
+                      run(() => unwrap(setMemberProfessionalAction(m.id, v === NO_PROFILE ? null : v)))
+                    }
+                  >
+                    <SelectTrigger aria-label={`Perfil profesional de ${m.name}`} className="w-52">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_PROFILE}>Sin perfil profesional</SelectItem>
+                      {professionals.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {professionalLabel(p)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <RoleSelect
                   label={`Rol de ${m.name}`}
                   value={m.role}

@@ -31,6 +31,16 @@ function clean(input: ProfessionalInput) {
   return { title: input.title, name, license, specialty: input.specialty?.trim() || null, signature };
 }
 
+/** Throws unless the professional is this clinic's. */
+export async function assertClinicProfessional(
+  db: Pick<typeof prisma, "professional">,
+  clinicId: string,
+  professionalId: string,
+): Promise<void> {
+  const found = await db.professional.findFirst({ where: { id: professionalId, clinicId } });
+  if (!found) throw new Error("Elegí un profesional del consultorio");
+}
+
 export async function getProfessionals(clinicId: string): Promise<Professional[]> {
   return prisma.professional.findMany({ where: { clinicId }, orderBy: { name: "asc" } });
 }

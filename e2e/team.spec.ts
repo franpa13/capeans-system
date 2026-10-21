@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { PrismaClient, type MemberRole } from "@prisma/client";
 import { createPatient } from "./patient-form";
-import { openFichaSection } from "./ficha";
 
 const prisma = new PrismaClient();
 const EMAIL = process.env.E2E_TEST_EMAIL!.toLowerCase();
