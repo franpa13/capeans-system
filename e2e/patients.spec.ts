@@ -313,6 +313,6 @@ test("the ficha opens on Resumen, with personal data, observaciones that can be 
   // The other sections.
   await openFichaSection(page, "Pagos");
   await expect(page.getByText("Todavía no hay pagos registrados.")).toBeVisible();
-  await openFichaSection(page, "Consultas");
+  await openFichaSection(page, "Turnos/Tratamientos");
   await expect(page.getByText("Todavía no hay consultas registradas para este paciente.")).toBeVisible();
 });

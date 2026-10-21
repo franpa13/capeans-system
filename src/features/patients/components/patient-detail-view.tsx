@@ -216,7 +216,7 @@ export function PatientDetailView({
           <SectionTile
             value="consultas"
             icon={ClipboardList}
-            label="Consultas"
+            label="Turnos/Tratamientos"
             count={consultations.length}
             flag={balance > 0 ? `Debe ${formatCurrency(balance)}` : undefined}
           />
