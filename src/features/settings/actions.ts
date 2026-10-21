@@ -5,9 +5,12 @@ import { revalidatePath } from "next/cache";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import {
   createClinicOption,
+  createTreatment,
   deleteClinicOption,
   updateClinicOption,
+  updateTreatment,
   type OptionCategory,
+  type TreatmentInput,
 } from "@/features/clinic/data/clinic-options";
 import {
   upsertBusinessHours,
@@ -58,5 +61,23 @@ export async function updateBusinessHoursAction(weekday: number, input: Business
     // The Turnos grid reads business hours too, to shade closed hours.
     revalidatePath("/dashboard/turnos");
     return hours;
+  });
+}
+
+export async function createTreatmentAction(input: TreatmentInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const treatment = await createTreatment(clinicId, input);
+    revalidatePath("/dashboard/configuracion");
+    return treatment;
+  });
+}
+
+export async function updateTreatmentAction(id: string, input: TreatmentInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const treatment = await updateTreatment(clinicId, id, input);
+    revalidatePath("/dashboard/configuracion");
+    return treatment;
   });
 }

@@ -25,6 +25,7 @@ export function PatientDetailView({
   consultations,
   treatmentOptions,
   treatmentPrices,
+  treatmentCashPrices = {},
   supplyOptions,
   balance,
   noShows,
@@ -34,6 +35,7 @@ export function PatientDetailView({
   consultations: Consultation[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions: SupplyOption[];
   balance: number;
   /** Turnos this patient didn't come to. */
@@ -104,6 +106,7 @@ export function PatientDetailView({
               fixedPatientName={patient.name}
               treatmentOptions={treatmentOptions}
               treatmentPrices={treatmentPrices}
+              treatmentCashPrices={treatmentCashPrices}
               supplyOptions={supplyOptions}
               toothHistory={toothHistory}
               fixedPatientAlerts={alerts}
@@ -146,6 +149,7 @@ export function PatientDetailView({
           emptyMessage="Todavía no hay consultas registradas para este paciente."
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          treatmentCashPrices={treatmentCashPrices}
           supplyOptions={supplyOptions}
         />
       </div>

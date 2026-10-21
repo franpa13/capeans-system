@@ -183,6 +183,13 @@ model ClinicOption {
   order    Int    @default(0)
   price    Int?   // precio de lista, pesos enteros. Solo aplica a category == "treatment".
 
+  // Only for category == "treatment":
+  cashPrice       Int?    // precio en efectivo, pesos enteros
+  code            String? // código de nomenclador, e.g. "12.04.00"
+  specialty       String? // label of a "specialty" option
+  durationMinutes Int?    // suggested length of a turno for it
+  active          Boolean @default(true)
+
   @@unique([clinicId, category, label])
   @@index([clinicId, category])
 }

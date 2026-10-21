@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
-import { addClinicOption, editClinicOption } from "./clinic-options";
+import { addClinicOption, editClinicOption, searchClinicOption } from "./clinic-options";
 
 // With pagination (10/page) and backend filtering, a newly created
 // consultation isn't guaranteed to land on page 1 of the unfiltered,
@@ -328,7 +328,7 @@ test("a consultation's amount, discount, and payment status work end to end", as
 
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
-  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await searchClinicOption(page, "tratamiento", treatmentLabel);
   await page.getByRole("button", { name: `Eliminar ${treatmentLabel}` }).click();
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
 });
@@ -365,7 +365,7 @@ test("opening Editar on an unpriced consultation does not bill it at the treatme
   // affect a consultation that already happened without a price.
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
-  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await searchClinicOption(page, "tratamiento", treatmentLabel);
   await editClinicOption(page, "tratamiento", treatmentLabel, { price: "30000" });
   await expect(page.getByText("30.000", { exact: false })).toBeVisible();
 
@@ -391,7 +391,7 @@ test("opening Editar on an unpriced consultation does not bill it at the treatme
   await page.getByRole("button", { name: "Eliminar", exact: true }).last().click();
   await page.goto("/dashboard/configuracion");
   await page.getByRole("tab", { name: "Tratamientos" }).click();
-  await page.getByPlaceholder("Buscar...").fill(treatmentLabel);
+  await searchClinicOption(page, "tratamiento", treatmentLabel);
   await page.getByRole("button", { name: `Eliminar ${treatmentLabel}` }).click();
   await page.getByRole("button", { name: "Eliminar", exact: true }).click();
 });
@@ -412,7 +412,7 @@ test("the discount recalculates when switching treatments, clamps to 0-100, and 
   ]) {
     await addClinicOption(page, "tratamiento", label, price);
   }
-  await page.getByPlaceholder("Buscar...").fill("");
+  await searchClinicOption(page, "tratamiento", "");
 
   await page.goto("/dashboard/consultas");
   await page.getByRole("button", { name: "Nueva consulta" }).click();
@@ -447,7 +447,7 @@ test("the discount recalculates when switching treatments, clamps to 0-100, and 
   for (const label of [labelA, labelB]) {
     await page.goto("/dashboard/configuracion");
     await page.getByRole("tab", { name: "Tratamientos" }).click();
-    await page.getByPlaceholder("Buscar...").fill(label);
+    await searchClinicOption(page, "tratamiento", label);
     await page.getByRole("button", { name: `Eliminar ${label}` }).click();
     await page.getByRole("button", { name: "Eliminar", exact: true }).click();
   }

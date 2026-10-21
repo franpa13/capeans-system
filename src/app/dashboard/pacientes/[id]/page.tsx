@@ -21,6 +21,9 @@ export default async function PacienteDetailPage({
   const treatmentPrices = Object.fromEntries(
     treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
   );
+  const treatmentCashPrices = Object.fromEntries(
+    treatmentOptions.filter((o) => o.cashPrice != null).map((o) => [o.label, o.cashPrice!]),
+  );
   const supplies = clinic ? await getSupplies(clinic.id) : [];
   const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const balance = outstandingBalance(consultations);
@@ -31,8 +34,9 @@ export default async function PacienteDetailPage({
     <PatientDetailView
       patient={patient}
       consultations={consultations}
-      treatmentOptions={treatmentOptions.map((o) => o.label)}
+      treatmentOptions={treatmentOptions.filter((o) => o.active).map((o) => o.label)}
       treatmentPrices={treatmentPrices}
+      treatmentCashPrices={treatmentCashPrices}
       supplyOptions={supplyOptions}
       balance={balance}
       noShows={noShows}

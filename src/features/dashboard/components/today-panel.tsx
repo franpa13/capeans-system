@@ -109,6 +109,7 @@ export function TodayPanel({
   insuranceOptions,
   treatmentOptions,
   treatmentPrices,
+  treatmentCashPrices = {},
   supplyOptions,
 }: {
   appointments: AppointmentWithConsultation[];
@@ -121,6 +122,7 @@ export function TodayPanel({
   insuranceOptions: string[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions: SupplyOption[];
 }) {
   const router = useRouter();
@@ -346,6 +348,7 @@ export function TodayPanel({
           fixedPatientName={registering.patient.name}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          treatmentCashPrices={treatmentCashPrices}
           insuranceOptions={insuranceOptions}
           initialAppointment={registering.appointment}
           supplyOptions={supplyOptions}

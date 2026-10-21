@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
-import { addClinicOption, editClinicOption } from "./clinic-options";
+import { addClinicOption, editClinicOption, searchClinicOption } from "./clinic-options";
 
 const WEEKDAY_IDS: Record<string, number> = {
   Lunes: 1,
@@ -238,34 +238,34 @@ test("a long list of tratamientos gets pagination and a working search", async (
   // A unique prefix so this test's own entries are unambiguous no matter
   // how much other test data has accumulated in this shared dev DB.
   const prefix = `Pag E2E ${Date.now()}`;
-  const labels = Array.from({ length: 11 }, (_, i) => `${prefix} ${String(i).padStart(2, "0")}`);
+  const labels = Array.from({ length: 16 }, (_, i) => `${prefix} ${String(i).padStart(2, "0")}`);
 
   try {
     for (const label of labels) {
       await addClinicOption(page, "tratamiento", label);
     }
 
-    // Narrow to just this test's 11 entries — more than the page size (10),
+    // Narrow to just this test's 16 entries — more than the page size (15),
     // so pagination should now be offered where it wasn't before.
-    await page.getByPlaceholder("Buscar...").fill(prefix);
+    await searchClinicOption(page, "tratamiento", prefix);
     await expect(page.getByText("Página 1 de 2")).toBeVisible();
     await expect(page.getByText(labels[0], { exact: true })).toBeVisible();
-    await expect(page.getByText(labels[10], { exact: true })).toHaveCount(0);
+    await expect(page.getByText(labels[15], { exact: true })).toHaveCount(0);
 
     await page.getByRole("button", { name: "Siguiente" }).click();
     await expect(page.getByText("Página 2 de 2")).toBeVisible();
-    await expect(page.getByText(labels[10], { exact: true })).toBeVisible();
+    await expect(page.getByText(labels[15], { exact: true })).toBeVisible();
 
     // A search matching nothing says so instead of silently showing an
     // empty list.
-    await page.getByPlaceholder("Buscar...").fill(`${prefix} zzz-no-match`);
-    await expect(page.getByText(/Ninguna opción coincide con/)).toBeVisible();
+    await searchClinicOption(page, "tratamiento", `${prefix} zzz-no-match`);
+    await expect(page.getByText("Ningún tratamiento coincide con esos filtros.")).toBeVisible();
   } finally {
     // Ascending label order matches the list's own sort order, and the
     // list resets to page 1 every time it shrinks (usePagination resets
     // on any items-array change) — so each label in turn is always
     // reachable on page 1 without separately paging to find it.
-    await page.getByPlaceholder("Buscar...").fill(prefix);
+    await searchClinicOption(page, "tratamiento", prefix);
     for (const label of labels) {
       await page.getByRole("button", { name: `Eliminar ${label}` }).click();
       await page.getByRole("button", { name: "Eliminar", exact: true }).click();
@@ -294,14 +294,14 @@ test("a treatment's price can be set, edited, and cleared", async ({ page }) => 
   // A thousands separator is rejected inside the modal, which stays open.
   await page.getByRole("button", { name: `Editar ${label}` }).click();
   const edit = page.getByRole("dialog", { name: "Editar tratamiento" });
-  await edit.getByLabel("Precio (opcional)").fill("25.000");
+  await edit.getByLabel("Precio de lista").fill("25.000");
   await edit.getByRole("button", { name: "Guardar" }).click();
   await expect(edit.getByText("sin puntos ni comas", { exact: false })).toBeVisible();
   await edit.getByRole("button", { name: "Cancelar" }).click();
   await expect(page.getByText("20.000", { exact: false })).toBeVisible();
 
   await editClinicOption(page, "tratamiento", label, { price: "" });
-  await expect(page.getByText("Sin precio")).toBeVisible();
+  await expect(page.getByText("20.000", { exact: false })).toHaveCount(0);
 
   // Cleanup.
   await page.getByRole("button", { name: `Eliminar ${label}` }).click();

@@ -39,9 +39,15 @@ export default async function ConsultasPage({
     : [[], [], [], []];
   const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const treatmentLabels = treatmentOptions.map((o) => o.label);
+  // A new consulta offers only active tratamientos; the list's filter keeps
+  // all of them, to find past consultas of one that's no longer done.
+  const activeTreatmentLabels = treatmentOptions.filter((o) => o.active).map((o) => o.label);
   const insuranceLabels = insuranceOptions.map((o) => o.label);
   const treatmentPrices = Object.fromEntries(
     treatmentOptions.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
+  );
+  const treatmentCashPrices = Object.fromEntries(
+    treatmentOptions.filter((o) => o.cashPrice != null).map((o) => [o.label, o.cashPrice!]),
   );
   const consultations = clinic
     ? await getConsultations(clinic.id, filters, treatmentLabels)
@@ -58,8 +64,9 @@ export default async function ConsultasPage({
             <ExcelDownloadButton path="/api/excel/consultas" />
             <NewConsultationDialog
               patients={patients}
-              treatmentOptions={treatmentLabels}
+              treatmentOptions={activeTreatmentLabels}
               treatmentPrices={treatmentPrices}
+              treatmentCashPrices={treatmentCashPrices}
               insuranceOptions={insuranceLabels}
               supplyOptions={supplyOptions}
             />
@@ -72,6 +79,7 @@ export default async function ConsultasPage({
         patients={patients}
         treatmentOptions={treatmentLabels}
         treatmentPrices={treatmentPrices}
+        treatmentCashPrices={treatmentCashPrices}
         supplyOptions={supplyOptions}
       />
     </div>

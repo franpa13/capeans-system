@@ -62,6 +62,7 @@ export function EditConsultationDialog({
   patientName: string;
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions?: SupplyOption[];
   open: boolean;
   onOpenChange: (open: boolean) => void;

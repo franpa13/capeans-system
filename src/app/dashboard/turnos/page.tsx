@@ -88,9 +88,18 @@ export default async function TurnosPage({
     : [[], [], [], [], [], []];
   const supplyOptions = supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }));
   const insuranceOptions = insuranceOptionRows.map((o) => o.label);
-  const treatmentOptions = treatmentOptionRows.map((o) => o.label);
+  const treatmentOptions = treatmentOptionRows.filter((o) => o.active).map((o) => o.label);
+  // Motivo suggestions for a turno, with the length to give it.
+  const treatmentDurations = Object.fromEntries(
+    treatmentOptionRows
+      .filter((o) => o.active && o.durationMinutes)
+      .map((o) => [o.label, o.durationMinutes!]),
+  );
   const treatmentPrices = Object.fromEntries(
     treatmentOptionRows.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
+  );
+  const treatmentCashPrices = Object.fromEntries(
+    treatmentOptionRows.filter((o) => o.cashPrice != null).map((o) => [o.label, o.cashPrice!]),
   );
 
   const weekParam = toWeekParam(weekStart);
@@ -129,7 +138,9 @@ export default async function TurnosPage({
           viewHrefs={viewHrefs}
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
+          treatmentDurations={treatmentDurations}
           treatmentPrices={treatmentPrices}
+          treatmentCashPrices={treatmentCashPrices}
           supplyOptions={supplyOptions}
           clinicName={clinic?.name ?? ""}
           timeBlocks={timeBlocks}
@@ -146,7 +157,9 @@ export default async function TurnosPage({
           viewHrefs={viewHrefs}
           insuranceOptions={insuranceOptions}
           treatmentOptions={treatmentOptions}
+          treatmentDurations={treatmentDurations}
           treatmentPrices={treatmentPrices}
+          treatmentCashPrices={treatmentCashPrices}
           supplyOptions={supplyOptions}
           clinicName={clinic?.name ?? ""}
           timeBlocks={timeBlocks}

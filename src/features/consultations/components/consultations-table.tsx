@@ -39,6 +39,7 @@ export function ConsultationsTable({
   patients,
   treatmentOptions,
   treatmentPrices,
+  treatmentCashPrices = {},
   supplyOptions,
   showPatient = true,
   fixedPatientName,
@@ -48,6 +49,7 @@ export function ConsultationsTable({
   patients?: Patient[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions: SupplyOption[];
   showPatient?: boolean;
   fixedPatientName?: string;
@@ -240,6 +242,7 @@ export function ConsultationsTable({
           patientName={nameFor(editing)}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          treatmentCashPrices={treatmentCashPrices}
           supplyOptions={supplyOptions}
           open
           onOpenChange={(next) => {

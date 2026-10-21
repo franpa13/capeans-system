@@ -59,6 +59,9 @@ export default async function DashboardPage() {
   const treatmentPrices = Object.fromEntries(
     treatmentOptionRows.filter((o) => o.price != null).map((o) => [o.label, o.price!]),
   );
+  const treatmentCashPrices = Object.fromEntries(
+    treatmentOptionRows.filter((o) => o.cashPrice != null).map((o) => [o.label, o.cashPrice!]),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,8 +93,9 @@ export default async function DashboardPage() {
         debts={debts}
         supplies={supplies}
         insuranceOptions={insuranceOptionRows.map((o) => o.label)}
-        treatmentOptions={treatmentOptionRows.map((o) => o.label)}
+        treatmentOptions={treatmentOptionRows.filter((o) => o.active).map((o) => o.label)}
         treatmentPrices={treatmentPrices}
+        treatmentCashPrices={treatmentCashPrices}
         supplyOptions={supplies.map((s) => ({ id: s.id, name: s.name, unit: s.unit }))}
       />
     </div>

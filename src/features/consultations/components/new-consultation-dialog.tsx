@@ -88,6 +88,7 @@ export function NewConsultationDialog({
   fixedPatientAlerts,
   treatmentOptions,
   treatmentPrices = {},
+  treatmentCashPrices = {},
   insuranceOptions = [],
   toothHistory = {},
   initialAppointment,
@@ -103,6 +104,7 @@ export function NewConsultationDialog({
   fixedPatientAlerts?: string[];
   treatmentOptions: string[];
   treatmentPrices?: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   insuranceOptions?: string[];
   toothHistory?: ToothHistory;
   initialAppointment?: InitialAppointment;
@@ -175,6 +177,7 @@ export function NewConsultationDialog({
   const isNewPatient = !fixedPatientId && patientId === NEW_PATIENT_VALUE;
   const paymentChoice = watch("paymentChoice");
   const listPrice = treatmentPrices[treatment];
+  const cashPrice = treatmentCashPrices[treatment];
   const [discountPercent, setDiscountPercent] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
   const [supplyUsages, setSupplyUsages] = useState<SupplyUsageInput[]>([]);
@@ -584,6 +587,25 @@ export function NewConsultationDialog({
                   <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium">
                     {formatCurrency(listPrice)}
                   </div>
+                  {cashPrice != null && (
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      En efectivo: {formatCurrency(cashPrice)}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => {
+                          setDiscountPercent("");
+                          setAmountTouched(true);
+                          setValue("amountCharged", String(cashPrice));
+                          setPaymentMethod("EFECTIVO");
+                        }}
+                      >
+                        Usar precio en efectivo
+                      </Button>
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="discountPercent">Descuento %</Label>

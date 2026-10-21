@@ -91,7 +91,9 @@ export function AppointmentsCalendar({
   viewHrefs,
   insuranceOptions,
   treatmentOptions,
+  treatmentDurations,
   treatmentPrices,
+  treatmentCashPrices = {},
   supplyOptions,
   clinicName,
   timeBlocks,
@@ -106,7 +108,10 @@ export function AppointmentsCalendar({
   viewHrefs: { diarioHref: string; semanalHref: string; mesHref: string; listaHref: string };
   insuranceOptions: string[];
   treatmentOptions: string[];
+  /** Minutes per tratamiento, to size a turno from its motivo. */
+  treatmentDurations: Record<string, number>;
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions: SupplyOption[];
   clinicName: string;
   timeBlocks: TimeBlock[];
@@ -505,6 +510,8 @@ export function AppointmentsCalendar({
         appointment={editing}
         initialStart={newStart}
         insuranceOptions={insuranceOptions}
+        treatmentOptions={treatmentOptions}
+        treatmentDurations={treatmentDurations}
         clinicName={clinicName}
         onSaved={() => router.refresh()}
         onCompleted={(appointment) => {
@@ -552,6 +559,7 @@ export function AppointmentsCalendar({
           fixedPatientName={consultationFor.patient.name}
           treatmentOptions={treatmentOptions}
           treatmentPrices={treatmentPrices}
+          treatmentCashPrices={treatmentCashPrices}
           insuranceOptions={insuranceOptions}
           initialAppointment={consultationFor.appointment}
           supplyOptions={supplyOptions}

@@ -36,12 +36,14 @@ export function ConsultationsView({
   patients,
   treatmentOptions,
   treatmentPrices,
+  treatmentCashPrices = {},
   supplyOptions,
 }: {
   consultations: Consultation[];
   patients: Patient[];
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions: SupplyOption[];
 }) {
   const { values, setValue, setMany, clear } = useUrlFilters(PARAM_KEYS, DEBOUNCED_KEYS);
@@ -120,6 +122,7 @@ export function ConsultationsView({
         showPatient
         treatmentOptions={treatmentOptions}
         treatmentPrices={treatmentPrices}
+        treatmentCashPrices={treatmentCashPrices}
         supplyOptions={supplyOptions}
         emptyMessage={
           hasFilters

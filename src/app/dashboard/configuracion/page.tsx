@@ -1,7 +1,8 @@
-import { Clock, Settings, ShieldPlus, Stethoscope } from "lucide-react";
+import { Clock, Layers, Settings, ShieldPlus, Stethoscope } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
+import { TreatmentCatalog } from "@/features/settings/components/treatment-catalog";
 import { ImportExcelDialog } from "@/features/excel/components/import-excel-dialog";
 import { BusinessHoursManager } from "@/features/settings/components/business-hours-manager";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
@@ -10,13 +11,14 @@ import { getBusinessHours } from "@/features/clinic/data/business-hours";
 
 export default async function ConfiguracionPage() {
   const clinic = await getCurrentClinic();
-  const [insuranceOptions, treatmentOptions, businessHours] = clinic
+  const [insuranceOptions, treatmentOptions, specialtyOptions, businessHours] = clinic
     ? await Promise.all([
         getClinicOptions(clinic.id, "insurance"),
         getClinicOptions(clinic.id, "treatment"),
+        getClinicOptions(clinic.id, "specialty"),
         getBusinessHours(clinic.id),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,6 +38,10 @@ export default async function ConfiguracionPage() {
             <Stethoscope />
             Tratamientos
           </TabsTrigger>
+          <TabsTrigger value="specialty">
+            <Layers />
+            Especialidades
+          </TabsTrigger>
           <TabsTrigger value="hours">
             <Clock />
             Horario de atención
@@ -50,12 +56,18 @@ export default async function ConfiguracionPage() {
           />
         </TabsContent>
         <TabsContent value="treatment">
-          <OptionListManager
-            category="treatment"
+          <TreatmentCatalog
+            treatments={treatmentOptions}
+            specialties={specialtyOptions.map((o) => o.label)}
             actions={<ImportExcelDialog kind="tratamientos" />}
-            title="Tratamientos"
-            description="Las opciones disponibles al cargar una consulta."
-            options={treatmentOptions}
+          />
+        </TabsContent>
+        <TabsContent value="specialty">
+          <OptionListManager
+            category="specialty"
+            title="Especialidades"
+            description="Agrupan los tratamientos del catálogo (y sus contadores)."
+            options={specialtyOptions}
           />
         </TabsContent>
         <TabsContent value="hours">

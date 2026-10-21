@@ -38,6 +38,7 @@ export function ConsultationsList({
   emptyMessage = "Todavía no hay consultas registradas.",
   treatmentOptions,
   treatmentPrices,
+  treatmentCashPrices = {},
   supplyOptions,
 }: {
   consultations: Consultation[];
@@ -47,6 +48,7 @@ export function ConsultationsList({
   emptyMessage?: string;
   treatmentOptions: string[];
   treatmentPrices: Record<string, number>;
+  treatmentCashPrices?: Record<string, number>;
   supplyOptions: SupplyOption[];
 }) {
   const [treatment, setTreatment] = useState(ALL_TREATMENTS);
@@ -131,6 +133,7 @@ export function ConsultationsList({
         fixedPatientName={fixedPatientName}
         treatmentOptions={treatmentOptions}
         treatmentPrices={treatmentPrices}
+        treatmentCashPrices={treatmentCashPrices}
         supplyOptions={supplyOptions}
         emptyMessage={
           hasFilters

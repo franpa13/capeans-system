@@ -76,6 +76,11 @@ const NOUNS: Record<OptionCategory, { create: string; edit: string; placeholder:
     edit: "Editar tratamiento",
     placeholder: "Ej: Limpieza",
   },
+  specialty: {
+    create: "Nueva especialidad",
+    edit: "Editar especialidad",
+    placeholder: "Ej: Endodoncia",
+  },
 };
 
 export function OptionListManager({
@@ -267,7 +272,9 @@ function OptionFormDialog({
           <DialogDescription>
             {category === "treatment"
               ? "El precio se sugiere al cargar una consulta con este tratamiento."
-              : "Va a aparecer como opción al cargar un paciente."}
+              : category === "specialty"
+                ? "Sirve para agrupar y contar los tratamientos del catálogo."
+                : "Va a aparecer como opción al cargar un paciente."}
           </DialogDescription>
         </DialogHeader>
         <OptionForm category={category} option={option} onDone={() => onOpenChange(false)} />

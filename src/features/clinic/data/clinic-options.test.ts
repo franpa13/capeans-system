@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   createClinicOption,
+  createTreatment,
   deleteClinicOption,
   getClinicOptions,
   seedDefaultClinicOptions,
   updateClinicOption,
+  updateTreatment,
 } from "@/features/clinic/data/clinic-options";
 
 let clinicA: { id: string };
@@ -174,5 +176,102 @@ describe("clinic options data layer", () => {
 
     const reloaded = await prisma.patient.findUnique({ where: { id: patient.id } });
     expect(reloaded?.insurance).toBe("Temporal");
+  });
+});
+
+describe("treatment catalog", () => {
+  it("seeds default especialidades, with the default tratamientos assigned to them", async () => {
+    await seedDefaultClinicOptions(clinicA.id);
+    const specialties = (await getClinicOptions(clinicA.id, "specialty")).map((o) => o.label);
+    expect(specialties).toContain("Endodoncia");
+    const limpieza = (await getClinicOptions(clinicA.id, "treatment")).find((t) => t.label === "Limpieza");
+    expect(limpieza?.specialty).toBe("Odontología preventiva");
+  });
+
+  it("creates a tratamiento with code, especialidad, prices, duration and state", async () => {
+    await createClinicOption(clinicA.id, "specialty", "Endodoncia");
+    const t = await createTreatment(clinicA.id, {
+      label: "Conducto unirradicular",
+      code: "03.01.00",
+      specialty: "Endodoncia",
+      price: 80000,
+      cashPrice: 72000,
+      durationMinutes: 60,
+      active: true,
+    });
+    expect(t).toMatchObject({
+      category: "treatment",
+      label: "Conducto unirradicular",
+      code: "03.01.00",
+      specialty: "Endodoncia",
+      price: 80000,
+      cashPrice: 72000,
+      durationMinutes: 60,
+      active: true,
+    });
+  });
+
+  it("refuses an especialidad that isn't on the clinic's list", async () => {
+    await expect(
+      createTreatment(clinicA.id, { label: "X", specialty: "Inventada" }),
+    ).rejects.toThrow("Elegí una especialidad de la lista");
+  });
+
+  it("refuses a non-positive or fractional duration and a bad cash price", async () => {
+    await expect(createTreatment(clinicA.id, { label: "X", durationMinutes: 0 })).rejects.toThrow(
+      "La duración tiene que ser un número entero de minutos mayor a 0",
+    );
+    await expect(createTreatment(clinicA.id, { label: "X", durationMinutes: 12.5 })).rejects.toThrow(
+      "La duración tiene que ser un número entero de minutos mayor a 0",
+    );
+    await expect(createTreatment(clinicA.id, { label: "X", cashPrice: -1 })).rejects.toThrow(
+      "El precio no puede ser negativo",
+    );
+  });
+
+  it("updates every field, including deactivating it", async () => {
+    const t = await createTreatment(clinicA.id, { label: "Limpieza", price: 10000 });
+    const updated = await updateTreatment(clinicA.id, t.id, {
+      label: "Limpieza profunda",
+      price: 12000,
+      cashPrice: 11000,
+      code: "05.01.00",
+      durationMinutes: 45,
+      active: false,
+    });
+    expect(updated).toMatchObject({
+      label: "Limpieza profunda",
+      price: 12000,
+      cashPrice: 11000,
+      code: "05.01.00",
+      durationMinutes: 45,
+      active: false,
+      specialty: null,
+    });
+  });
+
+  it("lists only active tratamientos when asked (the ones offered in forms)", async () => {
+    await createTreatment(clinicA.id, { label: "Activo" });
+    await createTreatment(clinicA.id, { label: "Viejo", active: false });
+    const all = await getClinicOptions(clinicA.id, "treatment");
+    const active = await getClinicOptions(clinicA.id, "treatment", { activeOnly: true });
+    expect(all.map((o) => o.label).sort()).toEqual(["Activo", "Viejo"]);
+    expect(active.map((o) => o.label)).toEqual(["Activo"]);
+  });
+
+  it("renaming an especialidad moves its tratamientos along", async () => {
+    const specialty = await createClinicOption(clinicA.id, "specialty", "Cirugía");
+    await createTreatment(clinicA.id, { label: "Extracción", specialty: "Cirugía" });
+    await updateClinicOption(clinicA.id, specialty.id, "Cirugía bucal");
+    const [extraccion] = await getClinicOptions(clinicA.id, "treatment");
+    expect(extraccion.specialty).toBe("Cirugía bucal");
+  });
+
+  it("deleting an especialidad leaves its tratamientos without one", async () => {
+    const specialty = await createClinicOption(clinicA.id, "specialty", "Cirugía");
+    await createTreatment(clinicA.id, { label: "Extracción", specialty: "Cirugía" });
+    await deleteClinicOption(clinicA.id, specialty.id);
+    const [extraccion] = await getClinicOptions(clinicA.id, "treatment");
+    expect(extraccion.specialty).toBeNull();
   });
 });

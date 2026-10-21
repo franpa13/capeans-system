@@ -51,7 +51,12 @@ import { unwrap } from "@/lib/action-result";
 import type { Appointment } from "@prisma/client";
 import { ReminderButton } from "@/features/appointments/components/reminder-button";
 
-type PatientOption = { id: string; name: string; phone?: string; acceptsReminders?: boolean };
+type PatientOption = {
+  id: string;
+  name: string;
+  phone?: string;
+  acceptsReminders?: boolean;
+};
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -82,7 +87,10 @@ const emptyNewPatientFields = {
   newPatientAllergies: "",
 };
 
-function defaultsFor(appointment?: Appointment, initialStart?: Date): AppointmentValues {
+function defaultsFor(
+  appointment?: Appointment,
+  initialStart?: Date,
+): AppointmentValues {
   if (appointment) {
     return {
       patientId: appointment.patientId ?? "",
@@ -116,6 +124,8 @@ export function AppointmentDialog({
   onSaved,
   onCompleted,
   clinicName,
+  treatmentOptions = [],
+  treatmentDurations = {},
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -129,16 +139,22 @@ export function AppointmentDialog({
   onCompleted?: (appointment: Appointment) => void;
   /** Enables the WhatsApp reminder for a confirmed turno. */
   clinicName?: string;
+  /** Offered as motivo suggestions; picking one with a duration sets it. */
+  treatmentOptions?: string[];
+  treatmentDurations?: Record<string, number>;
 }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isEditing = !!appointment;
   // Completar/cancelar are transitions out of CONFIRMED — offering them
   // on a turno that's already cancelled or completed suggested you could
   // still change its mind for it, which isn't true once it's settled.
-  const canChangeStatus = appointment?.status === "CONFIRMED" || appointment?.status === "WAITING";
+  const canChangeStatus =
+    appointment?.status === "CONFIRMED" || appointment?.status === "WAITING";
   const reminderPatient =
     canChangeStatus && clinicName !== undefined
-      ? patients.find((p) => p.id === appointment.patientId && p.phone !== undefined)
+      ? patients.find(
+          (p) => p.id === appointment.patientId && p.phone !== undefined,
+        )
       : undefined;
 
   const {
@@ -146,6 +162,7 @@ export function AppointmentDialog({
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<AppointmentValues>({
     resolver: zodResolver(appointmentSchema),
@@ -178,23 +195,27 @@ export function AppointmentDialog({
 
     try {
       if (isEditing) {
-        await unwrap(updateAppointmentAction(appointment.id, {
-          patientId: values.patientId,
-          startsAt,
-          durationMinutes: values.durationMinutes,
-          reason: values.reason || undefined,
-          notes: values.notes || undefined,
-          newPatient,
-        }));
+        await unwrap(
+          updateAppointmentAction(appointment.id, {
+            patientId: values.patientId,
+            startsAt,
+            durationMinutes: values.durationMinutes,
+            reason: values.reason || undefined,
+            notes: values.notes || undefined,
+            newPatient,
+          }),
+        );
       } else {
-        await unwrap(createAppointmentAction({
-          patientId: values.patientId,
-          startsAt,
-          durationMinutes: values.durationMinutes,
-          reason: values.reason || undefined,
-          notes: values.notes || undefined,
-          newPatient,
-        }));
+        await unwrap(
+          createAppointmentAction({
+            patientId: values.patientId,
+            startsAt,
+            durationMinutes: values.durationMinutes,
+            reason: values.reason || undefined,
+            notes: values.notes || undefined,
+            newPatient,
+          }),
+        );
       }
       onOpenChange(false);
       onSaved?.();
@@ -205,7 +226,10 @@ export function AppointmentDialog({
     }
   };
 
-  const changeStatus = async (status: Appointment["status"], failure: string) => {
+  const changeStatus = async (
+    status: Appointment["status"],
+    failure: string,
+  ) => {
     if (!appointment) return;
     setSubmitError(null);
     try {
@@ -217,7 +241,8 @@ export function AppointmentDialog({
     }
   };
 
-  const onCancel = () => changeStatus("CANCELLED", "No se pudo cancelar el turno");
+  const onCancel = () =>
+    changeStatus("CANCELLED", "No se pudo cancelar el turno");
   const onNoShow = () => changeStatus("NO_SHOW", "No se pudo marcar el turno");
   // Marking "No vino" by mistake is easy — this puts the turno back.
   const onUndoNoShow = () => changeStatus("CONFIRMED", "No se pudo deshacer");
@@ -226,13 +251,17 @@ export function AppointmentDialog({
     if (!appointment) return;
     setSubmitError(null);
     try {
-      const updated = await unwrap(updateAppointmentAction(appointment.id, { status: "COMPLETED" }));
+      const updated = await unwrap(
+        updateAppointmentAction(appointment.id, { status: "COMPLETED" }),
+      );
       onOpenChange(false);
       onSaved?.();
       onCompleted?.(updated);
     } catch (error) {
       setSubmitError(
-        error instanceof Error ? error.message : "No se pudo completar el turno",
+        error instanceof Error
+          ? error.message
+          : "No se pudo completar el turno",
       );
     }
   };
@@ -294,7 +323,9 @@ export function AppointmentDialog({
                 )}
               />
               {errors.patientId && (
-                <p className="text-sm text-destructive">{errors.patientId.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.patientId.message}
+                </p>
               )}
             </div>
 
@@ -348,12 +379,22 @@ export function AppointmentDialog({
 
                 <div className="space-y-2">
                   <Label htmlFor="newPatientDni">DNI</Label>
-                  <Input id="newPatientDni" placeholder="30.123.456" {...register("newPatientDni")} />
+                  <Input
+                    id="newPatientDni"
+                    placeholder="30.123.456"
+                    {...register("newPatientDni")}
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="newPatientBirthDate">Fecha de nacimiento</Label>
-                  <Input id="newPatientBirthDate" type="date" {...register("newPatientBirthDate")} />
+                  <Label htmlFor="newPatientBirthDate">
+                    Fecha de nacimiento
+                  </Label>
+                  <Input
+                    id="newPatientBirthDate"
+                    type="date"
+                    {...register("newPatientBirthDate")}
+                  />
                 </div>
 
                 <div className="space-y-2 sm:col-span-2">
@@ -389,7 +430,9 @@ export function AppointmentDialog({
                 />
 
                 <div className="space-y-2">
-                  <Label htmlFor="newPatientAllergies">Alergias / antecedentes</Label>
+                  <Label htmlFor="newPatientAllergies">
+                    Alergias / antecedentes
+                  </Label>
                   <Input
                     id="newPatientAllergies"
                     placeholder="Ej: alergia a penicilina"
@@ -409,7 +452,9 @@ export function AppointmentDialog({
                   {...register("date")}
                 />
                 {errors.date && (
-                  <p className="text-sm text-destructive">{errors.date.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.date.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
@@ -421,13 +466,15 @@ export function AppointmentDialog({
                   {...register("time")}
                 />
                 {errors.time && (
-                  <p className="text-sm text-destructive">{errors.time.message}</p>
+                  <p className="text-sm text-destructive">
+                    {errors.time.message}
+                  </p>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Duración</Label>
+              <Label htmlFor="durationMinutes">Duración</Label>
               <Controller
                 control={control}
                 name="durationMinutes"
@@ -436,15 +483,19 @@ export function AppointmentDialog({
                     value={String(field.value)}
                     onValueChange={(value) => field.onChange(Number(value))}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger id="durationMinutes" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {DURATION_OPTIONS.map((minutes) => (
-                        <SelectItem key={minutes} value={String(minutes)}>
-                          {minutes} min
-                        </SelectItem>
-                      ))}
+                      {/* A tratamiento's own duration (e.g. 40) may not be one
+                          of the presets: keep it selectable. */}
+                      {[...new Set([...DURATION_OPTIONS, field.value])]
+                        .sort((a, b) => a - b)
+                        .map((minutes) => (
+                          <SelectItem key={minutes} value={String(minutes)}>
+                            {minutes} min
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -455,9 +506,21 @@ export function AppointmentDialog({
               <Label htmlFor="reason">Motivo (opcional)</Label>
               <Input
                 id="reason"
+                list="reason-suggestions"
+                autoComplete="off"
                 placeholder="Ej: Control, limpieza, urgencia..."
-                {...register("reason")}
+                {...register("reason", {
+                  onChange: (e) => {
+                    const minutes = treatmentDurations[e.target.value];
+                    if (minutes) setValue("durationMinutes", minutes);
+                  },
+                })}
               />
+              <datalist id="reason-suggestions">
+                {treatmentOptions.map((label) => (
+                  <option key={label} value={label} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-2">
