@@ -13,6 +13,13 @@ import {
   type TreatmentInput,
 } from "@/features/clinic/data/clinic-options";
 import {
+  createProfessional,
+  deleteProfessional,
+  updateProfessional,
+  type ProfessionalInput,
+} from "@/features/clinic/data/professionals";
+import { updateClinicDetails } from "@/features/clinic/data/clinic-details";
+import {
   upsertBusinessHours,
   type BusinessHoursInput,
 } from "@/features/clinic/data/business-hours";
@@ -79,5 +86,37 @@ export async function updateTreatmentAction(id: string, input: TreatmentInput) {
     const treatment = await updateTreatment(clinicId, id, input);
     revalidatePath("/dashboard/configuracion");
     return treatment;
+  });
+}
+
+export async function createProfessionalAction(input: ProfessionalInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await createProfessional(clinicId, input);
+    revalidatePath("/dashboard/configuracion");
+  });
+}
+
+export async function updateProfessionalAction(id: string, input: ProfessionalInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await updateProfessional(clinicId, id, input);
+    revalidatePath("/dashboard/configuracion");
+  });
+}
+
+export async function deleteProfessionalAction(id: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deleteProfessional(clinicId, id);
+    revalidatePath("/dashboard/configuracion");
+  });
+}
+
+export async function updateClinicDetailsAction(input: { address?: string; phone?: string; email?: string }) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await updateClinicDetails(clinicId, input);
+    revalidatePath("/dashboard/configuracion");
   });
 }

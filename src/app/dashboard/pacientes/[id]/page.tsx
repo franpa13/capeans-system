@@ -8,15 +8,20 @@ import { getSupplies } from "@/features/clinic/data/supplies";
 import { countNoShows, getPatientAppointments } from "@/features/clinic/data/appointments";
 import { getPatientNotes } from "@/features/clinic/data/patient-notes";
 import { getToothFindings } from "@/features/clinic/data/tooth-findings";
+import { getPatientPrescriptions } from "@/features/clinic/data/prescriptions";
+import { getProfessionals } from "@/features/clinic/data/professionals";
 import { getPatientPayments } from "@/features/clinic/data/payments";
 import { getPatientFiles } from "@/features/clinic/data/patient-files";
 
 export default async function PacienteDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ seccion?: string }>;
 }) {
   const { id } = await params;
+  const { seccion } = await searchParams;
   const clinic = await getCurrentClinic();
   const patient = clinic ? await getPatient(clinic.id, id) : null;
   const consultations = clinic ? await getConsultationsForPatient(clinic.id, id) : [];
@@ -36,6 +41,8 @@ export default async function PacienteDetailPage({
   const notes = clinic && patient ? await getPatientNotes(clinic.id, id) : [];
   const payments = clinic && patient ? await getPatientPayments(clinic.id, id) : [];
   const findings = clinic && patient ? await getToothFindings(clinic.id, id) : [];
+  const prescriptions = clinic && patient ? await getPatientPrescriptions(clinic.id, id) : [];
+  const professionals = clinic ? await getProfessionals(clinic.id) : [];
 
   return (
     <PatientDetailView
@@ -79,6 +86,21 @@ export default async function PacienteDetailPage({
         resolvedAt: f.resolvedAt,
         consultationId: f.consultationId,
       }))}
+      prescriptions={prescriptions.map((p) => ({
+        id: p.id,
+        number: p.number,
+        date: p.date,
+        professionalTitle: p.professionalTitle,
+        professionalName: p.professionalName,
+        items: p.items,
+      }))}
+      professionals={professionals.map((p) => ({
+        id: p.id,
+        title: p.title,
+        name: p.name,
+        hasSignature: !!p.signature,
+      }))}
+      initialSection={seccion}
     />
   );
 }

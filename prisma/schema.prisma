@@ -12,6 +12,10 @@ model Clinic {
   clerkOrgId String   @unique
   name       String
   createdAt  DateTime @default(now())
+  // Shown on printed recetas, under the clinic's name.
+  address    String?
+  phone      String?
+  email      String?
 
   patients      Patient[]
   consultations Consultation[]
@@ -24,6 +28,8 @@ model Clinic {
   patientNotes  PatientNote[]
   toothFindings ToothFinding[]
   timeBlocks    TimeBlock[]
+  professionals Professional[]
+  prescriptions Prescription[]
 }
 
 model Patient {
@@ -88,6 +94,7 @@ model Patient {
   files         PatientFile[]
   notes         PatientNote[]
   toothFindings ToothFinding[]
+  prescriptions Prescription[]
 
   @@index([clinicId])
 }
@@ -329,5 +336,54 @@ model ToothFinding {
   consultationId String?
   consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
 
+  @@index([clinicId, patientId])
+}
+
+/// A dentist of the clinic: who signs recetas.
+model Professional {
+  id        String   @id @default(cuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  title     String // "Dr.", "Dra." or "Od."
+  name      String
+  specialty String?
+  license   String // matrícula, e.g. "MP 4123"
+  // The drawn signature, a PNG data URL.
+  signature String?
+  createdAt DateTime @default(now())
+
+  prescriptions Prescription[]
+
+  @@index([clinicId])
+}
+
+/// A receta. The professional's name, matrícula and signature are copied
+/// in when it's issued, so later edits to their profile don't rewrite it.
+model Prescription {
+  id        String   @id @default(cuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+
+  // Per clinic, from 1: printed as REC-00000001.
+  number    Int
+  date      DateTime @default(now())
+  treatment String?
+  // [{ drug, concentration, quantity, instructions }]
+  items        Json
+  instructions String?
+
+  professionalTitle     String
+  professionalName      String
+  professionalSpecialty String?
+  professionalLicense   String
+  professionalSignature String?
+  createdAt DateTime @default(now())
+
+  @@unique([clinicId, number])
   @@index([clinicId, patientId])
 }

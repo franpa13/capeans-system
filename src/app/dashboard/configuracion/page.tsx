@@ -1,23 +1,33 @@
-import { Clock, Layers, Settings, ShieldPlus, Stethoscope } from "lucide-react";
+import { Clock, Layers, Settings, ShieldPlus, Stethoscope, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
 import { TreatmentCatalog } from "@/features/settings/components/treatment-catalog";
 import { BusinessHoursManager } from "@/features/settings/components/business-hours-manager";
+import { ProfessionalsManager } from "@/features/settings/components/professionals-manager";
+import { getProfessionals } from "@/features/clinic/data/professionals";
 import { getCurrentClinic } from "@/features/clinic/data/current-clinic";
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 import { getBusinessHours } from "@/features/clinic/data/business-hours";
 
-export default async function ConfiguracionPage() {
+const TABS = ["insurance", "treatment", "specialty", "hours", "professionals"];
+
+export default async function ConfiguracionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const clinic = await getCurrentClinic();
-  const [insuranceOptions, treatmentOptions, specialtyOptions, businessHours] = clinic
+  const [insuranceOptions, treatmentOptions, specialtyOptions, businessHours, professionals] = clinic
     ? await Promise.all([
         getClinicOptions(clinic.id, "insurance"),
         getClinicOptions(clinic.id, "treatment"),
         getClinicOptions(clinic.id, "specialty"),
         getBusinessHours(clinic.id),
+        getProfessionals(clinic.id),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,7 +37,7 @@ export default async function ConfiguracionPage() {
         icon={Settings}
       />
 
-      <Tabs defaultValue="insurance">
+      <Tabs defaultValue={tab && TABS.includes(tab) ? tab : "insurance"}>
         <TabsList>
           <TabsTrigger value="insurance">
             <ShieldPlus />
@@ -44,6 +54,10 @@ export default async function ConfiguracionPage() {
           <TabsTrigger value="hours">
             <Clock />
             Horario de atención
+          </TabsTrigger>
+          <TabsTrigger value="professionals">
+            <UserRound />
+            Profesionales
           </TabsTrigger>
         </TabsList>
         <TabsContent value="insurance">
@@ -70,6 +84,15 @@ export default async function ConfiguracionPage() {
         </TabsContent>
         <TabsContent value="hours">
           <BusinessHoursManager hours={businessHours} />
+        </TabsContent>
+        <TabsContent value="professionals">
+          {clinic && (
+            <ProfessionalsManager
+              clinic={{ name: clinic.name, address: clinic.address, phone: clinic.phone, email: clinic.email }}
+              professionals={professionals}
+              specialties={specialtyOptions.map((o) => o.label)}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

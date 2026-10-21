@@ -20,6 +20,11 @@ import {
   type NewToothFindingInput,
 } from "@/features/clinic/data/tooth-findings";
 import type { FindingStatus } from "@/features/clinic/lib/findings";
+import {
+  createPrescription,
+  deletePrescription,
+  type NewPrescriptionInput,
+} from "@/features/clinic/data/prescriptions";
 
 async function requireClinicId(): Promise<string> {
   const clinic = await getCurrentClinic();
@@ -136,5 +141,23 @@ export async function getPendingFindingsAction(patientId: string) {
     return findings
       .filter((f) => f.status === "PENDING")
       .map((f) => ({ id: f.id, tooth: f.tooth, surface: f.surface, condition: f.condition }));
+  });
+}
+
+/** Issues a receta; returns its id to open it. */
+export async function createPrescriptionAction(patientId: string, input: NewPrescriptionInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const prescription = await createPrescription(clinicId, patientId, input);
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+    return { id: prescription.id };
+  });
+}
+
+export async function deletePrescriptionAction(patientId: string, id: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deletePrescription(clinicId, id);
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
 }

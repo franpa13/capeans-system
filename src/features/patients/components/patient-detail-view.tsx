@@ -9,6 +9,7 @@ import {
   Home,
   Images,
   Pencil,
+  Pill,
   Smile,
   Wallet,
   type LucideIcon,
@@ -27,6 +28,11 @@ import { PatientInfoCard } from "@/features/patients/components/patient-info-car
 import { Button } from "@/components/ui/button";
 import { OdontogramCard } from "@/features/patients/components/odontogram-card";
 import type { FindingView } from "@/features/patients/components/odontogram-2d";
+import {
+  PatientPrescriptions,
+  type PrescriptionListItem,
+} from "@/features/prescriptions/components/patient-prescriptions";
+import type { ProfessionalOption } from "@/features/prescriptions/components/new-prescription-dialog";
 import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
 import { PatientNotes, type PatientNoteItem } from "@/features/patients/components/patient-notes";
 import {
@@ -40,7 +46,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ageOn, displayName, initials } from "@/features/patients/lib/profile";
 
-type Section = "resumen" | "ficha" | "consultas" | "odontograma" | "estudios" | "pagos";
+const SECTIONS = ["resumen", "ficha", "consultas", "odontograma", "estudios", "recetas", "pagos"] as const;
+type Section = (typeof SECTIONS)[number];
 
 /** One big tile of the ficha's section bar. A `flag` (e.g. "Debe
  * $30.000") sits on its top edge, a `count` in its corner. */
@@ -92,6 +99,9 @@ export function PatientDetailView({
   notes,
   payments,
   findings,
+  prescriptions,
+  professionals,
+  initialSection,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
@@ -109,8 +119,15 @@ export function PatientDetailView({
   payments: PatientPaymentItem[];
   /** Hallazgos on the odontograma. */
   findings: FindingView[];
+  prescriptions: PrescriptionListItem[];
+  /** Who can sign a new receta. */
+  professionals: ProfessionalOption[];
+  /** ?seccion=… — e.g. back from a receta to the Recetas section. */
+  initialSection?: string;
 }) {
-  const [section, setSection] = useState<Section>("resumen");
+  const [section, setSection] = useState<Section>(
+    SECTIONS.includes(initialSection as Section) ? (initialSection as Section) : "resumen",
+  );
   const toothHistory: ToothHistory = useMemo(() => {
     const history: ToothHistory = {};
     for (const c of consultations) {
@@ -213,7 +230,7 @@ export function PatientDetailView({
       <Tabs value={section} onValueChange={(v) => setSection(v as Section)} className="gap-6">
         <TabsList
           aria-label="Secciones del paciente"
-          className="grid h-auto w-full grid-cols-3 gap-3 bg-transparent p-0 pt-2.5 group-data-horizontal/tabs:h-auto sm:grid-cols-6"
+          className="grid h-auto w-full grid-cols-3 gap-3 bg-transparent p-0 pt-2.5 group-data-horizontal/tabs:h-auto sm:grid-cols-4 lg:grid-cols-7"
         >
           <SectionTile value="resumen" icon={Home} label="Resumen" />
           <SectionTile value="ficha" icon={FileHeart} label="Ficha médica" />
@@ -232,6 +249,7 @@ export function PatientDetailView({
           />
           <SectionTile value="odontograma" icon={Smile} label="Odontograma" />
           <SectionTile value="estudios" icon={Images} label="Estudios" count={files.length} />
+          <SectionTile value="recetas" icon={Pill} label="Recetas" count={prescriptions.length} />
           <SectionTile value="pagos" icon={Wallet} label="Pagos" count={payments.length} />
         </TabsList>
 
@@ -273,6 +291,17 @@ export function PatientDetailView({
 
         <TabsContent value="estudios">
           <PatientFiles patientId={patient.id} files={files} />
+        </TabsContent>
+
+        <TabsContent value="recetas">
+          <PatientPrescriptions
+            patientId={patient.id}
+            patientName={patient.name}
+            prescriptions={prescriptions}
+            professionals={professionals}
+            treatments={[...new Set(consultations.map((c) => c.treatment))]}
+            medicalHistory={{ allergies: patient.allergies, medicalConditions: patient.medicalConditions }}
+          />
         </TabsContent>
 
         <TabsContent value="pagos">
