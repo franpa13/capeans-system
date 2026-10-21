@@ -88,7 +88,6 @@ export function PatientInfoCard({ patient }: { patient: Patient }) {
       items: [
         { label: "Cómo llegó", value: optionLabel(REFERRAL_SOURCES, patient.referralSource) },
         { label: "Recordatorios", value: patient.acceptsReminders ? null : "No acepta recordatorios" },
-        { label: "Notas internas", value: patient.internalNotes },
       ],
     },
   ];

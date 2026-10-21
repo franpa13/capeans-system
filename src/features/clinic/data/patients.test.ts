@@ -195,7 +195,6 @@ describe("nombre, apellido and the full profile", () => {
       medicalHistory: "Operada de apendicitis",
       referralSource: "recomendacion",
       acceptsReminders: false,
-      internalNotes: "Prefiere turnos a la tarde",
     });
     expect(patient).toMatchObject({
       gender: "femenino",
@@ -209,7 +208,6 @@ describe("nombre, apellido and the full profile", () => {
       medicalHistory: "Operada de apendicitis",
       referralSource: "recomendacion",
       acceptsReminders: false,
-      internalNotes: "Prefiere turnos a la tarde",
     });
   });
 

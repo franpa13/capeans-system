@@ -11,6 +11,7 @@ import {
   addPayment,
   deletePayment,
   getConsultationPayments,
+  getPatientPayments,
   getPayments,
 } from "@/features/clinic/data/payments";
 
@@ -167,5 +168,25 @@ describe("editing a consulta with payments", () => {
         treatment: "Ortodoncia",
       }),
     ).rejects.toThrow("La consulta ya tiene pagos: no se puede quitar el monto a cobrar");
+  });
+});
+
+describe("getPatientPayments", () => {
+  it("lists every payment of the patient's consultas, latest first, with the tratamiento", async () => {
+    const consultation = await consultaOf(clinicA.id, 30000, 10000);
+    await addPayment(clinicA.id, consultation.id, {
+      amount: 5000,
+      method: "EFECTIVO",
+      paidAt: new Date(2026, 0, 20),
+    });
+    const someoneElse = await consultaOf(clinicA.id, 30000, 30000);
+
+    const payments = await getPatientPayments(clinicA.id, consultation.patientId!);
+    expect(payments.map((p) => [p.amount, p.method, p.consultation.treatment])).toEqual([
+      [5000, "EFECTIVO", "Ortodoncia"],
+      [10000, "TRANSFERENCIA", "Ortodoncia"],
+    ]);
+    expect(payments.some((p) => p.consultationId === someoneElse.id)).toBe(false);
+    expect(await getPatientPayments(clinicB.id, consultation.patientId!)).toEqual([]);
   });
 });

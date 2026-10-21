@@ -8,6 +8,7 @@ import {
   getAppointments,
   getLinkableAppointments,
   countNoShows,
+  getPatientAppointments,
   markReminderSent,
   updateAppointment,
 } from "@/features/clinic/data/appointments";
@@ -451,5 +452,43 @@ describe("the agenda's default filter", () => {
     }
     const shown = await getAppointments(clinicA.id, undefined, "ACTIVE");
     expect(shown.map((a) => a.status)).toEqual(["CONFIRMED", "WAITING", "COMPLETED", "NO_SHOW"]);
+  });
+});
+
+describe("getPatientAppointments", () => {
+  it("lists the patient's coming turnos first (soonest first), then the past ones (latest first), without cancelled ones", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Ana Gómez", phone: "1" });
+    const other = await createPatient(clinicA.id, { name: "Otro", phone: "2" });
+    const now = new Date("2026-05-10T12:00:00Z");
+    const at = (iso: string, extra: object = {}) =>
+      createAppointment(clinicA.id, { patientId: patient.id, startsAt: new Date(iso), ...extra });
+    await at("2026-05-01T10:00:00Z");
+    await at("2026-05-20T10:00:00Z");
+    await at("2026-05-12T10:00:00Z");
+    await at("2026-04-01T10:00:00Z");
+    await at("2026-05-15T10:00:00Z", { status: "CANCELLED" });
+    await createAppointment(clinicA.id, { patientId: other.id, startsAt: new Date("2026-05-11T10:00:00Z") });
+
+    const list = await getPatientAppointments(clinicA.id, patient.id, now);
+    expect(list.map((a) => a.startsAt.toISOString().slice(0, 10))).toEqual([
+      "2026-05-12",
+      "2026-05-20",
+      "2026-05-01",
+      "2026-04-01",
+    ]);
+    expect(await getPatientAppointments(clinicB.id, patient.id, now)).toEqual([]);
+  });
+
+  it("keeps at most `limit` turnos, coming ones first", async () => {
+    const patient = await createPatient(clinicA.id, { name: "Ana Gómez", phone: "1" });
+    const now = new Date("2026-05-10T12:00:00Z");
+    for (const day of ["01", "02", "03", "11", "12"]) {
+      await createAppointment(clinicA.id, {
+        patientId: patient.id,
+        startsAt: new Date(`2026-05-${day}T10:00:00Z`),
+      });
+    }
+    const list = await getPatientAppointments(clinicA.id, patient.id, now, 3);
+    expect(list.map((a) => a.startsAt.getUTCDate())).toEqual([11, 12, 3]);
   });
 });

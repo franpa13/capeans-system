@@ -229,6 +229,29 @@ export async function markReminderSent(clinicId: string, id: string): Promise<Ap
   return (await prisma.appointment.findFirst({ where: { id, clinicId } }))!;
 }
 
+/** The patient's turnos for their ficha: the coming ones first (soonest
+ * first), then the past ones (latest first), up to `limit` — cancelled
+ * ones left out. */
+export async function getPatientAppointments(
+  clinicId: string,
+  patientId: string,
+  now: Date = new Date(),
+  limit = 5,
+): Promise<Appointment[]> {
+  const where = { clinicId, patientId, status: { not: "CANCELLED" as const } };
+  const coming = await prisma.appointment.findMany({
+    where: { ...where, startsAt: { gte: now } },
+    orderBy: { startsAt: "asc" },
+    take: limit,
+  });
+  const past = await prisma.appointment.findMany({
+    where: { ...where, startsAt: { lt: now } },
+    orderBy: { startsAt: "desc" },
+    take: limit - coming.length,
+  });
+  return [...coming, ...past];
+}
+
 /** How many turnos this patient didn't come to — shown on their ficha. */
 export async function countNoShows(clinicId: string, patientId: string): Promise<number> {
   return prisma.appointment.count({ where: { clinicId, patientId, status: "NO_SHOW" } });

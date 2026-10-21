@@ -413,12 +413,6 @@ export function PatientForm({
                     </label>
                   )}
                 />
-                <AreaField
-                  register={register}
-                  name="internalNotes"
-                  label="Notas internas"
-                  placeholder="Notas solo para el consultorio..."
-                />
               </Section>
             </CardContent>
           </Card>

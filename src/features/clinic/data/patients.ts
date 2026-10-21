@@ -28,7 +28,6 @@ const PROFILE_TEXT_FIELDS = [
   "bloodPressure",
   "medicalHistory",
   "referralSource",
-  "internalNotes",
 ] as const;
 type ProfileTextField = (typeof PROFILE_TEXT_FIELDS)[number];
 

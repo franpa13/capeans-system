@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { createPatient } from "./patient-form";
+import { openFichaSection } from "./ficha";
 
 test("the odontogram on a patient page is read-only: clicking it does nothing", async ({
   page,
@@ -26,7 +27,7 @@ test("the odontogram on a patient page is read-only: clicking it does nothing", 
   }).toPass({ timeout: 10000 });
   await page.getByRole("link", { name: patientName }).click();
   await page.waitForURL(/\/dashboard\/pacientes\/.+/);
-  await page.getByText("Odontograma", { exact: true }).waitFor();
+  await openFichaSection(page, "Odontograma");
 
   const canvas = page.locator("canvas");
   await canvas.waitFor();

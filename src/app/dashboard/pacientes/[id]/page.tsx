@@ -5,7 +5,9 @@ import { getConsultationsForPatient } from "@/features/clinic/data/consultations
 import { getClinicOptions } from "@/features/clinic/data/clinic-options";
 import { outstandingBalance } from "@/features/clinic/lib/billing";
 import { getSupplies } from "@/features/clinic/data/supplies";
-import { countNoShows } from "@/features/clinic/data/appointments";
+import { countNoShows, getPatientAppointments } from "@/features/clinic/data/appointments";
+import { getPatientNotes } from "@/features/clinic/data/patient-notes";
+import { getPatientPayments } from "@/features/clinic/data/payments";
 import { getPatientFiles } from "@/features/clinic/data/patient-files";
 
 export default async function PacienteDetailPage({
@@ -29,6 +31,9 @@ export default async function PacienteDetailPage({
   const balance = outstandingBalance(consultations);
   const noShows = clinic ? await countNoShows(clinic.id, id) : 0;
   const files = clinic && patient ? await getPatientFiles(clinic.id, id) : [];
+  const appointments = clinic && patient ? await getPatientAppointments(clinic.id, id) : [];
+  const notes = clinic && patient ? await getPatientNotes(clinic.id, id) : [];
+  const payments = clinic && patient ? await getPatientPayments(clinic.id, id) : [];
 
   return (
     <PatientDetailView
@@ -45,6 +50,20 @@ export default async function PacienteDetailPage({
         fileName: f.fileName,
         mimeType: f.mimeType,
         createdAt: f.createdAt,
+      }))}
+      appointments={appointments}
+      notes={notes.map((n) => ({
+        id: n.id,
+        text: n.text,
+        authorName: n.authorName,
+        createdAt: n.createdAt,
+      }))}
+      payments={payments.map((p) => ({
+        id: p.id,
+        amount: p.amount,
+        method: p.method,
+        paidAt: p.paidAt,
+        treatment: p.consultation.treatment,
       }))}
     />
   );

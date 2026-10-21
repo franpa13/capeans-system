@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { createPatient } from "./patient-form";
+import { fichaHeading } from "./ficha";
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -123,7 +124,7 @@ test("Inicio shows today's turnos, lets a consulta be registered from there, and
   ).toBeVisible();
 
   await debt.getByRole("link", { name: patientName }).click();
-  await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
+  await expect(fichaHeading(page, patientName)).toBeVisible();
 
   // Cleanup: the consulta (so the insumo-free patient stops owing), then the insumo.
   await page.goto("/dashboard/consultas");

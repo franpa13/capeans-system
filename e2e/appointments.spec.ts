@@ -402,9 +402,11 @@ test("Nuevo turno from the weekly header defaults to a date within the viewed we
 
   await page.goto("/dashboard/turnos?view=week");
   // Jump two weeks ahead so "today" is never the default by coincidence.
-  await page.getByRole("link", { name: "Semana siguiente" }).click();
-  await page.getByRole("link", { name: "Semana siguiente" }).click();
-  await page.waitForTimeout(300);
+  for (let i = 0; i < 2; i++) {
+    const before = page.url();
+    await page.getByRole("link", { name: "Semana siguiente" }).click();
+    await expect(page).not.toHaveURL(before);
+  }
 
   const viewedWeekStart = new URL(page.url()).searchParams.get("week");
   expect(viewedWeekStart).toBeTruthy();

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { createPatient } from "./patient-form";
+import { fichaHeading, openFichaSection } from "./ficha";
 
 test("a created patient survives a full page reload", async ({ page }) => {
   await page.goto("/sign-in");
@@ -99,7 +100,8 @@ test("a minimal patient's detail page explains the info card is empty instead of
   }).toPass({ timeout: 10000 });
 
   await page.getByRole("link", { name: patientName }).click();
-  await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
+  await expect(fichaHeading(page, patientName)).toBeVisible();
+  await openFichaSection(page, "Ficha médica");
   await expect(
     page.getByText("Todavía no se cargaron más datos de este paciente."),
   ).toBeVisible();
@@ -113,9 +115,10 @@ test("a minimal patient's detail page explains the info card is empty instead of
   await expect(page).toHaveURL(/\/editar$/);
   await page.fill("#dni", "30.123.456");
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
+  await expect(fichaHeading(page, patientName)).toBeVisible();
+  await expect(page.getByText("DNI 30.123.456", { exact: false })).toBeVisible();
+  await openFichaSection(page, "Ficha médica");
   await expect(page.getByText("Todavía no se cargaron más datos de este paciente.")).toHaveCount(0);
-  await expect(page.getByText("30.123.456")).toBeVisible();
 });
 
 test("a patient's medical history is saved and warned about in the ficha and the consulta form", async ({
@@ -140,6 +143,7 @@ test("a patient's medical history is saved and warned about in the ficha and the
   await expect(alert.getByText("Toma anticoagulantes")).toBeVisible();
   await expect(alert.getByText("Diabetes")).toBeVisible();
   await expect(page.getByText("998877/02")).toBeVisible();
+  await openFichaSection(page, "Ficha médica");
   await expect(page.getByText("Sintrom 4mg")).toBeVisible();
 
   // Registering a consulta for them shows the same warning.
@@ -149,12 +153,12 @@ test("a patient's medical history is saved and warned about in the ficha and the
   await consulta.getByRole("button", { name: "Close" }).click();
 
   // Editing keeps the boxes checked, and unchecking one clears it.
-  await page.getByRole("link", { name: "Editar datos" }).click();
+  await page.getByRole("link", { name: "Editar", exact: true }).click();
   await page.getByRole("tab", { name: "Información médica" }).click();
   await expect(page.getByRole("checkbox", { name: "Toma anticoagulantes" })).toBeChecked();
   await page.getByRole("checkbox", { name: "Diabetes" }).uncheck();
   await page.getByRole("button", { name: "Guardar cambios" }).click();
-  await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
+  await expect(fichaHeading(page, patientName)).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "Antecedentes" }).getByText("Diabetes")).toHaveCount(0);
 });
 
@@ -172,6 +176,7 @@ test("radiografías and fotos can be uploaded to the ficha, viewed and deleted; 
     await expect(page.getByRole("link", { name: patientName })).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10000 });
   await page.getByRole("link", { name: patientName }).first().click();
+  await openFichaSection(page, "Estudios");
 
   const files = page.getByRole("region", { name: "Radiografías y fotos" });
   await expect(files.getByText("Todavía no hay radiografías ni fotos")).toBeVisible();
@@ -198,6 +203,9 @@ test("radiografías and fotos can be uploaded to the ficha, viewed and deleted; 
 
   await files.getByRole("button", { name: "Borrar panoramica.png" }).click();
   await page.getByRole("button", { name: "Borrar", exact: true }).click();
+  // While the dialog is open the page behind it is hidden from role
+  // queries, so wait for the empty state rather than the image's absence.
+  await expect(files.getByText("Todavía no hay radiografías ni fotos")).toBeVisible();
   await expect(image).toHaveCount(0);
   expect((await page.request.get(src)).status()).toBe(404);
 });
@@ -236,11 +244,11 @@ test("the Nuevo paciente page saves the full profile across its tabs and the fic
   await page.locator("#referralSource").click();
   await page.getByRole("option", { name: "Redes sociales" }).click();
   await page.getByRole("checkbox", { name: "Acepta recordatorios por WhatsApp" }).uncheck();
-  await page.fill("#internalNotes", "Prefiere turnos a la tarde");
   await page.getByRole("button", { name: "Crear paciente" }).click();
 
   // Lands on the new ficha, with everything grouped.
-  await expect(page.getByRole("heading", { name: `Lucía ${lastName}` })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: `${lastName}, Lucía` })).toBeVisible();
+  await openFichaSection(page, "Ficha médica");
   for (const text of [
     "310",
     "Marcos Pérez",
@@ -251,13 +259,60 @@ test("the Nuevo paciente page saves the full profile across its tabs and the fic
     "Operada de apendicitis",
     "Redes sociales",
     "No acepta recordatorios",
-    "Prefiere turnos a la tarde",
   ]) {
     await expect(page.getByText(text, { exact: true }).first()).toBeVisible();
   }
 
   // Editar opens the same page with everything filled in.
-  await page.getByRole("link", { name: "Editar datos" }).click();
+  await page.getByRole("link", { name: "Editar", exact: true }).click();
   await expect(page.locator("#lastName")).toHaveValue(lastName);
   await expect(page.locator("#taxId")).toHaveValue("27-12345678-3");
+});
+
+test("the ficha opens on Resumen, with personal data, observaciones that can be added and deleted, and its other sections", async ({
+  page,
+}) => {
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Ficha E2E ${Date.now()}`;
+  await createPatient(page, patientName, "341 555-1234", async () => {
+    await page.fill("#dni", "31.255.441");
+    await page.fill("#email", "ficha@example.com");
+  });
+
+  await expect(fichaHeading(page, patientName)).toBeVisible();
+  await expect(page.getByText("DNI 31.255.441", { exact: false })).toBeVisible();
+  await expect(page.getByText("Activo", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: `Escribir por WhatsApp a ${patientName}` })).toHaveAttribute(
+    "href",
+    "https://wa.me/5493415551234",
+  );
+  await expect(page.getByText("ficha@example.com")).toBeVisible();
+  await expect(page.getByText("Todavía no tiene turnos.")).toBeVisible();
+
+  // Observaciones: added with today's date, newest first, and deletable.
+  const box = page.getByLabel("Nueva observación");
+  await box.fill("Prefiere turnos a la tarde");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await expect(box).toHaveValue("");
+  const notes = page.getByRole("list", { name: "Observaciones" });
+  const first = notes.getByRole("listitem").filter({ hasText: "Prefiere turnos a la tarde" });
+  await expect(first).toContainText(
+    new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }),
+  );
+  await box.fill("Viene con su hija");
+  await page.getByRole("button", { name: "Agregar" }).click();
+  await expect(notes.getByRole("listitem").first()).toContainText("Viene con su hija");
+
+  await page.getByRole("button", { name: 'Borrar la observación "Prefiere turnos a la tarde"' }).click();
+  await page.getByRole("button", { name: "Borrar", exact: true }).click();
+  await expect(first).toHaveCount(0);
+  await expect(page.getByText("Viene con su hija")).toBeVisible();
+
+  // The other sections.
+  await openFichaSection(page, "Pagos");
+  await expect(page.getByText("Todavía no hay pagos registrados.")).toBeVisible();
+  await openFichaSection(page, "Consultas");
+  await expect(page.getByText("Todavía no hay consultas registradas para este paciente.")).toBeVisible();
 });

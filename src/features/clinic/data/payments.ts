@@ -98,3 +98,17 @@ export async function getPayments(
     },
   });
 }
+
+export type PatientPayment = Payment & { consultation: { id: string; treatment: string } };
+
+/** Every payment of the patient's consultas, latest first — their ficha. */
+export async function getPatientPayments(
+  clinicId: string,
+  patientId: string,
+): Promise<PatientPayment[]> {
+  return prisma.payment.findMany({
+    where: { clinicId, consultation: { patientId } },
+    orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+    include: { consultation: { select: { id: true, treatment: true } } },
+  });
+}

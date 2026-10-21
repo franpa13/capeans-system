@@ -21,6 +21,7 @@ model Clinic {
   supplies      Supply[]
   payments      Payment[]
   patientFiles  PatientFile[]
+  patientNotes  PatientNote[]
   timeBlocks    TimeBlock[]
 }
 
@@ -78,11 +79,13 @@ model Patient {
   // Notas y origen
   referralSource   String?
   acceptsReminders Boolean @default(true)
+  // Superseded by PatientNote (observaciones); its text was moved there.
   internalNotes    String?
 
   consultations Consultation[]
   appointments  Appointment[]
   files         PatientFile[]
+  notes         PatientNote[]
 
   @@index([clinicId])
 }
@@ -278,4 +281,20 @@ model TimeBlock {
   createdAt DateTime @default(now())
 
   @@index([clinicId, startsAt])
+}
+
+/// An observación on a patient's ficha: dated, with who wrote it.
+model PatientNote {
+  id         String   @id @default(cuid())
+  clinicId   String
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  text       String
+  // The Clerk user's name when it was written; null if unknown.
+  authorName String?
+  createdAt  DateTime @default(now())
+
+  @@index([clinicId, patientId])
 }

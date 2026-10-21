@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { addClinicOption, editClinicOption, searchClinicOption } from "./clinic-options";
+import { fichaHeading, openFichaSection } from "./ficha";
 
 // With pagination (10/page) and backend filtering, a newly created
 // consultation isn't guaranteed to land on page 1 of the unfiltered,
@@ -270,8 +271,7 @@ test("a consultation's amount, discount, and payment status work end to end", as
 
   // Patient balance reflects the $5.000 still owed.
   await row.getByRole("link", { name: patientName }).click();
-  await expect(page.getByText("Debe: ", { exact: false })).toBeVisible();
-  await expect(page.getByText("5.000", { exact: false })).toBeVisible();
+  await expect(page.getByText(/^Debe \$\s?5\.000$/)).toBeVisible();
 
   // Pay the rest as a second, dated installment from the Editar dialog —
   // the first payment is listed, and the new one defaults to the balance.
@@ -303,7 +303,8 @@ test("a consultation's amount, discount, and payment status work end to end", as
   await page.locator("#filter-patient").fill(patientName);
 
   await editRow.getByRole("link", { name: patientName }).click();
-  await expect(page.getByText("Debe: ", { exact: false })).toHaveCount(0);
+  await expect(fichaHeading(page, patientName)).toBeVisible();
+  await expect(page.getByText(/^Debe \$/)).toHaveCount(0);
   await page.goto("/dashboard/consultas");
 
   // The Estado de cobro filter actually narrows, not just the patient
@@ -621,6 +622,7 @@ test("the ficha's odontograma shows, per tooth, which consultas treated it and w
   await createConsultationAndFindIt(page, patientName);
 
   await page.locator("tbody tr", { hasText: patientName }).getByRole("link", { name: patientName }).click();
+  await openFichaSection(page, "Odontograma");
   const odontogram = page.getByRole("region", { name: "Odontograma" });
   await expect(odontogram.getByText("Tocá un diente verde o elegí una pieza")).toBeVisible();
 

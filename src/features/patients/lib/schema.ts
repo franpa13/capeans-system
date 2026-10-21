@@ -32,7 +32,6 @@ export const PROFILE_TEXT_FIELDS = [
   "medications",
   "medicalHistory",
   "referralSource",
-  "internalNotes",
 ] as const;
 
 export const patientSchema = z
