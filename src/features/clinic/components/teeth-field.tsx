@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Baby, User, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -69,8 +69,14 @@ export function TeethField({
       <Label htmlFor={id}>Piezas dentales (opcional)</Label>
       <Tabs value={mode} onValueChange={(v) => onModeChange(v as DentitionMode)}>
         <TabsList>
-          <TabsTrigger value="adulto">Adulto</TabsTrigger>
-          <TabsTrigger value="nino">Niño</TabsTrigger>
+          <TabsTrigger value="adulto">
+            <User />
+            Adulto
+          </TabsTrigger>
+          <TabsTrigger value="nino">
+            <Baby />
+            Niño
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="adulto">
           <ToothPicker id={id} teeth={ALL_TEETH} value={value} onChange={onChange} />

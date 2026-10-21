@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarClock, CalendarDays, CalendarRange, List, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -21,11 +22,11 @@ export function ViewToggle({
   mesHref: string;
   listaHref: string;
 }) {
-  const options: { value: AgendaView; label: string; href: string }[] = [
-    { value: "day", label: "Diario", href: diarioHref },
-    { value: "week", label: "Semanal", href: semanalHref },
-    { value: "month", label: "Mes", href: mesHref },
-    { value: "list", label: "Lista", href: listaHref },
+  const options: { value: AgendaView; label: string; href: string; icon: LucideIcon }[] = [
+    { value: "day", label: "Diario", href: diarioHref, icon: CalendarClock },
+    { value: "week", label: "Semanal", href: semanalHref, icon: CalendarRange },
+    { value: "month", label: "Mes", href: mesHref, icon: CalendarDays },
+    { value: "list", label: "Lista", href: listaHref, icon: List },
   ];
   return (
     <div className="flex gap-1 rounded-md border p-1">
@@ -37,6 +38,7 @@ export function ViewToggle({
           asChild
         >
           <Link href={option.href} data-active={view === option.value}>
+            <option.icon />
             {option.label}
           </Link>
         </Button>

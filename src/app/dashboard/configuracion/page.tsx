@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { Clock, Settings, ShieldPlus, Stethoscope } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OptionListManager } from "@/features/settings/components/option-list-manager";
@@ -28,9 +28,18 @@ export default async function ConfiguracionPage() {
 
       <Tabs defaultValue="insurance">
         <TabsList>
-          <TabsTrigger value="insurance">Obras sociales</TabsTrigger>
-          <TabsTrigger value="treatment">Tratamientos</TabsTrigger>
-          <TabsTrigger value="hours">Horario de atención</TabsTrigger>
+          <TabsTrigger value="insurance">
+            <ShieldPlus />
+            Obras sociales
+          </TabsTrigger>
+          <TabsTrigger value="treatment">
+            <Stethoscope />
+            Tratamientos
+          </TabsTrigger>
+          <TabsTrigger value="hours">
+            <Clock />
+            Horario de atención
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="insurance">
           <OptionListManager

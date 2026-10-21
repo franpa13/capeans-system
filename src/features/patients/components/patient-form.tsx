@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, type Control, type UseFormRegister } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Save, X } from "lucide-react";
+import { HeartPulse, IdCard, Save, StickyNote, X } from "lucide-react";
 import type { Patient } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -193,9 +193,18 @@ export function PatientForm({
     >
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
         <TabsList>
-          <TabsTrigger value="personal">Datos personales</TabsTrigger>
-          <TabsTrigger value="medica">Información médica</TabsTrigger>
-          <TabsTrigger value="notas">Notas y origen</TabsTrigger>
+          <TabsTrigger value="personal">
+            <IdCard />
+            Datos personales
+          </TabsTrigger>
+          <TabsTrigger value="medica">
+            <HeartPulse />
+            Información médica
+          </TabsTrigger>
+          <TabsTrigger value="notas">
+            <StickyNote />
+            Notas y origen
+          </TabsTrigger>
         </TabsList>
 
         {/* forceMount keeps every tab's fields registered (and their values)
