@@ -21,6 +21,11 @@ import {
 } from "@/features/clinic/data/tooth-findings";
 import type { FindingStatus } from "@/features/clinic/lib/findings";
 import {
+  createMedicalOrder,
+  deleteMedicalOrder,
+  type NewMedicalOrderInput,
+} from "@/features/clinic/data/medical-orders";
+import {
   createPrescription,
   deletePrescription,
   type NewPrescriptionInput,
@@ -158,6 +163,24 @@ export async function deletePrescriptionAction(patientId: string, id: string) {
   return runAction(async () => {
     const clinicId = await requireClinicId();
     await deletePrescription(clinicId, id);
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+  });
+}
+
+/** Issues an orden; returns its id to open it. */
+export async function createMedicalOrderAction(patientId: string, input: NewMedicalOrderInput) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const order = await createMedicalOrder(clinicId, patientId, input);
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+    return { id: order.id };
+  });
+}
+
+export async function deleteMedicalOrderAction(patientId: string, id: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deleteMedicalOrder(clinicId, id);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
 }

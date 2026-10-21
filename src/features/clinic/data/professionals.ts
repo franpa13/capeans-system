@@ -50,6 +50,18 @@ export async function updateProfessional(
   return prisma.professional.findUniqueOrThrow({ where: { id } });
 }
 
+/** What a receta or orden keeps of who signed it, copied in when issued
+ * so later edits to the profile don't rewrite it. */
+export function signedBy(p: Professional) {
+  return {
+    professionalTitle: p.title,
+    professionalName: p.name,
+    professionalSpecialty: p.specialty,
+    professionalLicense: p.license,
+    professionalSignature: p.signature,
+  };
+}
+
 /** Their recetas stay, with the name and matrícula copied into them. */
 export async function deleteProfessional(clinicId: string, id: string): Promise<void> {
   const result = await prisma.professional.deleteMany({ where: { id, clinicId } });

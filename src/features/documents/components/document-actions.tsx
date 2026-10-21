@@ -16,34 +16,43 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePrescriptionAction } from "@/features/patients/actions";
+import { deleteMedicalOrderAction, deletePrescriptionAction } from "@/features/patients/actions";
 import { unwrap } from "@/lib/action-result";
 
-/** The receta page's buttons: print, send by WhatsApp, delete, back. */
-export function PrescriptionActions({
+const KINDS = {
+  receta: { section: "recetas", print: "receta", remove: deletePrescriptionAction, noun: "esta receta" },
+  orden: { section: "ordenes", print: "orden", remove: deleteMedicalOrderAction, noun: "esta orden" },
+} as const;
+
+/** A receta's or orden's page buttons: print, send by WhatsApp, delete,
+ * back to its section of the ficha. */
+export function DocumentActions({
+  kind,
   patientId,
-  prescriptionId,
+  documentId,
   whatsAppHref,
 }: {
+  kind: keyof typeof KINDS;
   patientId: string;
-  prescriptionId: string;
+  documentId: string;
   /** Null when the patient's phone isn't a full mobile number. */
   whatsAppHref: string | null;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
-  const fichaHref = `/dashboard/pacientes/${patientId}?seccion=recetas`;
+  const config = KINDS[kind];
+  const fichaHref = `/dashboard/pacientes/${patientId}?seccion=${config.section}`;
 
   async function remove() {
     setConfirming(false);
-    await unwrap(deletePrescriptionAction(patientId, prescriptionId));
+    await unwrap(config.remove(patientId, documentId));
     router.push(fichaHref);
   }
 
   return (
     <div className="flex flex-wrap gap-2">
       <Button asChild>
-        <a href={`/imprimir/receta/${prescriptionId}`} target="_blank" rel="noreferrer">
+        <a href={`/imprimir/${config.print}/${documentId}`} target="_blank" rel="noreferrer">
           <Printer />
           Imprimir / PDF
         </a>
@@ -70,7 +79,7 @@ export function PrescriptionActions({
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar esta receta?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar {config.noun}?</AlertDialogTitle>
             <AlertDialogDescription>Ya no va a aparecer en la ficha del paciente.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

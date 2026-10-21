@@ -30,6 +30,7 @@ model Clinic {
   timeBlocks    TimeBlock[]
   professionals Professional[]
   prescriptions Prescription[]
+  medicalOrders MedicalOrder[]
 }
 
 model Patient {
@@ -95,6 +96,7 @@ model Patient {
   notes         PatientNote[]
   toothFindings ToothFinding[]
   prescriptions Prescription[]
+  medicalOrders MedicalOrder[]
 
   @@index([clinicId])
 }
@@ -354,6 +356,7 @@ model Professional {
   createdAt DateTime @default(now())
 
   prescriptions Prescription[]
+  medicalOrders MedicalOrder[]
 
   @@index([clinicId])
 }
@@ -376,6 +379,37 @@ model Prescription {
   // [{ drug, concentration, quantity, instructions }]
   items        Json
   instructions String?
+
+  professionalTitle     String
+  professionalName      String
+  professionalSpecialty String?
+  professionalLicense   String
+  professionalSignature String?
+  createdAt DateTime @default(now())
+
+  @@unique([clinicId, number])
+  @@index([clinicId, patientId])
+}
+
+/// An orden: imaging studies, lab tests or a referral the dentist asks
+/// for. Like a receta, it keeps its professional as they were when issued.
+model MedicalOrder {
+  id        String   @id @default(cuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+
+  // Per clinic, from 1: printed as ORD-00000001.
+  number    Int
+  date      DateTime @default(now())
+  kind      String // lib/orders.ts: imagenes, laboratorio, derivacion
+  // What's asked for, one line each.
+  items     String[]
+  diagnosis String?
+  notes     String?
 
   professionalTitle     String
   professionalName      String

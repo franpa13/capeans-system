@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Patient, Prescription } from "@prisma/client";
 import type { PrescriptionItem } from "@/features/clinic/lib/prescriptions";
+import { signedBy } from "@/features/clinic/data/professionals";
 
 export type NewPrescriptionInput = {
   professionalId: string;
@@ -53,11 +54,7 @@ export async function createPrescription(
         treatment: input.treatment?.trim() || null,
         instructions: input.instructions?.trim() || null,
         items,
-        professionalTitle: professional.title,
-        professionalName: professional.name,
-        professionalSpecialty: professional.specialty,
-        professionalLicense: professional.license,
-        professionalSignature: professional.signature,
+        ...signedBy(professional),
       },
     });
   });

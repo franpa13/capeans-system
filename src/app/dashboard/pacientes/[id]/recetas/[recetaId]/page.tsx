@@ -5,7 +5,7 @@ import { getPrescription } from "@/features/clinic/data/prescriptions";
 import { prescriptionMessage, prescriptionNumber } from "@/features/clinic/lib/prescriptions";
 import { toWhatsAppNumber, whatsAppLink } from "@/features/appointments/lib/reminder";
 import { PrescriptionSheet } from "@/features/prescriptions/components/prescription-sheet";
-import { PrescriptionActions } from "@/features/prescriptions/components/prescription-actions";
+import { DocumentActions } from "@/features/documents/components/document-actions";
 
 export default async function RecetaPage({
   params,
@@ -39,7 +39,9 @@ export default async function RecetaPage({
         title={`Receta ${prescriptionNumber(prescription.number)}`}
         description={`${prescription.patient.name} · ${prescription.professionalTitle} ${prescription.professionalName}`}
         icon={Pill}
-        action={<PrescriptionActions patientId={id} prescriptionId={prescription.id} whatsAppHref={whatsAppHref} />}
+        action={
+          <DocumentActions kind="receta" patientId={id} documentId={prescription.id} whatsAppHref={whatsAppHref} />
+        }
       />
       <div className="rounded-xl border bg-muted/40 p-4 sm:p-8">
         <PrescriptionSheet prescription={prescription} patient={prescription.patient} clinic={clinic} />

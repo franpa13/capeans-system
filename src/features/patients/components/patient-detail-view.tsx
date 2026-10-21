@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ClipboardList,
+  ClipboardPlus,
   FileHeart,
   Home,
   Images,
@@ -33,6 +34,7 @@ import {
   type PrescriptionListItem,
 } from "@/features/prescriptions/components/patient-prescriptions";
 import type { ProfessionalOption } from "@/features/prescriptions/components/new-prescription-dialog";
+import { PatientOrders, type OrderListItem } from "@/features/orders/components/patient-orders";
 import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
 import { PatientNotes, type PatientNoteItem } from "@/features/patients/components/patient-notes";
 import {
@@ -46,7 +48,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ageOn, displayName, initials } from "@/features/patients/lib/profile";
 
-const SECTIONS = ["resumen", "ficha", "consultas", "odontograma", "estudios", "recetas", "pagos"] as const;
+const SECTIONS = [
+  "resumen",
+  "ficha",
+  "consultas",
+  "odontograma",
+  "estudios",
+  "recetas",
+  "ordenes",
+  "pagos",
+] as const;
 type Section = (typeof SECTIONS)[number];
 
 /** One big tile of the ficha's section bar. A `flag` (e.g. "Debe
@@ -67,7 +78,7 @@ function SectionTile({
   return (
     <TabsTrigger
       value={value}
-      className="relative h-auto flex-col gap-2 rounded-xl border border-border bg-card px-2 py-4 text-sm whitespace-normal text-muted-foreground shadow-xs hover:border-primary/40 hover:text-foreground data-active:border-primary data-active:bg-card data-active:text-primary data-active:shadow-sm dark:data-active:border-primary dark:data-active:bg-card dark:data-active:text-primary [&_svg:not([class*='size-'])]:size-5"
+      className="relative h-auto flex-col gap-2 rounded-xl border border-border bg-card px-2 py-4 text-sm whitespace-normal text-muted-foreground shadow-xs not-data-active:hover:border-primary/40 not-data-active:hover:text-foreground data-active:border-primary data-active:bg-card data-active:text-primary data-active:shadow-sm dark:data-active:border-primary dark:data-active:bg-card dark:data-active:text-primary [&_svg:not([class*='size-'])]:size-5"
     >
       {flag && (
         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-background px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-destructive ring-1 ring-destructive/40 ring-inset">
@@ -101,6 +112,7 @@ export function PatientDetailView({
   findings,
   prescriptions,
   professionals,
+  orders,
   initialSection,
 }: {
   patient: Patient | null;
@@ -122,6 +134,7 @@ export function PatientDetailView({
   prescriptions: PrescriptionListItem[];
   /** Who can sign a new receta. */
   professionals: ProfessionalOption[];
+  orders: OrderListItem[];
   /** ?seccion=… — e.g. back from a receta to the Recetas section. */
   initialSection?: string;
 }) {
@@ -230,7 +243,7 @@ export function PatientDetailView({
       <Tabs value={section} onValueChange={(v) => setSection(v as Section)} className="gap-6">
         <TabsList
           aria-label="Secciones del paciente"
-          className="grid h-auto w-full grid-cols-3 gap-3 bg-transparent p-0 pt-2.5 group-data-horizontal/tabs:h-auto sm:grid-cols-4 lg:grid-cols-7"
+          className="grid h-auto w-full grid-cols-3 items-stretch gap-3 bg-transparent p-0 pt-2.5 group-data-horizontal/tabs:h-auto sm:grid-cols-4 lg:grid-cols-8"
         >
           <SectionTile value="resumen" icon={Home} label="Resumen" />
           <SectionTile value="ficha" icon={FileHeart} label="Ficha médica" />
@@ -250,6 +263,7 @@ export function PatientDetailView({
           <SectionTile value="odontograma" icon={Smile} label="Odontograma" />
           <SectionTile value="estudios" icon={Images} label="Estudios" count={files.length} />
           <SectionTile value="recetas" icon={Pill} label="Recetas" count={prescriptions.length} />
+          <SectionTile value="ordenes" icon={ClipboardPlus} label="Órdenes" count={orders.length} />
           <SectionTile value="pagos" icon={Wallet} label="Pagos" count={payments.length} />
         </TabsList>
 
@@ -301,6 +315,15 @@ export function PatientDetailView({
             professionals={professionals}
             treatments={[...new Set(consultations.map((c) => c.treatment))]}
             medicalHistory={{ allergies: patient.allergies, medicalConditions: patient.medicalConditions }}
+          />
+        </TabsContent>
+
+        <TabsContent value="ordenes">
+          <PatientOrders
+            patientId={patient.id}
+            patientName={patient.name}
+            orders={orders}
+            professionals={professionals}
           />
         </TabsContent>
 

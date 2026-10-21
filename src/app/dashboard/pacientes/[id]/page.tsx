@@ -10,6 +10,7 @@ import { getPatientNotes } from "@/features/clinic/data/patient-notes";
 import { getToothFindings } from "@/features/clinic/data/tooth-findings";
 import { getPatientPrescriptions } from "@/features/clinic/data/prescriptions";
 import { getProfessionals } from "@/features/clinic/data/professionals";
+import { getPatientMedicalOrders } from "@/features/clinic/data/medical-orders";
 import { getPatientPayments } from "@/features/clinic/data/payments";
 import { getPatientFiles } from "@/features/clinic/data/patient-files";
 
@@ -43,6 +44,7 @@ export default async function PacienteDetailPage({
   const findings = clinic && patient ? await getToothFindings(clinic.id, id) : [];
   const prescriptions = clinic && patient ? await getPatientPrescriptions(clinic.id, id) : [];
   const professionals = clinic ? await getProfessionals(clinic.id) : [];
+  const orders = clinic && patient ? await getPatientMedicalOrders(clinic.id, id) : [];
 
   return (
     <PatientDetailView
@@ -99,6 +101,15 @@ export default async function PacienteDetailPage({
         title: p.title,
         name: p.name,
         hasSignature: !!p.signature,
+      }))}
+      orders={orders.map((o) => ({
+        id: o.id,
+        number: o.number,
+        date: o.date,
+        kind: o.kind,
+        items: o.items,
+        professionalTitle: o.professionalTitle,
+        professionalName: o.professionalName,
       }))}
       initialSection={seccion}
     />
