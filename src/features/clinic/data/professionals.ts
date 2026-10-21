@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { Professional } from "@prisma/client";
 
 import { PROFESSIONAL_TITLES } from "@/features/clinic/data/professional-titles";
+import { assertValidCommission } from "@/features/clinic/lib/liquidations";
 
 export { PROFESSIONAL_TITLES };
 const MAX_SIGNATURE_LENGTH = 400_000;
@@ -13,6 +14,8 @@ export type ProfessionalInput = {
   license: string;
   /** A PNG data URL from the signature pad; null clears it. */
   signature?: string | null;
+  /** Their share of what's collected, 0-100 (liquidaciones). */
+  commissionPercent?: number | null;
 };
 
 function clean(input: ProfessionalInput) {
@@ -28,7 +31,15 @@ function clean(input: ProfessionalInput) {
   ) {
     throw new Error("La firma no es válida, volvé a dibujarla");
   }
-  return { title: input.title, name, license, specialty: input.specialty?.trim() || null, signature };
+  assertValidCommission(input.commissionPercent);
+  return {
+    title: input.title,
+    name,
+    license,
+    specialty: input.specialty?.trim() || null,
+    signature,
+    commissionPercent: input.commissionPercent ?? null,
+  };
 }
 
 /** Throws unless the professional is this clinic's. */

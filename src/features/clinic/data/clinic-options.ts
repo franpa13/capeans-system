@@ -6,6 +6,7 @@ import {
   DEFAULT_SPECIALTIES,
   DEFAULT_TREATMENT_SPECIALTY,
 } from "@/features/clinic/lib/specialties";
+import { assertValidCommission } from "@/features/clinic/lib/liquidations";
 
 export const OPTION_CATEGORIES = ["insurance", "treatment", "specialty"] as const;
 export type OptionCategory = (typeof OPTION_CATEGORIES)[number];
@@ -148,6 +149,8 @@ export type TreatmentInput = {
   specialty?: string;
   durationMinutes?: number;
   active?: boolean;
+  /** The professional's % of it, for liquidaciones "por tratamiento". */
+  commissionPercent?: number | null;
 };
 
 async function treatmentData(clinicId: string, input: TreatmentInput) {
@@ -155,6 +158,7 @@ async function treatmentData(clinicId: string, input: TreatmentInput) {
   if (!label) throw new Error("El nombre no puede estar vacío");
   assertValidPrice(input.price);
   assertValidPrice(input.cashPrice);
+  assertValidCommission(input.commissionPercent);
   if (
     input.durationMinutes != null &&
     (!Number.isInteger(input.durationMinutes) || input.durationMinutes <= 0)
@@ -176,6 +180,7 @@ async function treatmentData(clinicId: string, input: TreatmentInput) {
     specialty,
     durationMinutes: input.durationMinutes ?? null,
     active: input.active ?? true,
+    commissionPercent: input.commissionPercent ?? null,
   };
 }
 

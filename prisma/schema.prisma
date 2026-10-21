@@ -33,6 +33,7 @@ model Clinic {
   medicalOrders MedicalOrder[]
   members       ClinicMember[]
   invitations   ClinicInvitation[]
+  liquidations  Liquidation[]
 }
 
 model Patient {
@@ -211,6 +212,7 @@ model ClinicOption {
   code            String? // código de nomenclador, e.g. "12.04.00"
   specialty       String? // label of a "specialty" option
   durationMinutes Int?    // suggested length of a turno for it
+  commissionPercent Int?  // the professional's share of it, 0-100 (liquidaciones)
   active          Boolean @default(true)
 
   @@unique([clinicId, category, label])
@@ -361,6 +363,8 @@ model Professional {
   license   String // matrícula, e.g. "MP 4123"
   // The drawn signature, a PNG data URL.
   signature String?
+  // Their share of what's collected for their consultas, 0-100.
+  commissionPercent Int?
   createdAt DateTime @default(now())
 
   prescriptions Prescription[]
@@ -368,6 +372,7 @@ model Professional {
   appointments  Appointment[]
   consultations Consultation[]
   member        ClinicMember?
+  liquidations  Liquidation[]
 
   @@index([clinicId])
 }
@@ -472,4 +477,32 @@ model ClinicInvitation {
   createdAt DateTime   @default(now())
 
   @@unique([clinicId, email])
+}
+
+/// What a professional earned for a period: a % of what was collected for
+/// their consultas. Saved as calculated (lines included), so later edits to
+/// payments or percentages don't rewrite it.
+model Liquidation {
+  id        String   @id @default(cuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  professionalName String
+
+  // Per clinic, from 1: LIQ-00001.
+  number    Int
+  // [from, to): local days, from 00:00 to the day after `to`.
+  periodFrom DateTime
+  periodTo   DateTime
+  mode       String // lib/liquidations.ts: PROFESSIONAL, TREATMENT
+  // [{ consultationId, date, patientName, treatment, collected, percent, percentSource, commission }]
+  lines           Json
+  totalCollected  Int
+  totalCommission Int
+  paidAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([clinicId, number])
+  @@index([clinicId, professionalId])
 }

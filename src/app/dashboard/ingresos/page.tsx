@@ -8,6 +8,8 @@ import { addMonths, parseMonthParam } from "@/features/clinic/lib/month";
 import { IncomeView } from "@/features/income/components/income-view";
 import { hasPermission } from "@/features/clinic/data/current-member";
 import { NoPermission } from "@/components/no-permission";
+import { getProfessionals } from "@/features/clinic/data/professionals";
+import { IncomeByProfessional } from "@/features/income/components/income-by-professional";
 
 export default async function IngresosPage({
   searchParams,
@@ -26,6 +28,12 @@ export default async function IngresosPage({
         getPayments(clinic.id, { from: today, to: addDays(today, 1) }),
       ])
     : [[], []];
+  const professionals = clinic ? await getProfessionals(clinic.id) : [];
+  const byProfessional = new Map<string | null, number>();
+  for (const p of monthPayments) {
+    const key = p.consultation.professionalId;
+    byProfessional.set(key, (byProfessional.get(key) ?? 0) + p.amount);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,6 +48,17 @@ export default async function IngresosPage({
         monthPayments={monthPayments}
         todayTotal={todayPayments.reduce((sum, p) => sum + p.amount, 0)}
       />
+      {professionals.length > 0 && (
+        <IncomeByProfessional
+          rows={[
+            ...professionals.map((p) => ({
+              name: `${p.title} ${p.name}`,
+              total: byProfessional.get(p.id) ?? 0,
+            })),
+            ...(byProfessional.get(null) ? [{ name: "Sin profesional indicado", total: byProfessional.get(null)! }] : []),
+          ]}
+        />
+      )}
     </div>
   );
 }

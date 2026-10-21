@@ -9,6 +9,7 @@ import {
   Boxes,
   CalendarDays,
   ClipboardList,
+  HandCoins,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -36,6 +37,7 @@ const navItems: { title: string; url: string; icon: typeof Users; permission?: P
   { title: "Pacientes", url: "/dashboard/pacientes", icon: Users },
   { title: "Consultas/Tratamientos", url: "/dashboard/consultas", icon: ClipboardList },
   { title: "Ingresos", url: "/dashboard/ingresos", icon: Banknote, permission: "income.view" },
+  { title: "Liquidaciones", url: "/dashboard/liquidaciones", icon: HandCoins, permission: "income.view" },
   { title: "Turnos", url: "/dashboard/turnos", icon: CalendarDays },
   { title: "Stock", url: "/dashboard/stock", icon: Boxes },
   { title: "Configuración", url: "/dashboard/configuracion", icon: Settings, permission: "settings.manage" },
@@ -54,7 +56,7 @@ export function AppSidebar({ clinicName }: { clinicName?: string }) {
   const { signOut } = useClerk();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="print:hidden">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
           <Image

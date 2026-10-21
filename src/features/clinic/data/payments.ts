@@ -8,7 +8,12 @@ export type NewPaymentInput = {
 };
 
 export type PaymentWithConsultation = Payment & {
-  consultation: { id: string; treatment: string; patient: { id: string; name: string } | null };
+  consultation: {
+    id: string;
+    treatment: string;
+    professionalId: string | null;
+    patient: { id: string; name: string } | null;
+  };
 };
 
 function assertValidPaymentAmount(amount: number) {
@@ -92,6 +97,7 @@ export async function getPayments(
         select: {
           id: true,
           treatment: true,
+          professionalId: true,
           patient: { select: { id: true, name: true } },
         },
       },

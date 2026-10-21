@@ -371,6 +371,9 @@ function TreatmentForm({
   const [duration, setDuration] = useState(
     treatment?.durationMinutes != null ? String(treatment.durationMinutes) : "",
   );
+  const [commission, setCommission] = useState(
+    treatment?.commissionPercent != null ? String(treatment.commissionPercent) : "",
+  );
   const [active, setActive] = useState(treatment?.active ?? true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -381,7 +384,8 @@ function TreatmentForm({
     const parsedPrice = parseWhole(price);
     const parsedCash = parseWhole(cashPrice);
     const parsedDuration = parseWhole(duration);
-    for (const parsed of [parsedPrice, parsedCash, parsedDuration]) {
+    const parsedCommission = parseWhole(commission);
+    for (const parsed of [parsedPrice, parsedCash, parsedDuration, parsedCommission]) {
       if ("error" in parsed) return setError(parsed.error);
     }
     setSaving(true);
@@ -394,6 +398,7 @@ function TreatmentForm({
         price: (parsedPrice as { value: number | undefined }).value,
         cashPrice: (parsedCash as { value: number | undefined }).value,
         durationMinutes: (parsedDuration as { value: number | undefined }).value,
+        commissionPercent: (parsedCommission as { value: number | undefined }).value ?? null,
         active,
       };
       if (treatment) await unwrap(updateTreatmentAction(treatment.id, input));
@@ -480,6 +485,18 @@ function TreatmentForm({
             onChange={(e) => setDuration(e.target.value)}
           />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="treatmentCommission">Comisión del profesional % (opcional)</Label>
+        <Input
+          id="treatmentCommission"
+          type="number"
+          min={0}
+          max={100}
+          placeholder="Si no se completa, se usa la del profesional"
+          value={commission}
+          onChange={(e) => setCommission(e.target.value)}
+        />
       </div>
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input

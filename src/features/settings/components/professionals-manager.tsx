@@ -118,6 +118,9 @@ function ProfessionalForm({
   const [name, setName] = useState(professional?.name ?? "");
   const [specialty, setSpecialty] = useState(professional?.specialty ?? "");
   const [license, setLicense] = useState(professional?.license ?? "");
+  const [commission, setCommission] = useState(
+    professional?.commissionPercent != null ? String(professional.commissionPercent) : "",
+  );
   const [signature, setSignature] = useState<string | null>(professional?.signature ?? null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -126,7 +129,14 @@ function ProfessionalForm({
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const input = { title, name, specialty, license, signature };
+    const input = {
+      title,
+      name,
+      specialty,
+      license,
+      signature,
+      commissionPercent: commission.trim() === "" ? null : Number(commission),
+    };
     try {
       await unwrap(
         professional ? updateProfessionalAction(professional.id, input) : createProfessionalAction(input),
@@ -193,6 +203,19 @@ function ProfessionalForm({
             onChange={(e) => setLicense(e.target.value)}
             placeholder="Ej: MP 4123"
           />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="professionalCommission">Comisión % (opcional)</Label>
+          <Input
+            id="professionalCommission"
+            type="number"
+            min={0}
+            max={100}
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+            placeholder="Ej: 40"
+          />
+          <p className="text-xs text-muted-foreground">Lo que le corresponde de lo cobrado, para las liquidaciones.</p>
         </div>
       </div>
       <SignaturePad value={signature} onChange={setSignature} />
@@ -272,7 +295,13 @@ export function ProfessionalsManager({
                       {p.title} {p.name}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {[p.specialty, `Matrícula ${p.license}`].filter(Boolean).join(" · ")}
+                      {[
+                        p.specialty,
+                        `Matrícula ${p.license}`,
+                        p.commissionPercent != null ? `${p.commissionPercent}% de comisión` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   {p.signature ? (
