@@ -22,6 +22,7 @@ model Clinic {
   payments      Payment[]
   patientFiles  PatientFile[]
   patientNotes  PatientNote[]
+  toothFindings ToothFinding[]
   timeBlocks    TimeBlock[]
 }
 
@@ -86,6 +87,7 @@ model Patient {
   appointments  Appointment[]
   files         PatientFile[]
   notes         PatientNote[]
+  toothFindings ToothFinding[]
 
   @@index([clinicId])
 }
@@ -115,6 +117,7 @@ model Consultation {
   // Each payment towards amountCharged; amountPaid above is kept equal to
   // their sum by the data layer, so balances and filters can read it alone.
   payments     Payment[]
+  resolvedFindings ToothFinding[]
 
   @@index([clinicId])
   @@index([patientId])
@@ -295,6 +298,36 @@ model PatientNote {
   // The Clerk user's name when it was written; null if unknown.
   authorName String?
   createdAt  DateTime @default(now())
+
+  @@index([clinicId, patientId])
+}
+
+enum FindingStatus {
+  PENDING // a realizar — red on the odontograma
+  DONE // realizado or already there — blue
+}
+
+/// A hallazgo on the odontograma: a condition on one surface of a tooth
+/// (caries, restauración…) or on the whole tooth (surface null: corona,
+/// ausente…). Keys and labels live in lib/findings.ts.
+model ToothFinding {
+  id         String        @id @default(cuid())
+  clinicId   String
+  clinic     Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId  String
+  patient    Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  tooth      String // FDI, e.g. "16"
+  surface    String? // V, M, O, D, L
+  condition  String
+  status     FindingStatus
+  notes      String?
+  authorName String?
+  createdAt  DateTime      @default(now())
+  // When it was done, and by which consulta if one resolved it.
+  resolvedAt     DateTime?
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
 
   @@index([clinicId, patientId])
 }

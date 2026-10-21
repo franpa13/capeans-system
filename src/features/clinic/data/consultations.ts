@@ -3,6 +3,7 @@ import { recordPayment } from "@/features/clinic/data/payments";
 import type { Consultation, PaymentMethod, Prisma } from "@prisma/client";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { paymentStatus, type PaymentStatus } from "@/features/clinic/lib/billing";
+import { resolveFindings, unresolveFindings } from "@/features/clinic/data/tooth-findings";
 
 export type NewConsultationInput = {
   patientId: string;
@@ -17,6 +18,8 @@ export type NewConsultationInput = {
   paymentMethod?: PaymentMethod;
   appointmentId?: string;
   supplies?: SupplyUsageInput[];
+  /** Pending hallazgos of this patient that this consulta treated. */
+  resolvedFindingIds?: string[];
 };
 
 /** Checks a consulta may be linked to this turno and, if the turno was
@@ -264,6 +267,7 @@ export async function createConsultation(
       });
     }
     await applySupplyUsages(tx, clinicId, consultation.id, input.supplies);
+    await resolveFindings(tx, clinicId, input.patientId, consultation, input.resolvedFindingIds);
     return tx.consultation.findUniqueOrThrow({ where: { id: consultation.id } });
   });
 }
@@ -326,6 +330,7 @@ export async function deleteConsultation(clinicId: string, id: string): Promise<
     const consultation = await tx.consultation.findFirst({ where: { id, clinicId } });
     if (!consultation) return;
     await reverseSupplyUsages(tx, id);
+    await unresolveFindings(tx, id);
     await tx.consultation.delete({ where: { id } });
   });
 }

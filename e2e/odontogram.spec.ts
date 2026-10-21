@@ -3,7 +3,7 @@ import { clerk } from "@clerk/testing/playwright";
 import { createPatient } from "./patient-form";
 import { openFichaSection } from "./ficha";
 
-test("the odontogram on a patient page is read-only: clicking it does nothing", async ({
+test("the ficha's odontograma can be switched to the 3D model, which loads without errors", async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -28,6 +28,7 @@ test("the odontogram on a patient page is read-only: clicking it does nothing", 
   await page.getByRole("link", { name: patientName }).click();
   await page.waitForURL(/\/dashboard\/pacientes\/.+/);
   await openFichaSection(page, "Odontograma");
+  await page.getByRole("button", { name: "Ver en 3D" }).click();
 
   const canvas = page.locator("canvas");
   await canvas.waitFor();
@@ -35,13 +36,12 @@ test("the odontogram on a patient page is read-only: clicking it does nothing", 
   const box = await canvas.boundingBox();
   if (!box) throw new Error("3D odontogram canvas not found");
 
-  await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.34);
-  await page.waitForTimeout(500);
-
-  // Clicking the model doesn't open a consultation dialog or any tooth
-  // picker — the odontogram here is a read-only treatment summary.
-  await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(pageErrors).toHaveLength(0);
+
+  // And back to the five-face chart.
+  await page.getByRole("button", { name: "Ver odontograma" }).click();
+  await expect(page.getByRole("button", { name: "Pieza 16" })).toBeVisible();
+  await expect(canvas).toHaveCount(0);
 });
 
 test("the odontogram inside Nueva consulta is visible on the Adulto tab by default and ignores clicks; teeth are picked via the select", async ({

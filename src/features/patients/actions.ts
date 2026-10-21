@@ -12,6 +12,14 @@ import {
 } from "@/features/clinic/data/patients";
 import { addPatientFile, deletePatientFile } from "@/features/clinic/data/patient-files";
 import { addPatientNote, deletePatientNote } from "@/features/clinic/data/patient-notes";
+import {
+  addToothFindings,
+  deleteToothFinding,
+  getToothFindings,
+  setToothFindingStatus,
+  type NewToothFindingInput,
+} from "@/features/clinic/data/tooth-findings";
+import type { FindingStatus } from "@/features/clinic/lib/findings";
 
 async function requireClinicId(): Promise<string> {
   const clinic = await getCurrentClinic();
@@ -69,13 +77,16 @@ export async function deletePatientFileAction(patientId: string, fileId: string)
   });
 }
 
+async function currentAuthorName(): Promise<string | null> {
+  const user = await currentUser();
+  return user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || null;
+}
+
 /** An observación on the ficha, signed with the logged-in user's name. */
 export async function addPatientNoteAction(patientId: string, text: string) {
   return runAction(async () => {
     const clinicId = await requireClinicId();
-    const user = await currentUser();
-    const authorName =
-      user?.fullName || user?.firstName || user?.primaryEmailAddress?.emailAddress || null;
+    const authorName = await currentAuthorName();
     await addPatientNote(clinicId, patientId, { text, authorName });
     revalidatePath(`/dashboard/pacientes/${patientId}`);
   });
@@ -86,5 +97,44 @@ export async function deletePatientNoteAction(patientId: string, id: string) {
     const clinicId = await requireClinicId();
     await deletePatientNote(clinicId, id);
     revalidatePath(`/dashboard/pacientes/${patientId}`);
+  });
+}
+
+/** A hallazgo on the odontograma, signed with the logged-in user's name. */
+export async function addToothFindingsAction(
+  patientId: string,
+  input: Omit<NewToothFindingInput, "authorName">,
+) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await addToothFindings(clinicId, patientId, { ...input, authorName: await currentAuthorName() });
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+  });
+}
+
+export async function setToothFindingStatusAction(patientId: string, id: string, status: FindingStatus) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await setToothFindingStatus(clinicId, id, status);
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+  });
+}
+
+export async function deleteToothFindingAction(patientId: string, id: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    await deleteToothFinding(clinicId, id);
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+  });
+}
+
+/** The patient's pending hallazgos, for Nueva consulta to offer resolving. */
+export async function getPendingFindingsAction(patientId: string) {
+  return runAction(async () => {
+    const clinicId = await requireClinicId();
+    const findings = await getToothFindings(clinicId, patientId);
+    return findings
+      .filter((f) => f.status === "PENDING")
+      .map((f) => ({ id: f.id, tooth: f.tooth, surface: f.surface, condition: f.condition }));
   });
 }

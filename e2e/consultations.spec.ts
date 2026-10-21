@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { addClinicOption, editClinicOption, searchClinicOption } from "./clinic-options";
 import { fichaHeading, openFichaSection } from "./ficha";
+import { createPatient } from "./patient-form";
 
 // With pagination (10/page) and backend filtering, a newly created
 // consultation isn't guaranteed to land on page 1 of the unfiltered,
@@ -624,14 +625,72 @@ test("the ficha's odontograma shows, per tooth, which consultas treated it and w
   await page.locator("tbody tr", { hasText: patientName }).getByRole("link", { name: patientName }).click();
   await openFichaSection(page, "Odontograma");
   const odontogram = page.getByRole("region", { name: "Odontograma" });
-  await expect(odontogram.getByText("Tocá un diente verde o elegí una pieza")).toBeVisible();
-
   await odontogram.getByRole("button", { name: "Pieza 16" }).click();
-  const history = odontogram.getByRole("region", { name: "Pieza 16" });
+  const tooth = page.getByRole("dialog", { name: "Pieza 16" });
+  const history = tooth.getByRole("region", { name: "Consultas en esta pieza" });
   const entry = history.getByRole("listitem").filter({ hasText: "Limpieza" });
   await expect(entry).toContainText("Caries oclusal chica");
   await expect(entry).toContainText(new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }));
 
   await entry.getByRole("button", { name: "Ver consulta" }).click();
   await expect(page.getByRole("dialog", { name: "Detalle de la consulta" })).toBeVisible();
+});
+
+test("hallazgos charted on the odontograma are counted, and a consulta on that tooth resolves the ones left ticked", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.goto("/sign-in");
+  await clerk.signIn({ page, emailAddress: process.env.E2E_TEST_EMAIL! });
+
+  const patientName = `Paciente Hallazgos E2E ${Date.now()}`;
+  await createPatient(page, patientName, "11 4444-1616");
+  await openFichaSection(page, "Odontograma");
+  const odontogram = page.getByRole("region", { name: "Odontograma" });
+
+  // Caries on two faces of the 16, still to do.
+  await odontogram.getByRole("button", { name: "Pieza 16" }).click();
+  const tooth = page.getByRole("dialog", { name: "Pieza 16" });
+  const faces = tooth.getByRole("group", { name: "Caras" });
+  await faces.getByRole("button", { name: "Oclusal" }).click();
+  await faces.getByRole("button", { name: "Distal" }).click();
+  await expect(tooth.getByRole("button", { name: "A realizar" })).toHaveAttribute("aria-pressed", "true");
+  await tooth.getByRole("button", { name: "Agregar hallazgo" }).click();
+  const charted = tooth.getByRole("region", { name: "Hallazgos de la pieza" });
+  await expect(charted.getByText("Caries · Oclusal")).toBeVisible();
+  await expect(charted.getByText("Caries · Distal")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // The 46 is missing.
+  await odontogram.getByRole("button", { name: "Pieza 46" }).click();
+  const missing = page.getByRole("dialog", { name: "Pieza 46" });
+  await missing.getByRole("group", { name: "Hallazgo" }).getByRole("button", { name: "Ausente" }).click();
+  await missing.getByRole("button", { name: "Agregar hallazgo" }).click();
+  await expect(missing.getByRole("region", { name: "Hallazgos de la pieza" }).getByText("Ausente").first()).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  const counter = (label: string) => page.locator("[data-slot=card]", { hasText: label }).first();
+  await expect(counter("A realizar")).toContainText("2");
+  await expect(counter("Piezas ausentes")).toContainText("1");
+
+  // A consulta on the 16 offers both, ticked; leaving the distal one out
+  // resolves only the oclusal.
+  await page.getByRole("button", { name: "Nueva consulta" }).click();
+  const consulta = page.getByRole("dialog", { name: "Nueva consulta" });
+  await consulta.locator("#teeth").click();
+  await page.getByRole("option", { name: "16", exact: true }).click();
+  const offered = consulta.getByRole("group", { name: "Hallazgos que resuelve esta consulta" });
+  await expect(offered.getByRole("checkbox", { name: "Pieza 16 · Caries · Oclusal" })).toBeChecked();
+  await offered.getByRole("checkbox", { name: "Pieza 16 · Caries · Distal" }).uncheck();
+  await consulta.getByText("Elegí un tratamiento").click();
+  await page.getByRole("option", { name: "Obturación (caries)" }).click();
+  await consulta.getByRole("button", { name: "Guardar" }).click();
+  await expect(consulta).toHaveCount(0);
+
+  await openFichaSection(page, "Odontograma");
+  await expect(counter("A realizar")).toContainText("1");
+  await expect(counter("Realizados")).toContainText("1");
+  const historyTable = page.locator("table", { hasText: "Hallazgo" });
+  await expect(historyTable.getByRole("row", { name: /Caries · Oclusal.*Realizado/ })).toBeVisible();
+  await expect(historyTable.getByRole("row", { name: /Caries · Distal.*A realizar/ })).toBeVisible();
 });

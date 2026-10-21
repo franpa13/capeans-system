@@ -26,6 +26,7 @@ import { MedicalAlert } from "@/features/patients/components/medical-alert";
 import { PatientInfoCard } from "@/features/patients/components/patient-info-card";
 import { Button } from "@/components/ui/button";
 import { OdontogramCard } from "@/features/patients/components/odontogram-card";
+import type { FindingView } from "@/features/patients/components/odontogram-2d";
 import { PatientFiles, type PatientFileItem } from "@/features/patients/components/patient-files";
 import { PatientNotes, type PatientNoteItem } from "@/features/patients/components/patient-notes";
 import {
@@ -52,7 +53,7 @@ function SectionTile({
 }: {
   value: Section;
   icon: LucideIcon;
-  label: string;
+  label: React.ReactNode;
   count?: number;
   flag?: string;
 }) {
@@ -90,6 +91,7 @@ export function PatientDetailView({
   appointments,
   notes,
   payments,
+  findings,
 }: {
   patient: Patient | null;
   consultations: Consultation[];
@@ -105,6 +107,8 @@ export function PatientDetailView({
   appointments: Appointment[];
   notes: PatientNoteItem[];
   payments: PatientPaymentItem[];
+  /** Hallazgos on the odontograma. */
+  findings: FindingView[];
 }) {
   const [section, setSection] = useState<Section>("resumen");
   const toothHistory: ToothHistory = useMemo(() => {
@@ -216,7 +220,13 @@ export function PatientDetailView({
           <SectionTile
             value="consultas"
             icon={ClipboardList}
-            label="Turnos/Tratamientos"
+            label={
+              <>
+                Turnos/
+                <wbr />
+                Tratamientos
+              </>
+            }
             count={consultations.length}
             flag={balance > 0 ? `Debe ${formatCurrency(balance)}` : undefined}
           />
@@ -253,6 +263,8 @@ export function PatientDetailView({
 
         <TabsContent value="odontograma">
           <OdontogramCard
+            patientId={patient.id}
+            findings={findings}
             history={toothHistory}
             consultations={consultations}
             patientName={patient.name}

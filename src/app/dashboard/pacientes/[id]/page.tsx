@@ -7,6 +7,7 @@ import { outstandingBalance } from "@/features/clinic/lib/billing";
 import { getSupplies } from "@/features/clinic/data/supplies";
 import { countNoShows, getPatientAppointments } from "@/features/clinic/data/appointments";
 import { getPatientNotes } from "@/features/clinic/data/patient-notes";
+import { getToothFindings } from "@/features/clinic/data/tooth-findings";
 import { getPatientPayments } from "@/features/clinic/data/payments";
 import { getPatientFiles } from "@/features/clinic/data/patient-files";
 
@@ -34,6 +35,7 @@ export default async function PacienteDetailPage({
   const appointments = clinic && patient ? await getPatientAppointments(clinic.id, id) : [];
   const notes = clinic && patient ? await getPatientNotes(clinic.id, id) : [];
   const payments = clinic && patient ? await getPatientPayments(clinic.id, id) : [];
+  const findings = clinic && patient ? await getToothFindings(clinic.id, id) : [];
 
   return (
     <PatientDetailView
@@ -64,6 +66,18 @@ export default async function PacienteDetailPage({
         method: p.method,
         paidAt: p.paidAt,
         treatment: p.consultation.treatment,
+      }))}
+      findings={findings.map((f) => ({
+        id: f.id,
+        tooth: f.tooth,
+        surface: f.surface,
+        condition: f.condition,
+        status: f.status,
+        notes: f.notes,
+        authorName: f.authorName,
+        createdAt: f.createdAt,
+        resolvedAt: f.resolvedAt,
+        consultationId: f.consultationId,
       }))}
     />
   );

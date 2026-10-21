@@ -40,6 +40,8 @@ import { PAYMENT_STATUS_LABELS } from "@/features/clinic/lib/billing";
 import { OTHER_TREATMENT } from "@/features/clinic/lib/treatments";
 import { OTHER_INSURANCE } from "@/features/clinic/lib/insurance";
 import { createConsultationAction } from "@/features/consultations/actions";
+import { getPendingFindingsAction } from "@/features/patients/actions";
+import { findingLabel } from "@/features/clinic/lib/findings";
 import { unwrap } from "@/lib/action-result";
 import { medicalAlerts } from "@/features/clinic/lib/medical";
 import { MedicalAlert } from "@/features/patients/components/medical-alert";
@@ -80,6 +82,8 @@ function todayISO() {
 function nowHHMM() {
   return new Date().toTimeString().slice(0, 5);
 }
+
+type PendingFinding = { id: string; tooth: string; surface: string | null; condition: string };
 
 export function NewConsultationDialog({
   patients = [],
@@ -184,6 +188,34 @@ export function NewConsultationDialog({
   const [supplyPending, setSupplyPending] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("EFECTIVO");
 
+  // The patient's pending hallazgos: those on the teeth picked here are
+  // offered as resolved by this consulta (checked unless unticked).
+  const [pendingFindings, setPendingFindings] = useState<{
+    patientId: string;
+    list: PendingFinding[];
+  } | null>(null);
+  const [findingsReload, setFindingsReload] = useState(0);
+  const [keptPending, setKeptPending] = useState<Set<string>>(new Set());
+  // Fetched each time the dialog opens: hallazgos may have been charted
+  // on the odontograma since the page loaded.
+  useEffect(() => {
+    if (!open || !linkPatientId) return;
+    let cancelled = false;
+    unwrap(getPendingFindingsAction(linkPatientId))
+      .then((list) => {
+        if (!cancelled) setPendingFindings({ patientId: linkPatientId, list });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [open, linkPatientId, findingsReload]);
+  const findingsOnTeeth =
+    pendingFindings && pendingFindings.patientId === linkPatientId
+      ? pendingFindings.list.filter((f) => teeth.includes(f.tooth))
+      : [];
+  const resolvedFindingIds = findingsOnTeeth.filter((f) => !keptPending.has(f.id)).map((f) => f.id);
+
   /** Recalculates "Monto a cobrar" from the treatment's list price (minus
    * whatever discount % is already typed) every time the treatment
    * changes — but only while the dentist hasn't typed into the amount
@@ -226,6 +258,7 @@ export function NewConsultationDialog({
       paymentMethod: paidNum ? paymentMethod : undefined,
       appointmentId: values.appointmentId || undefined,
       supplies: supplyUsages.length ? supplyUsages : undefined,
+      resolvedFindingIds: resolvedFindingIds.length ? resolvedFindingIds : undefined,
       newPatient: isNewPatient
         ? {
             name: values.newPatientName!.trim(),
@@ -268,6 +301,8 @@ export function NewConsultationDialog({
       appointmentId: "",
     });
     setDiscountPercent("");
+    setKeptPending(new Set());
+    setFindingsReload((n) => n + 1);
     setAmountTouched(false);
     setSupplyUsages([]);
     setSupplyPending(false);
@@ -531,6 +566,33 @@ export function NewConsultationDialog({
                     empty, unrelated mouth. */}
                 {dentitionMode === "adulto" && (
                   <ToothChart3D history={toothHistory} selectedTeeth={teeth} />
+                )}
+                {findingsOnTeeth.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label="Hallazgos que resuelve esta consulta"
+                    className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3"
+                  >
+                    <p className="text-sm font-medium">
+                      Hallazgos pendientes en estas piezas — esta consulta los resuelve:
+                    </p>
+                    {findingsOnTeeth.map((f) => (
+                      <label key={f.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-primary"
+                          checked={!keptPending.has(f.id)}
+                          onChange={(e) => {
+                            const next = new Set(keptPending);
+                            if (e.target.checked) next.delete(f.id);
+                            else next.add(f.id);
+                            setKeptPending(next);
+                          }}
+                        />
+                        Pieza {f.tooth} · {findingLabel(f)}
+                      </label>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
