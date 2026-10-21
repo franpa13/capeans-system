@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, Save } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
@@ -122,7 +122,13 @@ export function EditConsultationDialog({
   const appointmentId = watch("appointmentId") ?? "";
   const listPrice = treatmentPrices[treatment];
 
+  // Only when the dentist actually picks another treatment — not when the
+  // dialog opens: an unpriced consulta whose treatment got a list price
+  // later must not open (and save) billed at today's price.
+  const previousTreatment = useRef(treatment);
   useEffect(() => {
+    if (treatment === previousTreatment.current) return;
+    previousTreatment.current = treatment;
     if (amountTouched) return;
     if (listPrice == null) {
       setValue("amountCharged", "");
