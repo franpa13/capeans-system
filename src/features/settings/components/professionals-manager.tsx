@@ -48,7 +48,7 @@ import { unwrap } from "@/lib/action-result";
 type ClinicDetails = { name: string; address: string | null; phone: string | null; email: string | null };
 
 /** "Datos del consultorio": what heads every printed receta. */
-function ClinicDetailsCard({ clinic }: { clinic: ClinicDetails }) {
+export function ClinicDetailsCard({ clinic }: { clinic: ClinicDetails }) {
   const router = useRouter();
   const [address, setAddress] = useState(clinic.address ?? "");
   const [phone, setPhone] = useState(clinic.phone ?? "");
@@ -70,7 +70,9 @@ function ClinicDetailsCard({ clinic }: { clinic: ClinicDetails }) {
     <Card>
       <CardHeader>
         <CardTitle>Datos del consultorio</CardTitle>
-        <CardDescription>Aparecen en el encabezado de las recetas de {clinic.name}.</CardDescription>
+        <CardDescription>
+          {clinic.name}. La dirección, el teléfono y el email salen en el encabezado de recetas y órdenes.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={save} className="grid gap-4 sm:grid-cols-3">
@@ -239,11 +241,9 @@ function ProfessionalForm({
 /** Configuración › Profesionales: the consultorio's letterhead data and
  * the dentists who sign recetas, each with a drawn signature. */
 export function ProfessionalsManager({
-  clinic,
   professionals,
   specialties,
 }: {
-  clinic: ClinicDetails;
   professionals: Professional[];
   specialties: string[];
 }) {
@@ -262,7 +262,6 @@ export function ProfessionalsManager({
 
   return (
     <div className="flex flex-col gap-6">
-      <ClinicDetailsCard clinic={clinic} />
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

@@ -100,6 +100,7 @@ test("an insurance option can be added, renamed, and deleted from Configuración
   const renamed = `${label} (renombrada)`;
 
   await page.goto("/dashboard/configuracion");
+  await page.getByRole("tab", { name: "Obras sociales" }).click();
   await addClinicOption(page, "obra social", label);
 
   // The edit modal opens with the current name already filled in.

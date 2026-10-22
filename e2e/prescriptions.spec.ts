@@ -15,11 +15,12 @@ test("a professional signs by drawing, and a receta warns about allergies, print
 
   // Configuración › Profesionales: the letterhead and a professional who
   // signs on the pad.
-  await page.goto("/dashboard/configuracion?tab=professionals");
+  await page.goto("/dashboard/configuracion?tab=clinic");
   await page.fill("#clinicAddress", "San Juan 3169, Rosario");
   await page.fill("#clinicPhone", "341 232-3232");
   await page.getByRole("button", { name: "Guardar datos" }).click();
   await expect(page.getByText("Guardado.")).toBeVisible();
+  await page.getByRole("tab", { name: "Profesionales" }).click();
 
   await page.getByRole("button", { name: "Nuevo profesional" }).click();
   const form = page.getByRole("dialog", { name: "Nuevo profesional" });
