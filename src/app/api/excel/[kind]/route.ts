@@ -14,6 +14,7 @@ import {
   suppliesXlsx,
 } from "@/features/excel/lib/exports";
 import { xlsxResponse } from "@/features/excel/lib/response";
+import { logExport } from "@/features/exports/data/build-export";
 
 /** "Descargar Excel" for Pacientes, Consultas, Ingresos and Stock. Takes
  * the same query params as the page it's on, so the file matches what's
@@ -28,6 +29,15 @@ export async function GET(request: Request, ctx: { params: Promise<{ kind: strin
   const params = new URL(request.url).searchParams;
   const param = (name: string) => params.get(name) || undefined;
   const today = new Date().toISOString().slice(0, 10);
+  // Recorded like every Exportaciones download.
+  const logged = { pacientes: "pacientes", consultas: "consultas", ingresos: "pagos", stock: "stock" } as const;
+  if (kind in logged) {
+    await logExport(clinic.id, {
+      kind: logged[kind as keyof typeof logged],
+      memberName: current.member.name,
+      filters: {},
+    });
+  }
 
   switch (kind) {
     case "pacientes": {

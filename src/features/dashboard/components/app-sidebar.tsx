@@ -9,6 +9,7 @@ import {
   Boxes,
   CalendarDays,
   ClipboardList,
+  Download,
   HandCoins,
   LayoutDashboard,
   LogOut,
@@ -40,6 +41,7 @@ const navItems: { title: string; url: string; icon: typeof Users; permission?: P
   { title: "Liquidaciones", url: "/dashboard/liquidaciones", icon: HandCoins, permission: "income.view" },
   { title: "Turnos", url: "/dashboard/turnos", icon: CalendarDays },
   { title: "Stock", url: "/dashboard/stock", icon: Boxes },
+  { title: "Exportaciones", url: "/dashboard/exportaciones", icon: Download, permission: "data.export" },
   { title: "Configuración", url: "/dashboard/configuracion", icon: Settings, permission: "settings.manage" },
 ];
 
@@ -50,8 +52,10 @@ function isNavItemActive(pathname: string, url: string) {
 export function AppSidebar({ clinicName }: { clinicName?: string }) {
   const canIncome = useCan("income.view");
   const canSettings = useCan("settings.manage");
+  const canExport = useCan("data.export");
   const allowed = (permission?: Permission) =>
-    !permission || (permission === "income.view" ? canIncome : canSettings);
+    !permission ||
+    (permission === "income.view" ? canIncome : permission === "data.export" ? canExport : canSettings);
   const pathname = usePathname();
   const { signOut } = useClerk();
 

@@ -115,6 +115,8 @@ export default async function ConfiguracionPage({
       <PageHeader title="Configuración" description="Todo lo propio de tu consultorio." icon={Settings} />
 
       <Tabs
+        // Remounted per ?tab=, so a link into another section opens it.
+        key={initial}
         defaultValue={initial}
         orientation="vertical"
         className="flex-col gap-6 lg:grid lg:grid-cols-[15rem_1fr] lg:items-start"

@@ -34,6 +34,7 @@ model Clinic {
   members       ClinicMember[]
   invitations   ClinicInvitation[]
   liquidations  Liquidation[]
+  exportLogs    ExportLog[]
 }
 
 model Patient {
@@ -505,4 +506,19 @@ model Liquidation {
 
   @@unique([clinicId, number])
   @@index([clinicId, professionalId])
+}
+
+/// Who downloaded which data, and when — the clinic's data includes
+/// patients' health data, so every export is recorded.
+model ExportLog {
+  id         String   @id @default(cuid())
+  clinicId   String
+  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  kind       String // lib/catalog.ts EXPORTS kind
+  memberName String
+  // A short description of the filters used, e.g. "01/10/2026 al 31/10/2026".
+  filters    String?
+  createdAt  DateTime @default(now())
+
+  @@index([clinicId, createdAt])
 }

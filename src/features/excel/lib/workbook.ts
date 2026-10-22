@@ -10,10 +10,9 @@ export type Column = {
   date?: boolean;
 };
 
-/** One sheet, a bold header row and one column per `columns` entry —
- * every export and every import template is built with this. */
-export async function buildXlsx(sheetName: string, columns: Column[]): Promise<Buffer> {
-  const workbook = new ExcelJS.Workbook();
+/** One sheet of a workbook: a bold header row and one column per
+ * `columns` entry. */
+function addSheet(workbook: ExcelJS.Workbook, sheetName: string, columns: Column[]) {
   const sheet = workbook.addWorksheet(sheetName);
   sheet.columns = columns.map((c) => ({
     header: c.header,
@@ -37,7 +36,18 @@ export async function buildXlsx(sheetName: string, columns: Column[]): Promise<B
     );
     column.width = Math.min(50, Math.max(12, longest + 2));
   });
+}
+
+/** A workbook with one sheet per entry, in order. */
+export async function buildWorkbook(sheets: { name: string; columns: Column[] }[]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  for (const s of sheets) addSheet(workbook, s.name, s.columns);
   return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+/** One sheet — every single-list export and every import template. */
+export async function buildXlsx(sheetName: string, columns: Column[]): Promise<Buffer> {
+  return buildWorkbook([{ name: sheetName, columns }]);
 }
 
 function cellValue(value: ExcelJS.CellValue): unknown {
